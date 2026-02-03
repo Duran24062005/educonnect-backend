@@ -47,16 +47,109 @@ Este proyecto es de código abierto y cualquier persona interesada puede contrib
    git clone https://github.com/Duran24062005/educonnect-backend.git
    ```
 
-2. **Configura tu entorno de desarrollo**:  
-   Instala las dependencias necesarias utilizando pip (para Python) o npm (para Node.js) y asegúrate de tener configurada la base de datos.
+2. **Configura tu entorno de desarrollo**:
 
-3. **Contribuye**:
+   ### Opción 1: Instalación Local (sin Docker)
+
+   ```bash
+   # Crear entorno virtual
+   python3 -m venv venv
+
+   # Activar entorno virtual
+   source venv/bin/activate  # En Linux/Mac
+   # o
+   venv\Scripts\activate  # En Windows
+
+   # Instalar dependencias
+   pip install -r requirements.txt
+
+   # Ejecutar servidor
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+   El servidor estará disponible en: `http://localhost:8000`
+
+   ### Opción 2: Usando Docker
+
+   ```bash
+   # Construir imagen
+   docker build -t educonnect-api .
+
+   # Ejecutar contenedor
+   docker run -p 8000:8000 educonnect-api
+   ```
+
+   ### Opción 3: Usando Docker Compose (Recomendado)
+
+   ```bash
+   # Levantar servicios
+   docker-compose up
+
+   # Para detener
+   docker-compose down
+   ```
+
+   El servidor estará disponible en: `http://localhost:8000`
+
+3. **Endpoints disponibles**:
+   - `GET /` - Raíz de bienvenida
+   - `GET /health` - Verificar estado de la aplicación
+   - `GET /api/hello` - Ejemplo de endpoint
+   - `GET /docs` - Documentación interactiva (Swagger UI)
+   - `GET /redoc` - Documentación alternativa (ReDoc)
+
+## Despliegue en Vercel
+
+El proyecto está configurado para desplegarse fácilmente en Vercel. Sigue estos pasos:
+
+1. **Requisitos previos**:
+   - Cuenta en [Vercel](https://vercel.com)
+   - Tu código en un repositorio de GitHub, GitLab o Bitbucket
+
+2. **Desplegar**:
+
+   ```bash
+   # Opción 1: Usar Vercel CLI
+   npm i -g vercel
+   vercel
+
+   # Opción 2: Conectar desde Vercel Dashboard
+   # - Ve a https://vercel.com/new
+   # - Selecciona tu repositorio
+   # - Vercel detectará automáticamente que es un proyecto Python/FastAPI
+   # - Haz clic en "Deploy"
+   ```
+
+3. **Variables de entorno** (si es necesario):
+   - Configura las variables de entorno en el dashboard de Vercel
+   - El archivo `vercel.json` ya contiene la configuración necesaria
+
+4. **URL de producción**:
+   - Tu API estará disponible en: `https://tu-proyecto.vercel.app`
+   - Documentación disponible en: `https://tu-proyecto.vercel.app/docs`
+
+## Estructura del Proyecto
+
+```
+educonnect-backend/
+├── app/
+│   └── main.py          # Aplicación principal FastAPI
+├── venv/                # Entorno virtual (generado localmente)
+├── .gitignore          # Archivos a ignorar en Git
+├── docker-compose.yml   # Configuración de Docker Compose
+├── Dockerfile          # Configuración de Docker
+├── requirements.txt    # Dependencias de Python
+├── vercel.json         # Configuración de Vercel
+└── README.md           # Este archivo
+```
+
+4. **Contribuye**:
    - Desarrolla nuevas funcionalidades.
    - Corrige errores.
    - Mejora la documentación.
    - Participa en las discusiones del proyecto.
 
-4. **Envía tus cambios**:
+5. **Envía tus cambios**:
    - Crea una nueva rama para tus cambios.
    - Haz un pull request explicando lo que has añadido o modificado.
 
