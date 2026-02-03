@@ -1,5 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.db import session as db_session
+from app.db.session import engine
+from app.db.session import Base
+from app.routers import auth as auth_router
+from app.routers import users as users_router
 
 app = FastAPI(title="EduConnect API", version="1.0.0")
 
@@ -30,6 +35,17 @@ def health_check():
 def hello():
     """Ejemplo de endpoint en /api"""
     return {"message": "Hello from EduConnect API"}
+
+
+# Incluir routers
+app.include_router(auth_router.router)
+app.include_router(users_router.router)
+
+
+@app.on_event("startup")
+def on_startup():
+    # Crear tablas si no existen (solo para entorno de desarrollo)
+    Base.metadata.create_all(bind=engine)
 
 if __name__ == "__main__":
     import uvicorn
