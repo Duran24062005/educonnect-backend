@@ -166,3 +166,8 @@ EduConnect no solo es una herramienta práctica, sino también una plataforma ed
 Este proyecto está licenciado bajo licencia de código de propietario. Consulta el archivo `LICENSE` para más detalles.
 
 ---
+
+## Docs
+
+- [Docs Folder](https://docs.google.com/document/d/19EcU7E8YwuDrTcl3ugjGeiJGplnF74G8ZeTQioHba-8/edit?usp=sharing)
+- [Figma](https://www.figma.com/design/sZwZK7RJD6PLdKyMhA1Im9/EduConnect_Design?node-id=0-1&t=F0u7MoYU4YI4xUFE-1)
