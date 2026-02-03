@@ -1,4 +1,6 @@
-# PRD: User Registration & Roles
+# 002 - User Registration & Roles
+
+(Copied from docs/PRD_UserRegistration_Roles.md)
 
 ## Objetivo
 
@@ -53,6 +55,6 @@ Implementar un sistema de registro de usuarios con roles (Estudiante, Docente, A
 
 - Vercel requiere DB externa; configure una instancia PostgreSQL y ponga `DATABASE_URL` en Vercel env.
 
-## Registro en docs
+## Registro en prds
 
-- Actualizar `docs/PRD_UserRegistration_Roles.md` con cualquier cambio de diseño o ruta.
+- Actualizar `prds/002-user-registration-roles.md` con cualquier cambio de diseño o ruta.
