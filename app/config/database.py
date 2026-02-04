@@ -6,7 +6,7 @@ import os
 # PostgreSQL Database URL
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://user:password@localhost:5432/educonnect"
+    "postgresql://neondb_owner:npg_9Qs7oAfWRcpT@ep-aged-wind-ah9ptwdr-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
 )
 
 # For Vercel serverless, use NullPool to avoid connection pooling issues
