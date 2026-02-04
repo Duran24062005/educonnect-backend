@@ -9,6 +9,4 @@ class RoleCreate(RoleBase):
 
 class RoleRead(RoleBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    is_active: bool

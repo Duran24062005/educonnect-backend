@@ -40,10 +40,10 @@ app.include_router(auth_router.router)
 app.include_router(users_router.router)
 
 
-@app.on_event("startup")
-def on_startup():
+#@app.on_event("startup")
+#def on_startup():
     # Crear tablas si no existen (solo para entorno de desarrollo)
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
 
 if __name__ == "__main__":
     import uvicorn

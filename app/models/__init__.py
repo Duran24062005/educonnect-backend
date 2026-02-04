@@ -1,7 +1,7 @@
 """
 Modelos de base de datos
 """
-from app.db.models.user import User
-from app.db.models.role import Role
+from app.models.user import User
+from app.models.role import Role
 
 __all__ = ["User", "Role"]
