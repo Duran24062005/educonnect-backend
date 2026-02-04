@@ -2,7 +2,7 @@
 name = "educonnect-backend"
 version = "0.1.0"
 description = "EduConnect Backend - FastAPI application for educational management"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     { name = "EduConnect Contributors", email = "admin@educonnect.local" }
 ]
@@ -20,6 +20,7 @@ dependencies = [
     "psycopg2-binary==2.9.9",
     "email-validator==2.0.0",
     "httpx>=0.24.1",
+    "pydantic-settings>=2.12.0",
 ]
 
 [project.optional-dependencies]
