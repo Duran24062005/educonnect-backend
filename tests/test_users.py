@@ -1,5 +1,6 @@
 from app.db.models.role import Role
 from app.db.models.user import User
+from datetime import date
 
 
 def test_approve_user(client, db_session):
@@ -13,7 +14,7 @@ def test_approve_user(client, db_session):
         hashed_password='hashed',
         first_name='Pending',
         last_name='User',
-        birthdate='2003-03-03',
+        birthdate=date(2003, 3, 3),
         document_number='55555555',
         is_active=False,
         is_verified=False

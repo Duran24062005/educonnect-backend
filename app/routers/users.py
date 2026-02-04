@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db.session import get_db
+from app.config import get_db
 from app.services.user_service import get_pending_users, approve_user
 from app.schemas.user import UserResponse, Token
 

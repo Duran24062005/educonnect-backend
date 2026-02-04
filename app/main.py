@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.db import session as db_session
-from app.db.session import engine
-from app.db.session import Base
+from app.config import engine, Base
 from app.routers import auth as auth_router
 from app.routers import users as users_router
 

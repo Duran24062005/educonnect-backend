@@ -13,7 +13,7 @@ fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from app.db.session import Base
+from app.config.database import Base
 target_metadata = Base.metadata
 
 # Retrieve DB URL from env

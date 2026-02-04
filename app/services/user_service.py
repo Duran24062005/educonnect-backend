@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
-from app.db.models.user import User
-from app.db.models.role import Role
+from app.models import User, Role
 from app.services.auth_service import hash_password, create_access_token
 from datetime import datetime
 
