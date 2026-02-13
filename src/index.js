@@ -62,3 +62,6 @@ app.listen(port, () => {
     console.log(`✅ Server running on port ${app.get('port')}`);
     console.log(`🌐 http://localhost:${app.get('port')}!`);
 });
+
+
+export default app;

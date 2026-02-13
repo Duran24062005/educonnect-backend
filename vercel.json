@@ -3,19 +3,15 @@
     "builds": 
     [
         {
-            "src": "app/main.py",
-            "use": "@vercel/python"
+            "src": "src/index.js",
+            "use": "@vercel/node"
         }
     ],
     "routes": 
     [
         {
             "src": "/(.*)",
-            "dest": "app/main.py"
+            "dest": "src/index.js"
         }
-    ],
-    "env": 
-    {
-        "PYTHONUNBUFFERED": "1"
-    }
+    ]
 }
