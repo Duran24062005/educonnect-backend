@@ -1,40 +1,29 @@
-import { Router } from "express";
+import { Router } from 'express';
+import {
+    getAllUsers,
+    getUserById,
+    updateUser,
+    getPendingUsers,
+    approveUser,
+    rejectUser,
+    changeUserStatus,
+} from '../controller/user.controller.js';
+import { protect, authorize } from '../middlewares/auth.middleware.js';
 
-const users_router = Router()
+const users_router = Router();
 
-// Obtener todos los usuarios
-users_router.get("/all", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
+// Todas las rutas de usuarios requieren autenticación
+users_router.use(protect);
 
-// Obtener un usuario por su id
-users_router.get("/:id", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
+// Rutas públicas (autenticadas)
+users_router.get('/:id', getUserById);
+users_router.put('/:id', updateUser);
 
-// Obtener crear un usuario
-users_router.post("/create", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
-
-// Obtener todos los usuarios
-users_router.patch("/update", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
-
-// Obtener todos los usuarios
-users_router.delete("/delete", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
+// Rutas administrativas
+users_router.get('/', authorize('admin'), getAllUsers);
+users_router.get('/pending', authorize('admin'), getPendingUsers);
+users_router.post('/:id/approve', authorize('admin'), approveUser);
+users_router.delete('/:id', authorize('admin'), rejectUser);
+users_router.patch('/:id/status', authorize('admin'), changeUserStatus);
 
 export default users_router;

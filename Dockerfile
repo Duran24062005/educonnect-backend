@@ -1,18 +1,24 @@
-FROM python:3.11-slim
+# Usar imagen oficial de Node.js en lugar de Python
+FROM node:20-alpine
 
+# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar requirements
-COPY requirements.txt .
+# Copiar archivos de dependencias
+COPY package*.json ./
 
-# Instalar dependencias
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependencias en producción
+RUN npm ci --only=production
 
-# Copiar aplicación
-COPY app/ ./app/
+# Copiar código de la aplicación
+COPY src/ ./src/
 
 # Exponer puerto
 EXPOSE 8000
 
-# Comando para ejecutar la aplicación
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:8000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+
+# Comando para ejecutar
+CMD ["npm", "start"]

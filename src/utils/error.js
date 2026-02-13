@@ -23,14 +23,46 @@ export const errorHandler = (err, req, res, next) => {
 
     // Log del error en desarrollo
     if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Error:', err);
+        console.error('❌ Error:', {
+            message: err.message,
+            status: err.status,
+            statusCode: err.statusCode,
+            stack: err.stack,
+        });
     }
 
     // Errores operacionales (conocidos)
     if (err.isOperational) {
         return res.status(err.statusCode).json({
             status: err.status,
-            message: err.message
+            message: err.message,
+            ...(process.env.NODE_ENV === 'development' && { error: err }),
+        });
+    }
+
+    // Errores de Mongoose
+    if (err.name === 'CastError') {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'ID inválido',
+        });
+    }
+
+    if (err.name === 'ValidationError') {
+        const message = Object.values(err.errors)
+            .map((val) => val.message)
+            .join(', ');
+        return res.status(400).json({
+            status: 'fail',
+            message,
+        });
+    }
+
+    if (err.code === 11000) {
+        const field = Object.keys(err.keyValue)[0];
+        return res.status(400).json({
+            status: 'fail',
+            message: `${field} ya existe`,
         });
     }
 
@@ -39,7 +71,8 @@ export const errorHandler = (err, req, res, next) => {
 
     return res.status(500).json({
         status: 'error',
-        message: 'Something went wrong!'
+        message: 'Algo salió mal en el servidor',
+        ...(process.env.NODE_ENV === 'development' && { error: err.message }),
     });
 };
 

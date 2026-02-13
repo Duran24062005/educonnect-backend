@@ -1,26 +1,22 @@
-import { Router } from "express";
+import { Router } from 'express';
+import {
+    register,
+    login,
+    logout,
+    getCurrentUser,
+    changePassword,
+} from '../../controller/auth.controller.js';
+import { protect } from '../../middlewares/auth.middleware.js';
 
-const auth_router = Router()
+const auth_router = Router();
 
-// Obtener crear un usuario
-auth_router.post("/register", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
+// Rutas públicas
+auth_router.post('/register', register);
+auth_router.post('/login', login);
 
-// Obtener todos los usuarios
-auth_router.patch("/login", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
-
-// Obtener todos los usuarios
-auth_router.delete("/authentication", (req, res) => {
-    res.send({
-        message: `Estas en la ruta ${req.originalUrl}`
-    })
-});
+// Rutas protegidas
+auth_router.get('/me', protect, getCurrentUser);
+auth_router.post('/logout', protect, logout);
+auth_router.post('/change-password', protect, changePassword);
 
 export default auth_router;

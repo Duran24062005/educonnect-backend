@@ -7,9 +7,8 @@ import users_router from './routes/users.routes.js';
 import auth_router from './routes/auth/auth.routes.js';
 import { errorHandler } from './utils/error.js';
 
-const app = express()
-const port = app_config.app.port
-
+const app = express();
+const port = app_config.app.port;
 
 // Configuración
 app.set('port', port);
@@ -18,13 +17,15 @@ app.set('port', port);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Habilitar CORS
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+// CORS
+app.use(
+    cors({
+        origin: app_config.cors.origin,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true,
+    })
+);
 
 // Ruta de inicio
 app.get('/', (_req, res) => {
@@ -32,25 +33,45 @@ app.get('/', (_req, res) => {
         status: 'success',
         message: 'EduConnect API v1',
         version: '1.0.0',
+        environment: app_config.app.nodeEnv,
         endpoints: {
             auth: {
-                register: "/api/auth/register",
-                login: '/api/auth/login',
-                authentication: "/api/auth/authentication"
+                register: 'POST /api/auth/register',
+                login: 'POST /api/auth/login',
+                logout: 'POST /api/auth/logout (protegido)',
+                me: 'GET /api/auth/me (protegido)',
+                changePassword: 'POST /api/auth/change-password (protegido)',
             },
-            users: '/api/users',
-        }
+            users: {
+                getAll: 'GET /api/users (protegido - admin)',
+                getById: 'GET /api/users/:id (protegido)',
+                update: 'PUT /api/users/:id (protegido)',
+                getPending: 'GET /api/users/pending (protegido - admin)',
+                approve: 'POST /api/users/:id/approve (protegido - admin)',
+                delete: 'DELETE /api/users/:id (protegido - admin)',
+                changeStatus: 'PATCH /api/users/:id/status (protegido - admin)',
+            },
+        },
     });
 });
 
-app.use('/api/auth', auth_router)
-app.use('/api/users', users_router)
+// Health check
+app.get('/health', (_req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// Rutas
+app.use('/api/auth', auth_router);
+app.use('/api/users', users_router);
 
 // Ruta 404
 app.all(/.*/, (req, res) => {
     res.status(404).json({
         status: 'fail',
-        message: `Route ${req.originalUrl} not found`
+        message: `Ruta ${req.originalUrl} no encontrada`,
     });
 });
 
@@ -58,10 +79,22 @@ app.all(/.*/, (req, res) => {
 app.use(errorHandler);
 
 // Iniciar servidor
-app.listen(port, () => {
-    console.log(`✅ Server running on port ${app.get('port')}`);
-    console.log(`🌐 http://localhost:${app.get('port')}!`);
-});
+async function startServer() {
+    try {
+        // Conectar a MongoDB
+        await app_config.connectDatabase();
 
+        app.listen(port, () => {
+            console.log(`✅ Servidor corriendo en puerto ${app.get('port')}`);
+            console.log(`🌐 http://localhost:${app.get('port')}`);
+            console.log(`📚 Documentación: http://localhost:${app.get('port')}`);
+        });
+    } catch (error) {
+        console.error('❌ Error al iniciar el servidor:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
 
 export default app;
