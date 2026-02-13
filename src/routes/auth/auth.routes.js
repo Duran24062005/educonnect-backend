@@ -1,22 +1,16 @@
 import { Router } from 'express';
-import {
-    register,
-    login,
-    logout,
-    getCurrentUser,
-    changePassword,
-} from '../../controller/auth.controller.js';
+import AuthController from '../../controllers/AuthController.js';
 import { protect } from '../../middlewares/auth.middleware.js';
 
-const auth_router = Router();
+const router = Router();
 
 // Rutas públicas
-auth_router.post('/register', register);
-auth_router.post('/login', login);
+router.post('/register', AuthController.register);
+router.post('/login', AuthController.login);
 
 // Rutas protegidas
-auth_router.get('/me', protect, getCurrentUser);
-auth_router.post('/logout', protect, logout);
-auth_router.post('/change-password', protect, changePassword);
+router.get('/me', protect, AuthController.getCurrentUser);
+router.post('/logout', protect, AuthController.logout);
+router.post('/change-password', protect, AuthController.changePassword);
 
-export default auth_router;
+export default router;

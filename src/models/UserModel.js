@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import validator from 'validator';
 
+/**
+ * Schema de Usuario
+ * Define la estructura y validaciones a nivel de base de datos
+ * Responsabilidad: SOLO estructura de datos (no debe contener lógica de negocio)
+ * La lógica debe estar en services/ y repositories/
+ */
 const userSchema = new mongoose.Schema(
     {
         first_name: {

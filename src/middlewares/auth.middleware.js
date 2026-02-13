@@ -1,6 +1,6 @@
 import { verifyToken, extractTokenFromHeader } from '../utils/jwt.js';
 import { AppError, asyncHandler } from '../utils/error.js';
-import User from '../model/user.model.js';
+import User from '../models/UserModel.js';
 
 /**
  * Middleware para proteger rutas - Verifica JWT
