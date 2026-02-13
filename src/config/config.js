@@ -15,7 +15,7 @@ class AppConfig {
         }
 
         this.mongodb = {
-            uri: process.env.CLOUSTER || ''
+            uri: process.env.MONGO_URI_CLOUD || ''
         }
 
         AppConfig.instance = this
