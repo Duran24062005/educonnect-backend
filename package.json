@@ -1,0 +1,27 @@
+{
+    "name": "educonnect-backend",
+    "version": "1.0.0",
+    "description": "Backend for the EduConnect LMS system.",
+    "main": "index.js",
+    "type": "module",
+    "repository": "https://github.com/Duran24062005/educonnect-backend.git",
+    "author": "Alexi_Dg <alexisdurangomez588@gmail.com>",
+    "license": "MIT",
+    "dependencies": 
+    {
+        "cors": "^2.8.5",
+        "express": "^5.1.0",
+        "mongodb": "^7.0.0",
+        "nodemon": "^3.1.10"
+    },
+    "scripts": 
+    {
+        "dev": "nodemon src/index.js",
+        "start": "node src/index.js"
+    },
+    "devDependencies": 
+    {
+        "@types/express": "5.0.0",
+        "dotenv": "^17.2.3"
+    }
+}
