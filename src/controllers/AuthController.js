@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/error.js';
 import AuthService from '../services/AuthService.js';
+import { sendWelcomeEmail } from '../services/EmailService.js';
 
 /**
  * AuthController
@@ -7,7 +8,7 @@ import AuthService from '../services/AuthService.js';
  * Responsabilidad: Manejar requests HTTP y respuestas
  * - Extraer datos del request
  * - Llamar a servicios
- * - Formatar respuestas HTTP
+ * - Formatear respuestas HTTP
  * - NO contiene lógica de negocio
  */
 class AuthController {
@@ -30,6 +31,17 @@ class AuthController {
 
         // Llamar al servicio (contiene la lógica)
         const result = await AuthService.register(registerData);
+
+        if (result) {
+            const emaildata = await sendWelcomeEmail(registerData.email, registerData.first_name, result.token)
+            // Formatear y retornar respuesta
+            res.status(201).json({
+                status: 'success',
+                email: emaildata,
+                message: 'Usuario registrado exitosamente',
+                data: result,
+            });
+        }
 
         // Formatear y retornar respuesta
         res.status(201).json({

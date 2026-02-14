@@ -6,6 +6,7 @@ import app_config from './config/config.js';
 import users_router from './routes/users.routes.js';
 import auth_router from './routes/auth/auth.routes.js';
 import { errorHandler } from './utils/error.js';
+import { generateToken, verifyToken } from './utils/jwt.js';
 
 const app = express();
 const port = app_config.app.port;
@@ -62,6 +63,11 @@ app.get('/health', (_req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+const token = generateToken(2, 'admin')
+console.log(token);
+const decodeToken = verifyToken(token);
+console.log(decodeToken);
+
 
 // Rutas
 app.use('/api/auth', auth_router);
