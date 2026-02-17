@@ -63,10 +63,13 @@ app.get('/health', (_req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
-const token = generateToken(2, 'admin')
-console.log(token);
-const decodeToken = verifyToken(token);
-console.log(decodeToken);
+
+// Code TEST
+// const token = generateToken(2, 'admin')
+// console.log(token);
+// const decodeToken = verifyToken(token);
+// console.log(decodeToken);
+// console.log(app_config.app.nodeEnv);
 
 
 // Rutas

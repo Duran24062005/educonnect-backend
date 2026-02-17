@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Servicio de API Node.js
   api:
@@ -26,7 +24,7 @@ services:
 
   # Servicio de MongoDB
   mongodb:
-    image: mongo:7.0-alpine
+    image: mongo:7
     container_name: educonnect-mongodb
     ports:
       - "27017:27017"

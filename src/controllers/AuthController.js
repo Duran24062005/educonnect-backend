@@ -62,12 +62,19 @@ class AuthController {
         // Llamar al servicio
         const result = await AuthService.login(email, password);
 
-        // Responder
-        res.status(200).json({
-            status: 'success',
-            message: 'Login exitoso',
-            data: result,
-        });
+        if (result) {
+            console.log(result);
+
+            const emaildata = await sendWelcomeEmail(result.user.email, result.user.first_name, result.token)
+            // Responder
+            res.status(200).json({
+                status: 'success',
+                email: emaildata,
+                message: 'Login exitoso',
+                data: result,
+            });
+        }
+
     });
 
     /**
