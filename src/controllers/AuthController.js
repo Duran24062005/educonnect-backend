@@ -44,11 +44,11 @@ class AuthController {
         }
 
         // Formatear y retornar respuesta
-        res.status(201).json({
+        /*res.status(201).json({
             status: 'success',
             message: 'Usuario registrado exitosamente',
             data: result,
-        });
+        });*/
     });
 
     /**

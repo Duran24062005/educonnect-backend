@@ -6,7 +6,6 @@ import app_config from './config/config.js';
 import users_router from './routes/users.routes.js';
 import auth_router from './routes/auth/auth.routes.js';
 import { errorHandler } from './utils/error.js';
-import { generateToken, verifyToken } from './utils/jwt.js';
 
 const app = express();
 const port = app_config.app.port;
