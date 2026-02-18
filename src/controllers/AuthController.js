@@ -33,7 +33,7 @@ class AuthController {
         const result = await AuthService.register(registerData);
 
         if (result) {
-            const emaildata = await sendWelcomeEmail(registerData.email, registerData.first_name, result.token)
+            const emaildata = await sendWelcomeEmail(result.user.email, result.user.first_name, result.token)
             // Formatear y retornar respuesta
             res.status(201).json({
                 status: 'success',
@@ -42,13 +42,6 @@ class AuthController {
                 data: result,
             });
         }
-
-        // Formatear y retornar respuesta
-        res.status(201).json({
-            status: 'success',
-            message: 'Usuario registrado exitosamente',
-            data: result,
-        });
     });
 
     /**

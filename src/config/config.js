@@ -14,7 +14,7 @@ class AppConfig {
             description: 'Backend para el sistema LMS EduConnect',
             port: process.env.PORT || 8000,
             nodeEnv: process.env.NODE_ENV || 'development',
-            emailApiBase: process.nextTick.EMAIL_API_BASE_URL || 'http://localhost:8000/'
+            emailApiBase: process.env.EMAIL_API_BASE_URL || 'http://localhost:8000/'
         };
 
         this.database = {

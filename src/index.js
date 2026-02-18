@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 
-import app_config from './config/config.js';
+import appConfig from './config/config.js';
 
 import users_router from './routes/users.routes.js';
 import auth_router from './routes/auth/auth.routes.js';
@@ -9,7 +9,7 @@ import { errorHandler } from './utils/error.js';
 import { generateToken, verifyToken } from './utils/jwt.js';
 
 const app = express();
-const port = app_config.app.port;
+const port = appConfig.app.port;
 
 // Configuración
 app.set('port', port);
@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS
 app.use(
     cors({
-        origin: app_config.cors.origin,
+        origin: appConfig.cors.origin,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,
@@ -34,7 +34,7 @@ app.get('/', (_req, res) => {
         status: 'success',
         message: 'EduConnect API v1',
         version: '1.0.0',
-        environment: app_config.app.nodeEnv,
+        environment: appConfig.app.nodeEnv,
         endpoints: {
             auth: {
                 register: 'POST /api/auth/register',
@@ -91,7 +91,7 @@ app.use(errorHandler);
 async function startServer() {
     try {
         // Conectar a MongoDB
-        await app_config.connectDatabase();
+        await appConfig.connectDatabase();
 
         app.listen(port, () => {
             console.log(`✅ Servidor corriendo en puerto ${app.get('port')}`);
