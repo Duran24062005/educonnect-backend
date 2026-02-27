@@ -3,54 +3,52 @@ import { AppError, asyncHandler } from '../utils/error.js';
 import User from '../models/UserModel.js';
 
 /**
- * Middleware para proteger rutas - Verifica JWT
+ * Middleware de autenticación - verifica JWT y carga person_id populado
  */
 export const protect = asyncHandler(async (req, res, next) => {
     let token;
 
-    // Extraer token del header
     if (req.headers.authorization) {
         token = extractTokenFromHeader(req.headers.authorization);
     }
 
-    // Validar que existe token
     if (!token) {
         throw new AppError('No autorizado - Token no proporcionado', 401);
     }
 
-    // Verificar token
     const decoded = verifyToken(token);
 
-    // Obtener usuario de la base de datos
-    const user = await User.findById(decoded.sub);
+    // Cargar usuario con persona populada
+    const user = await User.findById(decoded.sub).populate('person_id');
 
     if (!user) {
         throw new AppError('Usuario no encontrado', 404);
     }
 
-    // Verificar que el usuario está activo
-    if (user.status !== 'active') {
-        throw new AppError('El usuario no está activo', 403);
+    const person = user.person_id;
+
+    if (!person || person.status !== 'active') {
+        throw new AppError('La cuenta no está activa', 403);
     }
 
-    // Adjuntar usuario a la request
     req.user = user;
     req.userId = decoded.sub;
-    req.userRole = decoded.role;
+    req.userRole = person.role; // 'Student' | 'Teacher' | 'Admin'
+    req.personId = person._id;
 
     next();
 });
 
 /**
- * Middleware para autorizar por rol
- * @param {...string} roles - Roles permitidos
+ * Middleware de autorización por rol
+ * Uso: authorize('Admin') o authorize('Admin', 'Teacher')
  */
 export const authorize = (...roles) => {
     return (req, res, next) => {
         if (!roles.includes(req.userRole)) {
             return next(
                 new AppError(
-                    `No tienes permiso para acceder a este recurso (Rol requerido: ${roles.join(', ')})`,
+                    `Acceso denegado. Se requiere uno de los siguientes roles: ${roles.join(', ')}`,
                     403
                 )
             );
@@ -60,7 +58,7 @@ export const authorize = (...roles) => {
 };
 
 /**
- * Middleware opcional para autenticación (no lanza error si no hay token)
+ * Autenticación opcional - no lanza error si no hay token
  */
 export const optionalAuth = asyncHandler(async (req, res, next) => {
     let token;
@@ -72,16 +70,16 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
     if (token) {
         try {
             const decoded = verifyToken(token);
-            const user = await User.findById(decoded.sub);
+            const user = await User.findById(decoded.sub).populate('person_id');
 
-            if (user && user.status === 'active') {
+            if (user && user.person_id?.status === 'active') {
                 req.user = user;
                 req.userId = decoded.sub;
-                req.userRole = decoded.role;
+                req.userRole = user.person_id.role;
+                req.personId = user.person_id._id;
             }
-        } catch (error) {
-            // Silenciosamente ignorar errores de token
-            // El usuario no estará autenticado pero la ruta continúa
+        } catch {
+            // Token inválido — continúa sin autenticar
         }
     }
 

@@ -3,22 +3,20 @@ import cors from 'cors';
 
 import appConfig from './config/config.js';
 
-import users_router from './routes/users.routes.js';
 import auth_router from './routes/auth/auth.routes.js';
+import users_router from './routes/users.routes.js';
+import academic_router from './routes/academic.routes.js';
+import groups_router from './routes/groups.routes.js';
+import evaluations_router from './routes/evaluations.routes.js';
 import { errorHandler } from './utils/error.js';
-import { generateToken, verifyToken } from './utils/jwt.js';
 
 const app = express();
 const port = appConfig.app.port;
 
-// Configuración
 app.set('port', port);
-
-// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
 app.use(
     cors({
         origin: appConfig.cors.origin,
@@ -28,55 +26,69 @@ app.use(
     })
 );
 
-// Ruta de inicio
+// ===== INFO =====
 app.get('/', (_req, res) => {
     res.status(200).json({
         status: 'success',
-        message: 'EduConnect API v1',
-        version: '1.0.0',
+        message: 'EduConnect API v2',
+        version: '2.0.0',
         environment: appConfig.app.nodeEnv,
         endpoints: {
             auth: {
                 register: 'POST /api/auth/register',
                 login: 'POST /api/auth/login',
-                logout: 'POST /api/auth/logout (protegido)',
                 me: 'GET /api/auth/me (protegido)',
+                logout: 'POST /api/auth/logout (protegido)',
                 changePassword: 'POST /api/auth/change-password (protegido)',
             },
             users: {
-                getAll: 'GET /api/users (protegido - admin)',
-                getById: 'GET /api/users/:id (protegido)',
-                update: 'PUT /api/users/:id (protegido)',
-                getPending: 'GET /api/users/pending (protegido - admin)',
-                approve: 'POST /api/users/:id/approve (protegido - admin)',
-                delete: 'DELETE /api/users/:id (protegido - admin)',
-                changeStatus: 'PATCH /api/users/:id/status (protegido - admin)',
+                getAll: 'GET /api/users (admin)',
+                getById: 'GET /api/users/:id',
+                update: 'PUT /api/users/:id',
+                pending: 'GET /api/users/admin/pending (admin)',
+                approve: 'POST /api/users/:id/approve (admin)',
+                status: 'PATCH /api/users/:id/status (admin)',
+                delete: 'DELETE /api/users/:id (admin)',
+                stats: 'GET /api/users/admin/stats (admin)',
+            },
+            academic: {
+                schoolYears: 'GET|POST /api/academic/school-years',
+                activeYear: 'GET /api/academic/school-years/active',
+                periods: 'GET|POST /api/academic/periods',
+                grades: 'GET|POST|PUT|DELETE /api/academic/grades',
+                areas: 'GET|POST|PUT|DELETE /api/academic/areas',
+                aulas: 'GET|POST|PUT|DELETE /api/academic/aulas',
+            },
+            groups: {
+                groups: 'GET|POST|PUT|DELETE /api/groups',
+                enrollments: 'POST /api/groups/enrollments',
+                teacherAssignment: 'POST /api/groups/teachers/assign',
+                gradeAreas: 'POST|GET /api/groups/grade-areas',
+            },
+            evaluations: {
+                gradeItems: 'GET|POST|PUT|DELETE /api/evaluations/grade-items',
+                scores: 'POST|GET /api/evaluations/scores',
+                periodResults: 'POST|GET /api/evaluations/period-results',
+                finalResults: 'POST|GET /api/evaluations/final-results',
+                stats: 'GET /api/evaluations/stats/school-year/:id',
             },
         },
     });
 });
 
-// Health check
+// ===== HEALTH =====
 app.get('/health', (_req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-    });
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Code TEST
-// const token = generateToken(2, 'admin')
-// console.log(token);
-// const decodeToken = verifyToken(token);
-// console.log(decodeToken);
-// console.log(app_config.app.nodeEnv);
-
-
-// Rutas
+// ===== RUTAS =====
 app.use('/api/auth', auth_router);
 app.use('/api/users', users_router);
+app.use('/api/academic', academic_router);
+app.use('/api/groups', groups_router);
+app.use('/api/evaluations', evaluations_router);
 
-// Ruta 404
+// 404
 app.all(/.*/, (req, res) => {
     res.status(404).json({
         status: 'fail',
@@ -84,19 +96,14 @@ app.all(/.*/, (req, res) => {
     });
 });
 
-// Middleware de manejo de errores (debe ir al final)
 app.use(errorHandler);
 
-// Iniciar servidor
 async function startServer() {
     try {
-        // Conectar a MongoDB
         await appConfig.connectDatabase();
-
         app.listen(port, () => {
             console.log(`✅ Servidor corriendo en puerto ${app.get('port')}`);
             console.log(`🌐 http://localhost:${app.get('port')}`);
-            console.log(`📚 Documentación: http://localhost:${app.get('port')}`);
         });
     } catch (error) {
         console.error('❌ Error al iniciar el servidor:', error);

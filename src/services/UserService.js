@@ -1,4 +1,4 @@
-import UserRepository from '../repositories/UsersRepository.js';
+import UserRepository from '../repositories/UserRepository.js';
 import { AppError } from '../utils/error.js';
 
 /**
