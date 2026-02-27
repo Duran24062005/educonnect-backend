@@ -1,26 +1,19 @@
-# EduConnect - Sistema de Gestión Educativa
-
-**Docente:** Pedro Felipe Gómez Bonilla // 24 - 10 - 2025
-
----
-
 <div align="center">
 
 # EduConnect - Sistema de Gestión Educativa
 
-**Proyecto MongoDB**
+**Base de Datos para el Proyecto EduConnect en MongoDB**
 
 ---
 
-**Autores:** Alexi Durán Gómez y Esteban Mantilla
+**Autores:** Alexi Durán Gómez
 
-**Institución:** CAMPUSLANDS
 
-**Ruta:** ARTEMIS - NODE
+**Ruta:** NODE - MONGODB
 
 **Ubicación:** Bucaramanga, Santander
 
-**Año:** 2025
+**Año:** 2026 - FEB - 26
 
 ---
 
