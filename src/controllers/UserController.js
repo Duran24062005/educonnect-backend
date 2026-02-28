@@ -1,4 +1,4 @@
-import { asyncHandler } from '../utils/error.js';
+import { AppError, asyncHandler } from '../utils/error.js';
 import UserService from '../services/UserService.js';
 
 /**
@@ -70,6 +70,35 @@ class UserController {
             status: 'success',
             message: 'Usuario actualizado exitosamente',
             data: { user },
+        });
+    });
+
+    /**
+     * PATCH /api/users/:id/profile-photo
+     * Subir foto de perfil (multipart/form-data)
+     */
+    uploadProfilePhoto = asyncHandler(async (req, res) => {
+        const { id } = req.params;
+        const file = req.file;
+
+        if (!file) {
+            throw new AppError(
+                'Archivo no recibido. Envía form-data con la llave profile_photo',
+                400
+            );
+        }
+
+        const result = await UserService.uploadProfilePhoto(
+            req.userId,
+            id,
+            req.userRole,
+            file
+        );
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Foto de perfil actualizada exitosamente',
+            data: result,
         });
     });
 

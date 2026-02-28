@@ -63,6 +63,12 @@ const personSchema = new mongoose.Schema(
             minlength: [4, 'Mínimo 4 caracteres'],
             maxlength: [20, 'Máximo 20 caracteres'],
         },
+        profile_photo_url: {
+            type: String,
+            trim: true,
+            maxlength: [300, 'Máximo 300 caracteres'],
+            default: null,
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

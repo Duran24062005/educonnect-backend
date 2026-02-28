@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 
 import appConfig from './config/config.js';
 
@@ -13,9 +16,12 @@ import { errorHandler } from './utils/error.js';
 const app = express();
 const port = appConfig.app.port;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.set('port', port);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '6mb' }));
+app.use(express.urlencoded({ extended: true, limit: '6mb' }));
 
 app.use(
     cors({
@@ -46,6 +52,7 @@ app.get('/', (_req, res) => {
                 getAll: 'GET /api/users (admin)',
                 getById: 'GET /api/users/:id',
                 update: 'PUT /api/users/:id',
+                uploadProfilePhoto: 'PATCH /api/users/:id/profile-photo',
                 pending: 'GET /api/users/admin/pending (admin)',
                 approve: 'POST /api/users/:id/approve (admin)',
                 status: 'PATCH /api/users/:id/status (admin)',
@@ -73,9 +80,15 @@ app.get('/', (_req, res) => {
                 finalResults: 'POST|GET /api/evaluations/final-results',
                 stats: 'GET /api/evaluations/stats/school-year/:id',
             },
+            images: {
+                uploads: "GET /uploads/file_name.extension"
+            },
         },
     });
 });
+
+// Images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ===== HEALTH =====
 app.get('/health', (_req, res) => {

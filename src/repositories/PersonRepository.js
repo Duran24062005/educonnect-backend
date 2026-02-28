@@ -14,6 +14,10 @@ class PersonRepository {
         return await Person.findById(id);
     }
 
+    async findByUserId(user_id) {
+        return await Person.findOne({ user_id });
+    }
+
     async findByDocumentNumber(document_number) {
         return await Person.findOne({ document_number });
     }

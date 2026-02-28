@@ -1,5 +1,13 @@
 import UserRepository from '../repositories/UserRepository.js';
+import PersonRepository from '../repositories/PersonRepository.js';
 import { AppError } from '../utils/error.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOADS_PROFILE_DIR = path.resolve(__dirname, '../uploads/profiles');
 
 /**
  * UserService
@@ -7,6 +15,55 @@ import { AppError } from '../utils/error.js';
  * Responsabilidad: Lógica de negocio de gestión de usuarios
  */
 class UserService {
+    /**
+     * Subir foto de perfil
+     * @param {string} userId - ID del usuario actual
+     * @param {string} targetUserId - ID del usuario objetivo
+     * @param {string} userRole - Rol del usuario actual
+     * @param {Object} file - Archivo cargado con multer
+     * @returns {Promise<Object>}
+     */
+    async uploadProfilePhoto(userId, targetUserId, userRole, file) {
+        const isAdmin = String(userRole || '').toLowerCase() === 'admin';
+        if (userId !== targetUserId && !isAdmin) {
+            throw new AppError('No tienes permiso para actualizar este usuario', 403);
+        }
+
+        if (!file || !file.filename) {
+            throw new AppError('La imagen es requerida', 400);
+        }
+
+        const user = await UserRepository.findById(targetUserId);
+        if (!user) {
+            throw new AppError('Usuario no encontrado', 404);
+        }
+
+        const person = await PersonRepository.findByUserId(targetUserId);
+        if (!person) {
+            throw new AppError('El usuario aún no tiene perfil personal', 400);
+        }
+
+        await fs.mkdir(UPLOADS_PROFILE_DIR, { recursive: true });
+
+        const profilePhotoUrl = `/uploads/profiles/${file.filename}`;
+        if (person.profile_photo_url?.startsWith('/uploads/profiles/')) {
+            const oldFileName = person.profile_photo_url.replace('/uploads/profiles/', '');
+            if (oldFileName && oldFileName !== file.filename) {
+                const oldPath = path.join(UPLOADS_PROFILE_DIR, oldFileName);
+                await fs.unlink(oldPath).catch(() => null);
+            }
+        }
+
+        const updatedPerson = await PersonRepository.update(person._id, {
+            profile_photo_url: profilePhotoUrl,
+        });
+
+        return {
+            profile_photo_url: updatedPerson.profile_photo_url,
+            person_id: updatedPerson._id,
+        };
+    }
+
     /**
      * Obtener todos los usuarios (admin)
      * @param {Object} filters - Filtros
@@ -84,11 +141,12 @@ class UserService {
      */
     async updateUser(userId, targetUserId, userRole, updateData) {
         const { first_name, last_name, birthdate, document_number } = updateData;
+        const isAdmin = String(userRole || '').toLowerCase() === 'admin';
 
         // ============ AUTORIZACIÓN ============
 
         // El usuario solo puede actualizar su propio perfil o es admin
-        if (userId !== targetUserId && userRole !== 'admin') {
+        if (userId !== targetUserId && !isAdmin) {
             throw new AppError('No tienes permiso para actualizar este usuario', 403);
         }
 

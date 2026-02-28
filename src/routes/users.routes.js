@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import UserController from '../controllers/UserController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
+import { uploadProfilePhoto } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -8,6 +9,7 @@ const router = Router();
 router.use(protect);
 
 // Rutas públicas (autenticadas)
+router.patch('/:id/profile-photo', uploadProfilePhoto, UserController.uploadProfilePhoto);
 router.get('/:id', UserController.getUserById);
 router.put('/:id', UserController.updateUser);
 
