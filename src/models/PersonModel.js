@@ -2,10 +2,19 @@ import mongoose from 'mongoose';
 
 /**
  * Person Model
- * Entidad central del sistema - almacena info personal de todos los usuarios
+ * Entidad central del sistema - almacena info personal de todos los usuarios.
+ * Tiene referencia a User (user_id) para relación bidireccional:
+ *   User.person_id → Person
+ *   Person.user_id → User
  */
 const personSchema = new mongoose.Schema(
     {
+        user_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: [true, 'El usuario es requerido'],
+            unique: true,
+        },
         first_name: {
             type: String,
             required: [true, 'El nombre es requerido'],
@@ -61,6 +70,7 @@ const personSchema = new mongoose.Schema(
 );
 
 // Índices
+personSchema.index({ user_id: 1 }, { unique: true });
 personSchema.index({ document_number: 1 }, { unique: true });
 personSchema.index({ role: 1 });
 personSchema.index({ status: 1 });

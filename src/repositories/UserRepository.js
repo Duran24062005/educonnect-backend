@@ -10,6 +10,20 @@ class UserRepository {
         return await user.save();
     }
 
+    async findAll(filter = {}, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+
+    const users = await User.find(filter)
+        .populate('person_id')
+        .skip(skip)
+        .limit(limit)
+        .sort({ created_at: -1 });
+
+    const total = await User.countDocuments(filter);
+
+    return { users, total };
+}
+
     async findById(id) {
         return await User.findById(id).populate('person_id');
     }

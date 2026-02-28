@@ -37,6 +37,7 @@ app.get('/', (_req, res) => {
             auth: {
                 register: 'POST /api/auth/register',
                 login: 'POST /api/auth/login',
+                completeProfile: 'GET /api/auth/complete-profile (protegido)',
                 me: 'GET /api/auth/me (protegido)',
                 logout: 'POST /api/auth/logout (protegido)',
                 changePassword: 'POST /api/auth/change-password (protegido)',

@@ -4,89 +4,108 @@ import { sendWelcomeEmail } from '../services/EmailService.js';
 
 /**
  * AuthController
- * Capa de presentación (Presentation Layer)
- * Responsabilidad: Manejar requests HTTP y respuestas
- * - Extraer datos del request
- * - Llamar a servicios
- * - Formatear respuestas HTTP
- * - NO contiene lógica de negocio
+ * Manejo HTTP de autenticación en dos pasos:
+ *   POST /api/auth/register          → solo email + contraseña
+ *   POST /api/auth/complete-profile  → datos personales (requiere token)
  */
 class AuthController {
     /**
      * POST /api/auth/register
-     * Registrar nuevo usuario
+     * Registro inicial: solo email y contraseña.
+     * Devuelve token inmediatamente para que el cliente
+     * pueda llamar a /complete-profile en el siguiente paso.
      */
     register = asyncHandler(async (req, res) => {
-        // Extraer datos del request
         const registerData = {
-            first_name: req.body.first_name,
-            last_name: req.body.last_name,
             email: req.body.email,
             password: req.body.password,
             password_confirm: req.body.password_confirm,
-            birthdate: req.body.birthdate,
-            document_number: req.body.document_number,
-            requested_role: req.body.requested_role || 'student',
         };
 
-        // Llamar al servicio (contiene la lógica)
         const result = await AuthService.register(registerData);
 
-        if (result) {
-            const emaildata = await sendWelcomeEmail(result.user.email, result.user.first_name, result.token)
-            // Formatear y retornar respuesta
-            res.status(201).json({
-                status: 'success',
-                email: emaildata,
-                message: 'Usuario registrado exitosamente',
-                data: result,
-            });
-        }
+        res.status(201).json({
+            status: 'success',
+            message: 'Cuenta creada. Por favor completa tu perfil personal.',
+            data: result,
+        });
+    });
+
+    /**
+     * POST /api/auth/complete-profile
+     * Paso 2: el usuario autenticado envía sus datos personales.
+     * Requiere token JWT (middleware protect).
+     */
+    completeProfile = asyncHandler(async (req, res) => {
+        const profileData = {
+            first_name: req.body.first_name,
+            last_name: req.body.last_name,
+            born_date: req.body.born_date,
+            document_type: req.body.document_type,
+            document_number: req.body.document_number,
+            phone: req.body.phone,
+            requested_role: req.body.requested_role || 'Student',
+        };
+
+        const result = await AuthService.completeProfile(req.userId, profileData);
+
+        // Enviar email de bienvenida ahora que tenemos nombre y email
+        const emailResult = await sendWelcomeEmail(
+            req.user.email,
+            result.person.first_name,
+            result.token
+        );
+
+        res.status(200).json({
+            status: 'success',
+            email: emailResult,
+            message: 'Perfil completado exitosamente. Tu cuenta está pendiente de aprobación.',
+            data: result,
+        });
     });
 
     /**
      * POST /api/auth/login
-     * Login de usuario
      */
     login = asyncHandler(async (req, res) => {
-        // Extraer datos
         const { email, password } = req.body;
 
-        // Llamar al servicio
         const result = await AuthService.login(email, password);
 
         if (result) {
-            console.log(result);
+            // Solo enviar email de bienvenida si el perfil está completo y tenemos nombre
+            let emailData = null;
+            if (result.profile_complete && result.person) {
+                emailData = await sendWelcomeEmail(
+                    result.user.email,
+                    result.person.first_name,
+                    result.token
+                );
+            }
 
-            const emaildata = await sendWelcomeEmail(result.user.email, result.user.first_name, result.token)
-            // Responder
             res.status(200).json({
                 status: 'success',
-                email: emaildata,
+                email: emailData,
                 message: 'Login exitoso',
                 data: result,
             });
         }
-
     });
 
     /**
      * GET /api/auth/me
-     * Obtener usuario actual
      */
     getCurrentUser = asyncHandler(async (req, res) => {
-        // El middleware ya autenticó al usuario
-        const user = await AuthService.getCurrentUser(req.userId);
+        const result = await AuthService.getCurrentUser(req.userId);
 
         res.status(200).json({
             status: 'success',
-            data: { user },
+            data: result,
         });
     });
 
     /**
      * POST /api/auth/logout
-     * Logout (frontend elimina el token)
      */
     logout = asyncHandler(async (req, res) => {
         res.status(200).json({
@@ -97,13 +116,10 @@ class AuthController {
 
     /**
      * POST /api/auth/change-password
-     * Cambiar contraseña
      */
     changePassword = asyncHandler(async (req, res) => {
-        // Extraer datos
         const { current_password, new_password, new_password_confirm } = req.body;
 
-        // Llamar al servicio
         const result = await AuthService.changePassword(
             req.userId,
             current_password,

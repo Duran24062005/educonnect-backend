@@ -4,15 +4,17 @@ import validator from 'validator';
 
 /**
  * User Model
- * Gestiona las credenciales de autenticación vinculadas a una persona
+ * Gestiona las credenciales de autenticación.
+ * person_id es opcional: se asocia después del registro inicial,
+ * cuando el usuario completa su perfil personal.
  */
 const userSchema = new mongoose.Schema(
     {
         person_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Person',
-            required: [true, 'La persona es requerida'],
-            unique: true,
+            default: null,
+            // Sin unique: true aquí porque null no debe ser único
         },
         email: {
             type: String,
@@ -55,8 +57,9 @@ userSchema.methods.toJSON = function () {
     return obj;
 };
 
-// Índices
+// Índice único para email. Para person_id usamos sparse
+// para que múltiples nulls no violen la unicidad
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ person_id: 1 }, { unique: true });
+userSchema.index({ person_id: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('User', userSchema);

@@ -6,30 +6,24 @@ import { generateToken } from '../utils/jwt.js';
 
 /**
  * AuthService
- * Lógica de negocio de autenticación con el nuevo modelo Person + User
+ * Registro en dos pasos:
+ *   1. register()        → crea User (email + contraseña)
+ *   2. completeProfile() → crea Person con user_id y la vincula al User (person_id)
+ *
+ * Relación bidireccional:
+ *   User.person_id  → Person
+ *   Person.user_id  → User
  */
 class AuthService {
     /**
-     * Registrar un nuevo usuario
-     * Crea Person + User + perfil de rol (Teacher/Student)
+     * PASO 1 — Registro inicial
+     * Solo email y contraseña. El User queda sin person_id (null).
      */
     async register(data) {
-        const {
-            first_name,
-            last_name,
-            email,
-            password,
-            password_confirm,
-            born_date,
-            document_type,
-            document_number,
-            phone,
-            requested_role = 'Student',
-        } = data;
+        const { email, password, password_confirm } = data;
 
-        // ===== VALIDACIONES =====
-        if (!first_name || !last_name || !email || !password || !document_type || !document_number) {
-            throw new AppError('Todos los campos obligatorios son requeridos', 400);
+        if (!email || !password || !password_confirm) {
+            throw new AppError('Email, contraseña y confirmación son requeridos', 400);
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,8 +39,48 @@ class AuthService {
             throw new AppError('La contraseña debe tener al menos 8 caracteres', 400);
         }
 
-        const validRoles = ['Student', 'Teacher'];
-        if (!validRoles.includes(requested_role)) {
+        if (await UserRepository.emailExists(email)) {
+            throw new AppError('El email ya está registrado', 400);
+        }
+
+        const user = await UserRepository.create({
+            email,
+            hash_password: password,
+            // person_id queda null hasta completar perfil
+        });
+
+        const token = generateToken(user._id, null);
+
+        return {
+            user: user.toJSON(),
+            token,
+            profile_complete: false,
+        };
+    }
+
+    /**
+     * PASO 2 — Completar perfil personal
+     * Crea Person con user_id y actualiza User.person_id.
+     */
+    async completeProfile(userId, data) {
+        const {
+            first_name,
+            last_name,
+            born_date,
+            document_type,
+            document_number,
+            phone,
+            requested_role = 'Student',
+        } = data;
+
+        if (!first_name || !last_name || !document_type || !document_number) {
+            throw new AppError(
+                'Nombre, apellido, tipo y número de documento son requeridos',
+                400
+            );
+        }
+
+        if (!['Student', 'Teacher'].includes(requested_role)) {
             throw new AppError('Rol solicitado inválido. Usa: Student, Teacher', 400);
         }
 
@@ -54,17 +88,20 @@ class AuthService {
             throw new AppError('Tipo de documento inválido. Usa: CC, RC, CE', 400);
         }
 
-        // ===== UNICIDAD =====
-        if (await UserRepository.emailExists(email)) {
-            throw new AppError('El email ya está registrado', 400);
+        const user = await UserRepository.findById(userId);
+        if (!user) throw new AppError('Usuario no encontrado', 404);
+
+        if (user.person_id) {
+            throw new AppError('El perfil personal ya fue completado', 400);
         }
 
         if (await PersonRepository.documentExists(document_number)) {
             throw new AppError('El número de documento ya está registrado', 400);
         }
 
-        // ===== CREAR PERSON =====
+        // Crear Person con referencia al User
         const person = await PersonRepository.create({
+            user_id: userId,          // ← relación Person → User
             first_name,
             last_name,
             phone: phone || null,
@@ -75,31 +112,28 @@ class AuthService {
             document_number,
         });
 
-        // ===== CREAR USER =====
-        const user = await UserRepository.create({
-            person_id: person._id,
-            email,
-            hash_password: password,
-        });
+        // Actualizar User con referencia a la Person recién creada
+        await UserRepository.update(userId, { person_id: person._id }); // ← relación User → Person
 
-        // ===== CREAR PERFIL DE ROL =====
+        // Crear perfil de rol
         if (requested_role === 'Teacher') {
-            await teacherRepository.create({ user_id: user._id });
+            await teacherRepository.create({ user_id: userId });
         } else if (requested_role === 'Student') {
-            await studentRepository.create({ user_id: user._id });
+            await studentRepository.create({ user_id: userId });
         }
 
-        const token = generateToken(user._id, person.role);
+        const token = generateToken(userId, person.role);
 
         return {
             person: person.toObject(),
-            user: user.toJSON(),
+            user: { ...user.toJSON(), person_id: person._id },
             token,
+            profile_complete: true,
         };
     }
 
     /**
-     * Login de usuario
+     * Login
      */
     async login(email, password) {
         if (!email || !password) {
@@ -117,21 +151,23 @@ class AuthService {
         }
 
         const person = user.person_id;
-        if (!person || person.status !== 'active') {
+
+        if (person && person.status !== 'active') {
             throw new AppError(
-                `Tu cuenta no está activa (estado: ${person?.status || 'desconocido'})`,
+                `Tu cuenta no está activa (estado: ${person.status})`,
                 403
             );
         }
 
         await UserRepository.updateLastLogin(user._id);
 
-        const token = generateToken(user._id, person.role);
+        const token = generateToken(user._id, person?.role || null);
 
         return {
-            person: person.toObject ? person.toObject() : person,
+            person: person ? (person.toObject ? person.toObject() : person) : null,
             user: user.toJSON(),
             token,
+            profile_complete: !!person,
         };
     }
 
@@ -151,11 +187,10 @@ class AuthService {
             throw new AppError('Las nuevas contraseñas no coinciden', 400);
         }
 
-        const userWithPwd = await UserRepository.findByEmail(
-            (await UserRepository.findById(userId))?.email,
-            true
-        );
-        if (!userWithPwd) throw new AppError('Usuario no encontrado', 404);
+        const userBase = await UserRepository.findById(userId);
+        if (!userBase) throw new AppError('Usuario no encontrado', 404);
+
+        const userWithPwd = await UserRepository.findByEmail(userBase.email, true);
 
         const isValid = await userWithPwd.matchPassword(currentPassword);
         if (!isValid) throw new AppError('La contraseña actual es incorrecta', 401);
@@ -167,12 +202,16 @@ class AuthService {
     }
 
     /**
-     * Obtener usuario actual por userId
+     * Obtener usuario actual
      */
     async getCurrentUser(userId) {
         const user = await UserRepository.findById(userId);
         if (!user) throw new AppError('Usuario no encontrado', 404);
-        return { user: user.toJSON(), person: user.person_id };
+        return {
+            user: user.toJSON(),
+            person: user.person_id || null,
+            profile_complete: !!user.person_id,
+        };
     }
 }
 

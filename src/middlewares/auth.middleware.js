@@ -3,7 +3,9 @@ import { AppError, asyncHandler } from '../utils/error.js';
 import User from '../models/UserModel.js';
 
 /**
- * Middleware de autenticación - verifica JWT y carga person_id populado
+ * protect
+ * Middleware completo: exige token válido + perfil personal completado.
+ * Úsalo en rutas que necesiten el rol del usuario (Admin, Teacher, Student).
  */
 export const protect = asyncHandler(async (req, res, next) => {
     let token;
@@ -25,9 +27,17 @@ export const protect = asyncHandler(async (req, res, next) => {
         throw new AppError('Usuario no encontrado', 404);
     }
 
+    // Exigir que el perfil esté completo
+    if (!user.person_id) {
+        throw new AppError(
+            'Perfil incompleto. Por favor completa tu información personal en /api/auth/complete-profile',
+            403
+        );
+    }
+
     const person = user.person_id;
 
-    if (!person || person.status !== 'active') {
+    if (person.status !== 'active') {
         throw new AppError('La cuenta no está activa', 403);
     }
 
@@ -40,7 +50,39 @@ export const protect = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * Middleware de autorización por rol
+ * protectIncomplete
+ * Solo verifica que el token sea válido.
+ * NO exige que el perfil personal esté completo.
+ * Úsalo exclusivamente en /api/auth/complete-profile.
+ */
+export const protectIncomplete = asyncHandler(async (req, res, next) => {
+    let token;
+
+    if (req.headers.authorization) {
+        token = extractTokenFromHeader(req.headers.authorization);
+    }
+
+    if (!token) {
+        throw new AppError('No autorizado - Token no proporcionado', 401);
+    }
+
+    const decoded = verifyToken(token);
+
+    const user = await User.findById(decoded.sub);
+
+    if (!user) {
+        throw new AppError('Usuario no encontrado', 404);
+    }
+
+    req.user = user;
+    req.userId = decoded.sub;
+
+    next();
+});
+
+/**
+ * authorize
+ * Verifica que el usuario tenga uno de los roles indicados.
  * Uso: authorize('Admin') o authorize('Admin', 'Teacher')
  */
 export const authorize = (...roles) => {
@@ -58,7 +100,9 @@ export const authorize = (...roles) => {
 };
 
 /**
- * Autenticación opcional - no lanza error si no hay token
+ * optionalAuth
+ * No lanza error si no hay token.
+ * Si el token es válido y el perfil está completo, inyecta el usuario.
  */
 export const optionalAuth = asyncHandler(async (req, res, next) => {
     let token;
