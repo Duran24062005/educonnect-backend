@@ -83,14 +83,19 @@ export const protectIncomplete = asyncHandler(async (req, res, next) => {
 /**
  * authorize
  * Verifica que el usuario tenga uno de los roles indicados.
- * Uso: authorize('Admin') o authorize('Admin', 'Teacher')
+ * Comparación case-insensitive.
+ * Uso recomendado: authorize('admin') o authorize('admin', 'teacher')
  */
 export const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.userRole)) {
+        const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+        const allowedRoles = roles.map(normalizeRole).filter(Boolean);
+        const currentRole = normalizeRole(req.userRole);
+
+        if (!allowedRoles.includes(currentRole)) {
             return next(
                 new AppError(
-                    `Acceso denegado. Se requiere uno de los siguientes roles: ${roles.join(', ')}`,
+                    `Acceso denegado. Se requiere uno de los siguientes roles: ${allowedRoles.join(', ')}`,
                     403
                 )
             );

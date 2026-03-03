@@ -10,7 +10,7 @@ class GroupController {
 
     getGroupsBySchoolYear = asyncHandler(async (req, res) => {
         const result = await GroupService.getGroupsBySchoolYear(req.params.school_year_id);
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, groups: result });
     });
 
     getGroupById = asyncHandler(async (req, res) => {

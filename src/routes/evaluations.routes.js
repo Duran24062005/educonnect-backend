@@ -8,23 +8,23 @@ router.use(protect);
 
 // ---- Grade Items ----
 router.get('/grade-items', EvaluationController.getGradeItems); // ?period_id=&area_id=
-router.post('/grade-items', authorize('Admin', 'Teacher'), EvaluationController.createGradeItem);
-router.put('/grade-items/:id', authorize('Admin', 'Teacher'), EvaluationController.updateGradeItem);
-router.delete('/grade-items/:id', authorize('Admin', 'Teacher'), EvaluationController.deleteGradeItem);
+router.post('/grade-items', authorize('admin', 'teacher'), EvaluationController.createGradeItem);
+router.put('/grade-items/:id', authorize('admin', 'teacher'), EvaluationController.updateGradeItem);
+router.delete('/grade-items/:id', authorize('admin', 'teacher'), EvaluationController.deleteGradeItem);
 
 // ---- Calificaciones ----
-router.post('/scores', authorize('Admin', 'Teacher'), EvaluationController.registerScore);
+router.post('/scores', authorize('admin', 'teacher'), EvaluationController.registerScore);
 router.get('/scores/student/:student_id', EvaluationController.getScoresByStudent);
-router.get('/scores/grade-item/:grade_item_id', authorize('Admin', 'Teacher'), EvaluationController.getScoresByGradeItem);
+router.get('/scores/grade-item/:grade_item_id', authorize('admin', 'teacher'), EvaluationController.getScoresByGradeItem);
 
 // ---- Resultados por periodo ----
-router.post('/period-results/calculate', authorize('Admin', 'Teacher'), EvaluationController.calculatePeriodResult);
+router.post('/period-results/calculate', authorize('admin', 'teacher'), EvaluationController.calculatePeriodResult);
 router.get('/period-results/student/:student_id', EvaluationController.getPeriodResultsByStudent);
 
 // ---- Resultados finales ----
-router.post('/final-results/calculate', authorize('Admin'), EvaluationController.calculateFinalResult);
-router.get('/final-results/school-year/:school_year_id', authorize('Admin'), EvaluationController.getFinalResultsByYear);
+router.post('/final-results/calculate', authorize('admin'), EvaluationController.calculateFinalResult);
+router.get('/final-results/school-year/:school_year_id', authorize('admin'), EvaluationController.getFinalResultsByYear);
 router.get('/final-results/student/:student_id/year/:school_year_id', EvaluationController.getStudentFinalResult);
-router.get('/stats/school-year/:school_year_id', authorize('Admin'), EvaluationController.getYearStats);
+router.get('/stats/school-year/:school_year_id', authorize('admin'), EvaluationController.getYearStats);
 
 export default router;

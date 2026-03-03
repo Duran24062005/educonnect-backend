@@ -24,6 +24,7 @@
     },
     "scripts": {
         "dev": "nodemon src/index.js",
-        "start": "node src/index.js"
+        "start": "node src/index.js",
+        "seed:test-users": "node database/seed-test-users.js"
     }
 }

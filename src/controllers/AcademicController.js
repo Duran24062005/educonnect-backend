@@ -10,12 +10,12 @@ class AcademicController {
 
     getAllSchoolYears = asyncHandler(async (req, res) => {
         const result = await AcademicService.getAllSchoolYears();
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, schoolYears: result });
     });
 
     getActiveSchoolYear = asyncHandler(async (req, res) => {
         const result = await AcademicService.getActiveSchoolYear();
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, schoolYear: result });
     });
 
     setActiveSchoolYear = asyncHandler(async (req, res) => {
@@ -36,7 +36,7 @@ class AcademicController {
 
     getPeriodsBySchoolYear = asyncHandler(async (req, res) => {
         const result = await AcademicService.getPeriodsBySchoolYear(req.params.school_year_id);
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, periods: result });
     });
 
     deletePeriod = asyncHandler(async (req, res) => {
@@ -52,7 +52,7 @@ class AcademicController {
 
     getAllGrades = asyncHandler(async (req, res) => {
         const result = await AcademicService.getAllGrades();
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, grades: result });
     });
 
     updateGrade = asyncHandler(async (req, res) => {
@@ -73,7 +73,7 @@ class AcademicController {
 
     getAllAreas = asyncHandler(async (req, res) => {
         const result = await AcademicService.getAllAreas();
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, areas: result });
     });
 
     updateArea = asyncHandler(async (req, res) => {
@@ -94,7 +94,7 @@ class AcademicController {
 
     getAllAulas = asyncHandler(async (req, res) => {
         const result = await AcademicService.getAllAulas();
-        res.status(200).json({ status: 'success', data: result });
+        res.status(200).json({ status: 'success', data: result, aulas: result });
     });
 
     updateAula = asyncHandler(async (req, res) => {

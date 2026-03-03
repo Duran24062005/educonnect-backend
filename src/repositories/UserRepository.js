@@ -1,4 +1,5 @@
 import User from '../models/UserModel.js';
+import Person from '../models/PersonModel.js';
 
 /**
  * UserRepository
@@ -53,6 +54,38 @@ class UserRepository {
 
     async delete(id) {
         return await User.findByIdAndDelete(id);
+    }
+
+    async findPending() {
+        const users = await User.find()
+            .populate({
+                path: 'person_id',
+                match: { status: 'pending' },
+            })
+            .sort({ created_at: -1 });
+
+        return users.filter(user => user.person_id);
+    }
+
+    async countByRole(role) {
+        const roleMap = {
+            student: 'Student',
+            teacher: 'Teacher',
+            admin: 'Admin',
+            guardian: 'Guardian',
+        };
+
+        const normalizedRole = roleMap[String(role || '').toLowerCase()] || role;
+        return await Person.countDocuments({ role: normalizedRole });
+    }
+
+    async countByStatus(status) {
+        return await Person.countDocuments({ status });
+    }
+
+    async documentExists(document_number) {
+        const person = await Person.findOne({ document_number });
+        return person !== null;
     }
 }
 
