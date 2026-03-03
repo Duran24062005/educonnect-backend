@@ -213,6 +213,21 @@ class AuthService {
             profile_complete: !!user.person_id,
         };
     }
+
+    /**
+     * Obtener estado de completitud de perfil
+     * Permite al frontend decidir si mostrar la pantalla
+     * de completar perfil.
+     */
+    async getProfileCompletionStatus(userId) {
+        const user = await UserRepository.findById(userId);
+        if (!user) throw new AppError('Usuario no encontrado', 404);
+
+        return {
+            profile_complete: !!user.person_id,
+            person_status: user.person_id?.status || null,
+        };
+    }
 }
 
 export default new AuthService();

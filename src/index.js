@@ -43,7 +43,8 @@ app.get('/', (_req, res) => {
             auth: {
                 register: 'POST /api/auth/register',
                 login: 'POST /api/auth/login',
-                completeProfile: 'GET /api/auth/complete-profile (protegido)',
+                completeProfile: 'POST /api/auth/complete-profile (token requerido)',
+                profileStatus: 'GET /api/auth/profile-status (token requerido)',
                 me: 'GET /api/auth/me (protegido)',
                 logout: 'POST /api/auth/logout (protegido)',
                 changePassword: 'POST /api/auth/change-password (protegido)',
@@ -81,7 +82,8 @@ app.get('/', (_req, res) => {
                 stats: 'GET /api/evaluations/stats/school-year/:id',
             },
             images: {
-                uploads: "GET /uploads/file_name.extension"
+                uploads: "GET /uploads/file_name.extension",
+                profilesPhotos: "GET /uploads/profiles/file_name.extension"
             },
         },
     });

@@ -11,6 +11,7 @@ router.post('/login', AuthController.login);
 // ── Requiere token, pero el perfil puede estar incompleto ───
 // protectIncomplete: verifica JWT pero NO exige person_id
 router.post('/complete-profile', protectIncomplete, AuthController.completeProfile);
+router.get('/profile-status', protectIncomplete, AuthController.getProfileStatus);
 
 // ── Requiere token y perfil completo ───────────────────────
 router.get('/me', protect, AuthController.getCurrentUser);

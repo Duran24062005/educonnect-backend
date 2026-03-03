@@ -33,6 +33,7 @@ export const sendWelcomeEmail = async (email, firstName, emailToken) => {
                     empresa: 'EduConnect',
                     verification_link: verificationLink,
                 },
+                user_id:1
             }),
         });
 
