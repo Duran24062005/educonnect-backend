@@ -15,19 +15,24 @@ import { generateToken } from '../utils/jwt.js';
  *   Person.user_id  → User
  */
 class AuthService {
+    normalizeEmail(email) {
+        return String(email || '').trim().toLowerCase();
+    }
+
     /**
      * PASO 1 — Registro inicial
      * Solo email y contraseña. El User queda sin person_id (null).
      */
     async register(data) {
-        const { email, password, password_confirm } = data;
+        const normalizedEmail = this.normalizeEmail(data?.email);
+        const { password, password_confirm } = data;
 
-        if (!email || !password || !password_confirm) {
+        if (!normalizedEmail || !password || !password_confirm) {
             throw new AppError('Email, contraseña y confirmación son requeridos', 400);
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(normalizedEmail)) {
             throw new AppError('Email inválido', 400);
         }
 
@@ -39,12 +44,12 @@ class AuthService {
             throw new AppError('La contraseña debe tener al menos 8 caracteres', 400);
         }
 
-        if (await UserRepository.emailExists(email)) {
+        if (await UserRepository.emailExists(normalizedEmail)) {
             throw new AppError('El email ya está registrado', 400);
         }
 
         const user = await UserRepository.create({
-            email,
+            email: normalizedEmail,
             hash_password: password,
             // person_id queda null hasta completar perfil
         });
@@ -136,11 +141,13 @@ class AuthService {
      * Login
      */
     async login(email, password) {
-        if (!email || !password) {
+        const normalizedEmail = this.normalizeEmail(email);
+
+        if (!normalizedEmail || !password) {
             throw new AppError('Email y contraseña son requeridos', 400);
         }
 
-        const user = await UserRepository.findByEmail(email, true);
+        const user = await UserRepository.findByEmail(normalizedEmail, true);
         if (!user) {
             throw new AppError('Email o contraseña incorrectos', 401);
         }

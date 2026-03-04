@@ -6,6 +6,10 @@ import Person from '../models/PersonModel.js';
  * Acceso a datos para credenciales de usuario
  */
 class UserRepository {
+    normalizeEmail(email) {
+        return String(email || '').trim().toLowerCase();
+    }
+
     async create(data) {
         const user = new User(data);
         return await user.save();
@@ -30,7 +34,7 @@ class UserRepository {
     }
 
     async findByEmail(email, includePassword = false) {
-        const query = User.findOne({ email }).populate('person_id');
+        const query = User.findOne({ email: this.normalizeEmail(email) }).populate('person_id');
         if (includePassword) query.select('+hash_password');
         return await query;
     }
@@ -40,7 +44,7 @@ class UserRepository {
     }
 
     async emailExists(email) {
-        const u = await User.findOne({ email });
+        const u = await User.findOne({ email: this.normalizeEmail(email) });
         return u !== null;
     }
 
