@@ -25,7 +25,18 @@ app.use(express.urlencoded({ extended: true, limit: '6mb' }));
 
 app.use(
     cors({
-        origin: appConfig.cors.origin,
+        origin: (origin, callback) => {
+            // Permite requests server-to-server o herramientas sin header Origin
+            if (!origin) {
+                return callback(null, true);
+            }
+
+            if (appConfig.cors.origins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(new Error(`CORS bloqueado para el origen: ${origin}`));
+        },
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,
