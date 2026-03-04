@@ -215,7 +215,7 @@ class UserService {
     async approveUser(userId, role, adminId) {
         // ============ VALIDAR ROLE ============
 
-        const validRoles = ['student', 'teacher', 'admin', 'guardian'];
+        const validRoles = ['student', 'teacher', 'admin'];
         if (!validRoles.includes(role)) {
             throw new AppError('Role inválido', 400);
         }
@@ -227,18 +227,30 @@ class UserService {
             throw new AppError('Usuario no encontrado', 404);
         }
 
-        if (user.status !== 'pending') {
+        const person = user.person_id;
+        if (!person) {
+            throw new AppError('El usuario no tiene perfil personal', 400);
+        }
+
+        if (person.status !== 'pending') {
             throw new AppError('El usuario no está pendiente de aprobación', 400);
         }
 
         // ============ ACTUALIZAR ============
 
-        const approvedUser = await UserRepository.update(userId, {
-            role,
+        const roleMap = {
+            student: 'Student',
+            teacher: 'Teacher',
+            admin: 'Admin',
+        };
+
+        await PersonRepository.update(person._id, {
+            role: roleMap[role],
             status: 'active',
             updated_by: adminId,
         });
 
+        const approvedUser = await UserRepository.findById(userId);
         return approvedUser.toJSON();
     }
 
@@ -271,7 +283,7 @@ class UserService {
     async changeUserStatus(userId, newStatus, adminId) {
         // ============ VALIDAR ESTADO ============
 
-        const validStatuses = ['active', 'pending', 'inactive', 'blocked'];
+        const validStatuses = ['active', 'pending', 'inactive'];
         if (!validStatuses.includes(newStatus)) {
             throw new AppError('Estado inválido', 400);
         }
@@ -283,13 +295,19 @@ class UserService {
             throw new AppError('Usuario no encontrado', 404);
         }
 
+        const person = user.person_id;
+        if (!person) {
+            throw new AppError('El usuario no tiene perfil personal', 400);
+        }
+
         // ============ ACTUALIZAR ============
 
-        const updatedUser = await UserRepository.update(userId, {
+        await PersonRepository.update(person._id, {
             status: newStatus,
             updated_by: adminId,
         });
 
+        const updatedUser = await UserRepository.findById(userId);
         return updatedUser.toJSON();
     }
 

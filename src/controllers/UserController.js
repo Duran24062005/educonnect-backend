@@ -124,7 +124,11 @@ class UserController {
      */
     approveUser = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const { role } = req.body;
+        const { role } = req.body || {};
+
+        if (!role) {
+            throw new AppError('El campo role es requerido', 400);
+        }
 
         const user = await UserService.approveUser(id, role, req.userId);
 
@@ -156,7 +160,11 @@ class UserController {
      */
     changeUserStatus = asyncHandler(async (req, res) => {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status } = req.body || {};
+
+        if (!status) {
+            throw new AppError('El campo status es requerido', 400);
+        }
 
         const user = await UserService.changeUserStatus(id, status, req.userId);
 
@@ -182,4 +190,3 @@ class UserController {
 }
 
 export default new UserController();
-
