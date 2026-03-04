@@ -81,9 +81,13 @@ class GroupService {
 
         const group = await groupRepository.findById(group_id);
         if (!group) throw new AppError('Grupo no encontrado', 404);
+        if (group.school_year_id?._id?.toString() !== school_year_id.toString() &&
+            group.school_year_id?.toString() !== school_year_id.toString()) {
+            throw new AppError('El grupo no pertenece al año escolar enviado', 400);
+        }
 
         // Verificar que el estudiante no ya esté inscrito este año
-        if (await enrollmentRepository.exists(student_id, school_year_id)) {
+        if (await enrollmentRepository.existsActive(student_id, school_year_id)) {
             throw new AppError('El estudiante ya está inscrito en este año escolar', 400);
         }
 
@@ -106,12 +110,89 @@ class GroupService {
         return enrollment;
     }
 
+    async transferEnrollment(student_id, school_year_id, to_group_id, reason = null, observations = null) {
+        if (!student_id || !school_year_id || !to_group_id) {
+            throw new AppError('Estudiante, año escolar y grupo destino son requeridos', 400);
+        }
+
+        const student = await studentRepository.findById(student_id);
+        if (!student) throw new AppError('Estudiante no encontrado', 404);
+
+        const activeEnrollment = await enrollmentRepository.findActiveByStudentAndYear(student_id, school_year_id);
+        if (!activeEnrollment) {
+            throw new AppError('El estudiante no tiene matrícula activa en ese año escolar', 404);
+        }
+
+        if (activeEnrollment.group_id.toString() === to_group_id.toString()) {
+            throw new AppError('El grupo destino debe ser diferente al grupo actual', 400);
+        }
+
+        const targetGroup = await groupRepository.findById(to_group_id);
+        if (!targetGroup) throw new AppError('Grupo destino no encontrado', 404);
+        if (targetGroup.school_year_id?._id?.toString() !== school_year_id.toString() &&
+            targetGroup.school_year_id?.toString() !== school_year_id.toString()) {
+            throw new AppError('El grupo destino no pertenece al año escolar enviado', 400);
+        }
+
+        const currentCount = await enrollmentRepository.countActiveByGroup(to_group_id);
+        if (currentCount >= targetGroup.max_capacity) {
+            throw new AppError('El grupo destino ha alcanzado su capacidad máxima', 400);
+        }
+
+        await enrollmentRepository.update(activeEnrollment._id, {
+            status: 'transferred',
+            closed_at: new Date(),
+            transfer_reason: reason || null,
+            observations: observations || null,
+        });
+
+        const newEnrollment = await enrollmentRepository.create({
+            student_id,
+            school_year_id,
+            group_id: to_group_id,
+            status: 'active',
+            previous_enrollment_id: activeEnrollment._id,
+            transfer_reason: reason || null,
+            observations: observations || null,
+        });
+
+        await studentRepository.update(student_id, { group_id: to_group_id });
+
+        return newEnrollment;
+    }
+
     async changeEnrollmentStatus(enrollment_id, status) {
         const validStatuses = ['active', 'transferred', 'retired'];
         if (!validStatuses.includes(status)) {
             throw new AppError('Estado inválido. Usa: active, transferred, retired', 400);
         }
-        return await enrollmentRepository.update(enrollment_id, { status });
+
+        const enrollment = await enrollmentRepository.findById(enrollment_id);
+        if (!enrollment) {
+            throw new AppError('Matrícula no encontrada', 404);
+        }
+
+        const updated = await enrollmentRepository.update(enrollment_id, {
+            status,
+            closed_at: status === 'active' ? null : new Date(),
+        });
+
+        if (status === 'active') {
+            await studentRepository.update(enrollment.student_id._id || enrollment.student_id, {
+                group_id: enrollment.group_id._id || enrollment.group_id,
+            });
+            return updated;
+        }
+
+        const activeEnrollment = await enrollmentRepository.findActiveByStudent(
+            enrollment.student_id._id || enrollment.student_id
+        );
+
+        await studentRepository.update(enrollment.student_id._id || enrollment.student_id, {
+            group_id: activeEnrollment ? (activeEnrollment.group_id._id || activeEnrollment.group_id) : null,
+        });
+
+        return updated;
     }
 
     async getStudentsByGroup(group_id) {

@@ -27,6 +27,27 @@ const enrollmentSchema = new mongoose.Schema(
             required: [true, 'El estado es requerido'],
             default: 'active',
         },
+        previous_enrollment_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Enrollment',
+            default: null,
+        },
+        closed_at: {
+            type: Date,
+            default: null,
+        },
+        transfer_reason: {
+            type: String,
+            trim: true,
+            maxlength: [300, 'Máximo 300 caracteres'],
+            default: null,
+        },
+        observations: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Máximo 500 caracteres'],
+            default: null,
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -37,8 +58,11 @@ const enrollmentSchema = new mongoose.Schema(
 enrollmentSchema.index({ student_id: 1 });
 enrollmentSchema.index({ group_id: 1 });
 enrollmentSchema.index({ school_year_id: 1 });
-// Un estudiante solo puede estar inscrito una vez por año escolar
-enrollmentSchema.index({ student_id: 1, school_year_id: 1 }, { unique: true });
+// Solo una matrícula activa por estudiante y año escolar.
+enrollmentSchema.index(
+    { student_id: 1, school_year_id: 1 },
+    { unique: true, partialFilterExpression: { status: 'active' } }
+);
 enrollmentSchema.index({ group_id: 1, status: 1 });
 
 export default mongoose.model('Enrollment', enrollmentSchema);

@@ -12,6 +12,7 @@ router.get('/school-years/active', AcademicController.getActiveSchoolYear);
 router.post('/school-years', authorize('admin'), AcademicController.createSchoolYear);
 router.patch('/school-years/:id/activate', authorize('admin'), AcademicController.setActiveSchoolYear);
 router.delete('/school-years/:id', authorize('admin'), AcademicController.deleteSchoolYear);
+router.post('/promotions', authorize('admin'), AcademicController.promoteStudents);
 
 // ---- Periods ----
 router.get('/school-years/:school_year_id/periods', AcademicController.getPeriodsBySchoolYear);

@@ -77,7 +77,7 @@ class UserService {
             throw new AppError('Rol inválido', 400);
         }
 
-        if (filters.status && !['active', 'pending', 'inactive', 'blocked'].includes(filters.status)) {
+        if (filters.status && !['active', 'pending', 'inactive', 'blocked', 'egresado'].includes(filters.status)) {
             throw new AppError('Estado inválido', 400);
         }
 
@@ -215,7 +215,7 @@ class UserService {
     async approveUser(userId, role, adminId) {
         // ============ VALIDAR ROLE ============
 
-        const validRoles = ['student', 'teacher', 'admin'];
+        const validRoles = ['student', 'teacher', 'admin', 'guardian'];
         if (!validRoles.includes(role)) {
             throw new AppError('Role inválido', 400);
         }
@@ -242,6 +242,7 @@ class UserService {
             student: 'Student',
             teacher: 'Teacher',
             admin: 'Admin',
+            guardian: 'Guardian',
         };
 
         await PersonRepository.update(person._id, {
@@ -283,7 +284,7 @@ class UserService {
     async changeUserStatus(userId, newStatus, adminId) {
         // ============ VALIDAR ESTADO ============
 
-        const validStatuses = ['active', 'pending', 'inactive'];
+        const validStatuses = ['active', 'pending', 'inactive', 'blocked', 'egresado'];
         if (!validStatuses.includes(newStatus)) {
             throw new AppError('Estado inválido', 400);
         }
@@ -325,6 +326,7 @@ class UserService {
         const pendingCount = await UserRepository.countByStatus('pending');
         const inactiveCount = await UserRepository.countByStatus('inactive');
         const blockedCount = await UserRepository.countByStatus('blocked');
+        const graduatedCount = await UserRepository.countByStatus('egresado');
 
         return {
             by_role: {
@@ -338,6 +340,7 @@ class UserService {
                 pending: pendingCount,
                 inactive: inactiveCount,
                 blocked: blockedCount,
+                egresado: graduatedCount,
             },
             total: studentCount + teacherCount + adminCount + guardianCount,
         };

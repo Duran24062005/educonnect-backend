@@ -8,6 +8,7 @@ import appConfig from './config/config.js';
 
 import auth_router from './routes/auth/auth.routes.js';
 import users_router from './routes/users.routes.js';
+import students_router from './routes/students.routes.js';
 import academic_router from './routes/academic.routes.js';
 import groups_router from './routes/groups.routes.js';
 import evaluations_router from './routes/evaluations.routes.js';
@@ -71,9 +72,13 @@ app.get('/', (_req, res) => {
                 delete: 'DELETE /api/users/:id (admin)',
                 stats: 'GET /api/users/admin/stats (admin)',
             },
+            students: {
+                assignAula: 'PATCH /api/students/:id/aula (admin)',
+            },
             academic: {
                 schoolYears: 'GET|POST /api/academic/school-years',
                 activeYear: 'GET /api/academic/school-years/active',
+                promotions: 'POST /api/academic/promotions (admin)',
                 periods: 'GET|POST /api/academic/periods',
                 grades: 'GET|POST|PUT|DELETE /api/academic/grades',
                 areas: 'GET|POST|PUT|DELETE /api/academic/areas',
@@ -111,6 +116,7 @@ app.get('/health', (_req, res) => {
 // ===== RUTAS =====
 app.use('/api/auth', auth_router);
 app.use('/api/users', users_router);
+app.use('/api/students', students_router);
 app.use('/api/academic', academic_router);
 app.use('/api/groups', groups_router);
 app.use('/api/evaluations', evaluations_router);

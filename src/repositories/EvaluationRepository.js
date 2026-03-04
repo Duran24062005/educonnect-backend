@@ -17,16 +17,35 @@ class EnrollmentRepository {
         return await Enrollment.findOne({ student_id, school_year_id });
     }
 
+    async findActiveByStudentAndYear(student_id, school_year_id) {
+        return await Enrollment.findOne({ student_id, school_year_id, status: 'active' });
+    }
+
     async findByGroup(group_id, status = 'active') {
         return await Enrollment.find({ group_id, status }).populate('student_id');
+    }
+
+    async findBySchoolYear(school_year_id, status = null) {
+        const filter = { school_year_id };
+        if (status) filter.status = status;
+
+        return await Enrollment.find(filter).populate('student_id').populate('group_id');
     }
 
     async findByStudent(student_id) {
         return await Enrollment.find({ student_id }).populate('school_year_id').populate('group_id');
     }
 
+    async findActiveByStudent(student_id) {
+        return await Enrollment.findOne({ student_id, status: 'active' }).sort({ created_at: -1 });
+    }
+
     async exists(student_id, school_year_id) {
         return !!(await Enrollment.findOne({ student_id, school_year_id }));
+    }
+
+    async existsActive(student_id, school_year_id) {
+        return !!(await Enrollment.findOne({ student_id, school_year_id, status: 'active' }));
     }
 
     async update(id, data) {

@@ -20,7 +20,7 @@ Body:
 }
 ```
 
-Valores válidos de `role` (actual): `student`, `teacher`, `admin`.
+Valores válidos de `role` (actual): `student`, `teacher`, `admin`, `guardian`.
 
 Validaciones:
 
@@ -53,7 +53,7 @@ Body:
 }
 ```
 
-Valores válidos de `status` (actual): `active`, `pending`, `inactive`.
+Valores válidos de `status` (actual): `active`, `pending`, `inactive`, `blocked`, `egresado`.
 
 Validaciones:
 
@@ -161,3 +161,105 @@ Validaciones:
 Respuesta exitosa:
 
 - `201 Created` con el grupo creado.
+
+---
+
+## 6) Traslado de grupo (histórico completo)
+
+- Método: `POST`
+- Endpoint: `/api/groups/enrollments/transfer`
+- Requiere token de **admin**
+- Headers:
+  - `Authorization: Bearer <token>`
+  - `Content-Type: application/json`
+
+Body:
+
+```json
+{
+  "student_id": "ID_ESTUDIANTE",
+  "school_year_id": "ID_AÑO_ESCOLAR",
+  "to_group_id": "ID_GRUPO_DESTINO",
+  "reason": "Cambio de jornada",
+  "observations": "Solicitud de coordinación"
+}
+```
+
+Validaciones:
+
+1. Debe existir una matrícula `active` del estudiante en ese año escolar.
+2. El grupo destino debe ser diferente al actual.
+3. El grupo destino debe pertenecer al mismo `school_year_id`.
+4. Si el grupo destino llegó a capacidad máxima, se rechaza la operación.
+
+Comportamiento:
+
+1. Se cierra la matrícula activa actual con estado `transferred`.
+2. Se crea una nueva matrícula `active` enlazada por `previous_enrollment_id`.
+3. Se sincroniza `Student.group_id` al grupo destino.
+
+Respuesta exitosa:
+
+- `201 Created` con la nueva matrícula activa.
+
+---
+
+## 7) Asignar/Cambiar aula a estudiante
+
+- Método: `PATCH`
+- Endpoint: `/api/students/:id/aula`
+- Requiere token de **admin**
+- Headers:
+  - `Authorization: Bearer <token>`
+  - `Content-Type: application/json`
+
+Body:
+
+```json
+{
+  "aula_id": "ID_AULA"
+}
+```
+
+Validaciones:
+
+1. `aula_id` es obligatorio.
+2. El estudiante debe existir.
+3. El aula debe existir.
+4. Si el aula está llena, se rechaza (no hay override).
+
+Respuesta exitosa:
+
+- `200 OK` con el estudiante actualizado.
+
+---
+
+## 8) Promoción anual masiva
+
+- Método: `POST`
+- Endpoint: `/api/academic/promotions`
+- Requiere token de **admin**
+- Headers:
+  - `Authorization: Bearer <token>`
+  - `Content-Type: application/json`
+
+Body:
+
+```json
+{
+  "from_school_year_id": "ID_AÑO_ORIGEN",
+  "to_school_year_id": "ID_AÑO_DESTINO"
+}
+```
+
+Reglas aplicadas:
+
+1. `passed` -> sube de grado automáticamente.
+2. `failed` -> repite grado.
+3. `repeating` -> queda para decisión manual del admin (se reporta en `manual_cases`).
+4. Si aprueba en grado 11 -> se marca `Person.status = egresado`.
+5. Si falta `FinalResult` del año origen para algún estudiante activo, se rechaza la ejecución.
+
+Respuesta exitosa:
+
+- `200 OK` con resumen (`promoted`, `repeated`, `graduated`, `manual_review`).

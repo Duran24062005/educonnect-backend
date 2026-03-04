@@ -85,8 +85,8 @@ class AuthService {
             );
         }
 
-        if (!['Student', 'Teacher'].includes(requested_role)) {
-            throw new AppError('Rol solicitado inválido. Usa: Student, Teacher', 400);
+        if (!['Student', 'Teacher', 'Guardian'].includes(requested_role)) {
+            throw new AppError('Rol solicitado inválido. Usa: Student, Teacher, Guardian', 400);
         }
 
         if (!['CC', 'RC', 'CE'].includes(document_type)) {

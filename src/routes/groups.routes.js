@@ -15,6 +15,7 @@ router.delete('/:id', authorize('admin'), GroupController.deleteGroup);
 
 // ---- Inscripciones ----
 router.post('/enrollments', authorize('admin'), GroupController.enrollStudent);
+router.post('/enrollments/transfer', authorize('admin'), GroupController.transferEnrollment);
 router.patch('/enrollments/:id/status', authorize('admin'), GroupController.changeEnrollmentStatus);
 router.get('/:group_id/students', GroupController.getStudentsByGroup);
 router.get('/enrollments/student/:student_id', GroupController.getEnrollmentsByStudent);

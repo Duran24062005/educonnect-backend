@@ -35,6 +35,22 @@ class GroupController {
         res.status(201).json({ status: 'success', message: 'Estudiante inscrito exitosamente', data: result });
     });
 
+    transferEnrollment = asyncHandler(async (req, res) => {
+        const { student_id, school_year_id, to_group_id, reason, observations } = req.body;
+        const result = await GroupService.transferEnrollment(
+            student_id,
+            school_year_id,
+            to_group_id,
+            reason,
+            observations
+        );
+        res.status(201).json({
+            status: 'success',
+            message: 'Traslado de grupo realizado exitosamente',
+            data: result,
+        });
+    });
+
     changeEnrollmentStatus = asyncHandler(async (req, res) => {
         const { status } = req.body;
         const result = await GroupService.changeEnrollmentStatus(req.params.id, status);

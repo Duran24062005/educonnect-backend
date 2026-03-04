@@ -37,12 +37,12 @@ const personSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ['Student', 'Teacher', 'Admin'],
+            enum: ['Student', 'Teacher', 'Admin', 'Guardian'],
             required: [true, 'El rol es requerido'],
         },
         status: {
             type: String,
-            enum: ['active', 'inactive', 'pending'],
+            enum: ['active', 'inactive', 'pending', 'blocked', 'egresado'],
             default: 'pending',
         },
         born_date: {

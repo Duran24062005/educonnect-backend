@@ -38,6 +38,7 @@ class StudentRepository {
     }
     async findByUserId(user_id) { return await Student.findOne({ user_id }); }
     async findByGroup(group_id) { return await Student.find({ group_id }).populate('user_id'); }
+    async countByAula(aula_id) { return await Student.countDocuments({ aula_id }); }
     async findAll() { return await Student.find().populate('user_id'); }
     async update(id, data) { return await Student.findByIdAndUpdate(id, data, { new: true, runValidators: true }); }
     async delete(id) { return await Student.findByIdAndDelete(id); }
