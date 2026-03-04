@@ -47,6 +47,8 @@ userSchema.pre('save', async function (next) {
 
 // Comparar contraseña
 userSchema.methods.matchPassword = async function (enteredPassword) {
+    // Evita crash de bcrypt cuando el usuario no tiene hash cargado/guardado.
+    if (!enteredPassword || !this.hash_password) return false;
     return await bcryptjs.compare(enteredPassword, this.hash_password);
 };
 
