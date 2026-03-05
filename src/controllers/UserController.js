@@ -31,6 +31,23 @@ class UserController {
     });
 
     /**
+     * GET /api/users/role/:role
+     * Obtener usuarios por rol (admin) con paginación
+     */
+    getUsersByRole = asyncHandler(async (req, res) => {
+        const { role } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const result = await UserService.getUsersByRole(role, page, limit);
+
+        res.status(200).json({
+            status: 'success',
+            data: result,
+        });
+    });
+
+    /**
      * GET /api/users/:id
      * Obtener usuario por ID
      */

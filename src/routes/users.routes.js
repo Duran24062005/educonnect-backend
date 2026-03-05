@@ -10,6 +10,7 @@ router.use(protect);
 
 // Rutas administrativas
 router.get('/', authorize('admin'), UserController.getAllUsers);
+router.get('/role/:role', authorize('admin'), UserController.getUsersByRole);
 router.get('/admin/pending', authorize('admin'), UserController.getPendingUsers);
 router.get('/admin/stats', authorize('admin'), UserController.getStatistics);
 router.post('/:id/approve', authorize('admin'), UserController.approveUser);

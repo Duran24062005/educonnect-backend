@@ -204,7 +204,46 @@ Respuesta exitosa:
 
 ---
 
-## 7) Asignar/Cambiar aula a estudiante
+## 7) Matricular estudiante en grupo
+
+- Método: `POST`
+- Endpoint: `/api/groups/enrollments`
+- Requiere token de **admin**
+- Headers:
+  - `Authorization: Bearer <token>`
+  - `Content-Type: application/json`
+
+Body:
+
+```json
+{
+  "student_id": "ID_ESTUDIANTE",
+  "group_id": "ID_GRUPO",
+  "school_year_id": "ID_AÑO_ESCOLAR"
+}
+```
+
+Validaciones:
+
+1. `student_id`, `group_id` y `school_year_id` son obligatorios.
+2. El estudiante debe existir.
+3. El grupo debe existir.
+4. El grupo debe pertenecer al `school_year_id` enviado.
+5. El estudiante no puede tener otra matrícula `active` en ese mismo año escolar.
+6. El grupo no puede exceder su capacidad máxima.
+
+Comportamiento:
+
+1. Crea matrícula en `enrollments` con `status: active`.
+2. Sincroniza `Student.group_id` al grupo matriculado.
+
+Respuesta exitosa:
+
+- `201 Created` con mensaje `Estudiante inscrito exitosamente` y la matrícula creada.
+
+---
+
+## 8) Asignar/Cambiar aula a estudiante
 
 - Método: `PATCH`
 - Endpoint: `/api/students/:id/aula`
@@ -234,7 +273,7 @@ Respuesta exitosa:
 
 ---
 
-## 8) Promoción anual masiva
+## 9) Promoción anual masiva
 
 - Método: `POST`
 - Endpoint: `/api/academic/promotions`

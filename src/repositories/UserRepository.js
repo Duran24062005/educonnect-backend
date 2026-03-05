@@ -71,6 +71,53 @@ class UserRepository {
         return users.filter(user => user.person_id);
     }
 
+    async findByRole(role, page = 1, limit = 10) {
+        const skip = (page - 1) * limit;
+        const roleMap = {
+            student: 'Student',
+            teacher: 'Teacher',
+            admin: 'Admin',
+            guardian: 'Guardian',
+        };
+
+        const normalizedRole = roleMap[String(role || '').toLowerCase()] || role;
+
+        const basePipeline = [
+            {
+                $lookup: {
+                    from: 'people',
+                    localField: 'person_id',
+                    foreignField: '_id',
+                    as: 'person_id',
+                },
+            },
+            {
+                $unwind: '$person_id',
+            },
+            {
+                $match: {
+                    'person_id.role': normalizedRole,
+                },
+            },
+        ];
+
+        const users = await User.aggregate([
+            ...basePipeline,
+            { $sort: { created_at: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            { $project: { hash_password: 0 } },
+        ]);
+
+        const totalResult = await User.aggregate([
+            ...basePipeline,
+            { $count: 'total' },
+        ]);
+
+        const total = totalResult[0]?.total || 0;
+        return { users, total };
+    }
+
     async countByRole(role) {
         const roleMap = {
             student: 'Student',

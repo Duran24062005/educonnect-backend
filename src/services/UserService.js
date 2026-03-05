@@ -206,6 +206,40 @@ class UserService {
     }
 
     /**
+     * Obtener usuarios por rol (admin)
+     * @param {string} role - Rol a filtrar
+     * @param {number} page - Página
+     * @param {number} limit - Límite
+     * @returns {Promise<Object>}
+     */
+    async getUsersByRole(role, page = 1, limit = 10) {
+        const validRoles = ['student', 'teacher', 'admin', 'guardian'];
+        if (!role || !validRoles.includes(String(role).toLowerCase())) {
+            throw new AppError('Rol inválido', 400);
+        }
+
+        if (page < 1) {
+            throw new AppError('Página debe ser mayor a 0', 400);
+        }
+
+        if (limit < 1 || limit > 100) {
+            throw new AppError('Límite debe estar entre 1 y 100', 400);
+        }
+
+        const { users, total } = await UserRepository.findByRole(role, page, limit);
+
+        return {
+            users,
+            pagination: {
+                current_page: page,
+                total_pages: Math.ceil(total / limit),
+                total,
+                limit,
+            },
+        };
+    }
+
+    /**
      * Aprobar usuario (admin)
      * @param {string} userId - ID del usuario a aprobar
      * @param {string} role - Role a asignar
