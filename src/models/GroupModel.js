@@ -38,5 +38,6 @@ const groupSchema = new mongoose.Schema(
 groupSchema.index({ school_year_id: 1 });
 groupSchema.index({ grade_id: 1 });
 groupSchema.index({ school_year_id: 1, grade_id: 1 });
+groupSchema.index({ school_year_id: 1, grade_id: 1, name: 1 }, { unique: true });
 
 export default mongoose.model('Group', groupSchema);

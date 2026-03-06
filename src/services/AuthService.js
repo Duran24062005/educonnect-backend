@@ -85,9 +85,11 @@ class AuthService {
             );
         }
 
-        if (!['Student', 'Teacher', 'Guardian'].includes(requested_role)) {
-            throw new AppError('Rol solicitado inválido. Usa: Student, Teacher, Guardian', 400);
+        if (!['Student', 'Teacher', 'Parent', 'Guardian'].includes(requested_role)) {
+            throw new AppError('Rol solicitado inválido. Usa: Student, Teacher, Parent', 400);
         }
+
+        const normalizedRole = requested_role === 'Guardian' ? 'Parent' : requested_role;
 
         if (!['CC', 'RC', 'CE'].includes(document_type)) {
             throw new AppError('Tipo de documento inválido. Usa: CC, RC, CE', 400);
@@ -110,7 +112,7 @@ class AuthService {
             first_name,
             last_name,
             phone: phone || null,
-            role: requested_role,
+            role: normalizedRole,
             status: 'pending',
             born_date: born_date || null,
             document_type,
@@ -121,13 +123,13 @@ class AuthService {
         await UserRepository.update(userId, { person_id: person._id }); // ← relación User → Person
 
         // Crear perfil de rol
-        if (requested_role === 'Teacher') {
+        if (normalizedRole === 'Teacher') {
             await teacherRepository.create({ user_id: userId });
-        } else if (requested_role === 'Student') {
+        } else if (normalizedRole === 'Student') {
             await studentRepository.create({ user_id: userId });
         }
 
-        const token = generateToken(userId, person.role);
+        const token = generateToken(userId, normalizedRole);
 
         return {
             person: person.toObject(),

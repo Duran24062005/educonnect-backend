@@ -29,7 +29,6 @@ const studentSchema = new mongoose.Schema(
 );
 
 // Índices
-studentSchema.index({ user_id: 1 }, { unique: true });
 studentSchema.index({ group_id: 1 });
 studentSchema.index({ aula_id: 1 });
 

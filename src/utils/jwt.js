@@ -1,20 +1,15 @@
 import jwt from 'jsonwebtoken';
-import { AppError } from './error.js';
+import appConfig from '../config/config.js';
+import AppError from './AppError.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion';
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
+const JWT_SECRET = appConfig.jwt.secret;
+const JWT_EXPIRE = appConfig.jwt.expire;
 
-/**
- * Generar JWT token de autenticación
- * @param {string} userId - ID del usuario
- * @param {string} role - Rol del usuario
- * @returns {string} JWT token
- */
 export const generateToken = (userId, role) => {
     return jwt.sign(
         {
             sub: userId,
-            role: role,
+            role,
             iat: Math.floor(Date.now() / 1000),
         },
         JWT_SECRET,
@@ -24,52 +19,35 @@ export const generateToken = (userId, role) => {
     );
 };
 
-/**
- * Generar token de verificación de email
- * @param {string} email - Email del usuario
- * @returns {string} Token de verificación
- */
 export const generateEmailToken = (email) => {
     return jwt.sign(
         {
-            email: email,
+            email,
             type: 'email_verification',
             iat: Math.floor(Date.now() / 1000),
         },
         JWT_SECRET,
         {
-            expiresIn: '24h', // El token expira en 24 horas
+            expiresIn: '24h',
         }
     );
 };
 
-/**
- * Generar token de recuperación de contraseña
- * @param {string} userId - ID del usuario
- * @param {string} email - Email del usuario
- * @returns {string} Token de recuperación
- */
 export const generatePasswordResetToken = (userId, email) => {
     return jwt.sign(
         {
             sub: userId,
-            email: email,
+            email,
             type: 'password_reset',
             iat: Math.floor(Date.now() / 1000),
         },
         JWT_SECRET,
         {
-            expiresIn: '1h', // El token expira en 1 hora
+            expiresIn: '1h',
         }
     );
 };
 
-/**
- * Verificar JWT token
- * @param {string} token - JWT token a verificar
- * @returns {object} Decoded token
- * @throws {AppError} Si el token es inválido
- */
 export const verifyToken = (token) => {
     try {
         return jwt.verify(token, JWT_SECRET);
@@ -81,11 +59,6 @@ export const verifyToken = (token) => {
     }
 };
 
-/**
- * Verificar token de email
- * @param {string} token - Token a verificar
- * @returns {object} Datos decodificados del token
- */
 export const verifyEmailToken = (token) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
@@ -101,11 +74,6 @@ export const verifyEmailToken = (token) => {
     }
 };
 
-/**
- * Verificar token de recuperación de contraseña
- * @param {string} token - Token a verificar
- * @returns {object} Datos decodificados del token
- */
 export const verifyPasswordResetToken = (token) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
@@ -121,14 +89,10 @@ export const verifyPasswordResetToken = (token) => {
     }
 };
 
-/**
- * Extraer token del header Authorization
- * @param {string} authHeader - Header Authorization
- * @returns {string|null} Token o null
- */
 export const extractTokenFromHeader = (authHeader) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return null;
     }
-    return authHeader.slice(7); // Remover 'Bearer '
+
+    return authHeader.slice(7);
 };

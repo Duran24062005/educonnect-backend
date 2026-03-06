@@ -72,6 +72,7 @@ class UserController {
             first_name: req.body.first_name,
             last_name: req.body.last_name,
             birthdate: req.body.birthdate,
+            born_date: req.body.born_date,
             document_number: req.body.document_number,
         };
 

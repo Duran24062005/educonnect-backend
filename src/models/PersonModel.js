@@ -37,7 +37,7 @@ const personSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ['Student', 'Teacher', 'Admin', 'Guardian'],
+            enum: ['Student', 'Teacher', 'Admin', 'Parent', 'Guardian'],
             required: [true, 'El rol es requerido'],
         },
         status: {
@@ -76,8 +76,6 @@ const personSchema = new mongoose.Schema(
 );
 
 // Índices
-personSchema.index({ user_id: 1 }, { unique: true });
-personSchema.index({ document_number: 1 }, { unique: true });
 personSchema.index({ role: 1 });
 personSchema.index({ status: 1 });
 

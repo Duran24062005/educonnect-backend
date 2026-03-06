@@ -5,31 +5,31 @@ class AppConfig {
     static instance;
 
     constructor() {
-        if (AppConfig.instance) {
-            return AppConfig.instance;
-        }
+        if (AppConfig.instance) return AppConfig.instance;
+
+        const defaultMongoUri = 'mongodb://admin:admin123@localhost:27017/educonnect?authSource=admin';
+        const databaseUrl = process.env.DATABASE_URL || process.env.MONGO_URI_CLOUD || defaultMongoUri;
 
         this.app = {
             name: 'EduConnect Backend',
-            description: 'Backend para el sistema LMS EduConnect',
-            port: process.env.PORT || 8000,
+            port: Number(process.env.PORT || 8000),
             nodeEnv: process.env.NODE_ENV || 'development',
-            emailApiBase: process.env.EMAIL_API_BASE_URL || 'http://localhost:8000/'
+            emailApiBase: process.env.EMAIL_API_BASE_URL || 'http://localhost:8000/',
         };
 
         this.database = {
-            mongoUri: process.env.MONGO_URI_CLOUD || 'mongodb://admin:admin123@localhost:27017/educonnect?authSource=admin',
-            mongoUsername: process.env.MONGO_USERNAME || 'admin',
-            mongoPassword: process.env.MONGO_PASSWORD || 'admin123',
+            url: databaseUrl,
+            username: process.env.MONGO_USERNAME || 'admin',
+            password: process.env.MONGO_PASSWORD || 'admin123',
         };
 
         this.jwt = {
-            secret: process.env.JWT_SECRET || 'tu-secreto-super-seguro-cambiar-en-produccion',
+            secret: process.env.JWT_SECRET || 'change-this-secret-in-production',
             expire: process.env.JWT_EXPIRE || '7d',
         };
 
         const defaultCorsOrigins = ['http://localhost:3000'];
-        const envCorsOrigins = (process.env.CORS_ORIGIN || '')
+        const envCorsOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '')
             .split(',')
             .map((origin) => origin.trim())
             .filter(Boolean);
@@ -38,42 +38,35 @@ class AppConfig {
             origins: envCorsOrigins.length > 0 ? envCorsOrigins : defaultCorsOrigins,
         };
 
+        if (this.app.nodeEnv === 'production' && !process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is required in production');
+        }
+
         AppConfig.instance = this;
     }
 
-    /**
-     * Conectar a MongoDB
-     */
     async connectDatabase() {
-        try {
-            const uri = this.database.mongoUri;
-            const options = {
-                maxPoolSize: 10,
-                socketTimeoutMS: 45000,
-            };
+        await mongoose.connect(this.database.url, {
+            maxPoolSize: 20,
+            minPoolSize: 5,
+            socketTimeoutMS: 45000,
+        });
 
-            await mongoose.connect(uri, options);
-
-            console.log('✅ MongoDB conectado exitosamente');
-            return true;
-        } catch (error) {
-            console.error('❌ Error al conectar a MongoDB:', error.message);
-            throw error;
+        if (this.app.nodeEnv !== 'test') {
+            console.log('MongoDB connected');
         }
+
+        return true;
     }
 
-    /**
-     * Desconectar de MongoDB
-     */
     async disconnectDatabase() {
-        try {
-            await mongoose.disconnect();
-            console.log('✅ MongoDB desconectado');
-            return true;
-        } catch (error) {
-            console.error('❌ Error al desconectar de MongoDB:', error.message);
-            throw error;
+        await mongoose.disconnect();
+
+        if (this.app.nodeEnv !== 'test') {
+            console.log('MongoDB disconnected');
         }
+
+        return true;
     }
 }
 

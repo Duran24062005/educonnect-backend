@@ -16,18 +16,68 @@ class UserRepository {
     }
 
     async findAll(filter = {}, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+        const skip = (page - 1) * limit;
+        const personMatch = {};
 
-    const users = await User.find(filter)
-        .populate('person_id')
-        .skip(skip)
-        .limit(limit)
-        .sort({ created_at: -1 });
+        if (filter.role) {
+            const roleMap = {
+                student: 'Student',
+                teacher: 'Teacher',
+                admin: 'Admin',
+                parent: 'Parent',
+                guardian: 'Parent',
+            };
+            personMatch.role = roleMap[filter.role] || filter.role;
+        }
 
-    const total = await User.countDocuments(filter);
+        if (filter.status) {
+            personMatch.status = filter.status;
+        }
 
-    return { users, total };
-}
+        const search = filter.search ? String(filter.search) : null;
+        const searchMatch = search
+            ? {
+                  $or: [
+                      { email: { $regex: search, $options: 'i' } },
+                      { 'person_id.first_name': { $regex: search, $options: 'i' } },
+                      { 'person_id.last_name': { $regex: search, $options: 'i' } },
+                      { 'person_id.document_number': { $regex: search, $options: 'i' } },
+                  ],
+              }
+            : null;
+
+        const basePipeline = [
+            {
+                $lookup: {
+                    from: 'people',
+                    localField: 'person_id',
+                    foreignField: '_id',
+                    as: 'person_id',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$person_id',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            ...(Object.keys(personMatch).length ? [{ $match: personMatch }] : []),
+            ...(searchMatch ? [{ $match: searchMatch }] : []),
+        ];
+
+        const users = await User.aggregate([
+            ...basePipeline,
+            { $sort: { created_at: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            { $project: { hash_password: 0 } },
+        ]);
+
+        const totalResult = await User.aggregate([...basePipeline, { $count: 'total' }]);
+        const total = totalResult[0]?.total || 0;
+
+        return { users, total };
+    }
 
     async findById(id) {
         return await User.findById(id).populate('person_id');
@@ -77,7 +127,8 @@ class UserRepository {
             student: 'Student',
             teacher: 'Teacher',
             admin: 'Admin',
-            guardian: 'Guardian',
+            parent: 'Parent',
+            guardian: 'Parent',
         };
 
         const normalizedRole = roleMap[String(role || '').toLowerCase()] || role;
@@ -123,7 +174,8 @@ class UserRepository {
             student: 'Student',
             teacher: 'Teacher',
             admin: 'Admin',
-            guardian: 'Guardian',
+            parent: 'Parent',
+            guardian: 'Parent',
         };
 
         const normalizedRole = roleMap[String(role || '').toLowerCase()] || role;

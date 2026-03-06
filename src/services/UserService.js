@@ -72,8 +72,10 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async getAllUsers(filters = {}, page = 1, limit = 10) {
+        const normalizedRoleFilter = String(filters.role || '').toLowerCase();
+
         // Validar filtros
-        if (filters.role && !['student', 'teacher', 'admin', 'guardian'].includes(filters.role)) {
+        if (normalizedRoleFilter && !['student', 'teacher', 'admin', 'parent', 'guardian'].includes(normalizedRoleFilter)) {
             throw new AppError('Rol inválido', 400);
         }
 
@@ -92,16 +94,10 @@ class UserService {
 
         // Aplicar filtros de búsqueda
         const filter = {};
-        if (filters.role) filter.role = filters.role;
+        if (normalizedRoleFilter) filter.role = normalizedRoleFilter;
         if (filters.status) filter.status = filters.status;
 
-        if (filters.search) {
-            filter.$or = [
-                { first_name: { $regex: filters.search, $options: 'i' } },
-                { last_name: { $regex: filters.search, $options: 'i' } },
-                { email: { $regex: filters.search, $options: 'i' } },
-            ];
-        }
+        if (filters.search) filter.search = String(filters.search).trim();
 
         const { users, total } = await UserRepository.findAll(filter, page, limit);
 
@@ -140,7 +136,7 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async updateUser(userId, targetUserId, userRole, updateData) {
-        const { first_name, last_name, birthdate, document_number } = updateData;
+        const { first_name, last_name, birthdate, born_date, document_number } = updateData;
         const isAdmin = String(userRole || '').toLowerCase() === 'admin';
 
         // ============ AUTORIZACIÓN ============
@@ -168,8 +164,12 @@ class UserService {
                 throw new AppError('Usuario no encontrado', 404);
             }
 
+            if (!user.person_id) {
+                throw new AppError('El usuario no tiene perfil personal', 400);
+            }
+
             // Si el documento cambió, verificar que sea único
-            if (document_number !== user.document_number) {
+            if (document_number !== user.person_id.document_number) {
                 const docExists = await UserRepository.documentExists(document_number);
                 if (docExists) {
                     throw new AppError('El número de documento ya está registrado', 400);
@@ -179,20 +179,25 @@ class UserService {
 
         // ============ ACTUALIZAR ============
 
-        const updateFields = {};
-        if (first_name) updateFields.first_name = first_name;
-        if (last_name) updateFields.last_name = last_name;
-        if (birthdate) updateFields.birthdate = birthdate;
-        if (document_number) updateFields.document_number = document_number;
-
-        updateFields.updated_by = userId;
-
-        const updatedUser = await UserRepository.update(targetUserId, updateFields);
-
-        if (!updatedUser) {
+        const user = await UserRepository.findById(targetUserId);
+        if (!user) {
             throw new AppError('Usuario no encontrado', 404);
         }
 
+        if (!user.person_id) {
+            throw new AppError('El usuario no tiene perfil personal', 400);
+        }
+
+        const updateFields = {};
+        if (first_name) updateFields.first_name = first_name;
+        if (last_name) updateFields.last_name = last_name;
+        if (birthdate || born_date) updateFields.born_date = birthdate || born_date;
+        if (document_number) updateFields.document_number = document_number;
+        updateFields.updated_by = userId;
+
+        await PersonRepository.update(user.person_id._id, updateFields);
+
+        const updatedUser = await UserRepository.findById(targetUserId);
         return updatedUser.toJSON();
     }
 
@@ -213,7 +218,7 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async getUsersByRole(role, page = 1, limit = 10) {
-        const validRoles = ['student', 'teacher', 'admin', 'guardian'];
+        const validRoles = ['student', 'teacher', 'admin', 'parent', 'guardian'];
         if (!role || !validRoles.includes(String(role).toLowerCase())) {
             throw new AppError('Rol inválido', 400);
         }
@@ -249,8 +254,9 @@ class UserService {
     async approveUser(userId, role, adminId) {
         // ============ VALIDAR ROLE ============
 
-        const validRoles = ['student', 'teacher', 'admin', 'guardian'];
-        if (!validRoles.includes(role)) {
+        const normalizedRole = String(role || '').toLowerCase();
+        const validRoles = ['student', 'teacher', 'admin', 'parent', 'guardian'];
+        if (!validRoles.includes(normalizedRole)) {
             throw new AppError('Role inválido', 400);
         }
 
@@ -276,11 +282,12 @@ class UserService {
             student: 'Student',
             teacher: 'Teacher',
             admin: 'Admin',
-            guardian: 'Guardian',
+            parent: 'Parent',
+            guardian: 'Parent',
         };
 
         await PersonRepository.update(person._id, {
-            role: roleMap[role],
+            role: roleMap[normalizedRole],
             status: 'active',
             updated_by: adminId,
         });
@@ -354,7 +361,7 @@ class UserService {
         const studentCount = await UserRepository.countByRole('student');
         const teacherCount = await UserRepository.countByRole('teacher');
         const adminCount = await UserRepository.countByRole('admin');
-        const guardianCount = await UserRepository.countByRole('guardian');
+        const parentCount = await UserRepository.countByRole('parent');
 
         const activeCount = await UserRepository.countByStatus('active');
         const pendingCount = await UserRepository.countByStatus('pending');
@@ -367,7 +374,8 @@ class UserService {
                 student: studentCount,
                 teacher: teacherCount,
                 admin: adminCount,
-                guardian: guardianCount,
+                parent: parentCount,
+                guardian: parentCount,
             },
             by_status: {
                 active: activeCount,
@@ -376,7 +384,7 @@ class UserService {
                 blocked: blockedCount,
                 egresado: graduatedCount,
             },
-            total: studentCount + teacherCount + adminCount + guardianCount,
+            total: studentCount + teacherCount + adminCount + parentCount,
         };
     }
 }

@@ -83,7 +83,7 @@ export const sendApprovalEmail = async (email, firstName, role) => {
                     empresa: 'EduConnect',
                     role: role === 'student' ? 'Estudiante' :
                         role === 'teacher' ? 'Docente' :
-                            role === 'guardian' ? 'Padre/Acudiente' : role,
+                            role === 'guardian' || role === 'parent' ? 'Padre/Acudiente' : role,
                     login_link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
                 },
             }),

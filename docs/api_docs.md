@@ -1,304 +1,96 @@
-# API Docs (Resumen Operativo)
+# API Docs - Estado Actual
 
-Este archivo resume los endpoints que hemos documentado hasta ahora.
+## Swagger/OpenAPI
 
-## 1) Aprobar usuario
+La documentación viva de la API está disponible en:
 
-- Método: `POST`
-- Endpoint: `/api/users/:id/approve`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-- `:id` debe ser el **ID del usuario** (`users._id`), no el de `person`.
+- `GET /api-docs`
 
-Body:
+Generada desde `src/docs/swagger.js`.
 
-```json
-{
-  "role": "student"
-}
-```
+## Endpoints principales
 
-Valores válidos de `role` (actual): `student`, `teacher`, `admin`, `guardian`.
+### Sistema
 
-Validaciones:
+- `GET /` Información general API.
+- `GET /health` Health check.
 
-1. `role` es obligatorio.
-2. El usuario debe existir.
-3. El usuario debe tener perfil personal (`person_id`).
-4. El estado en `person.status` debe ser `pending`.
+### Autenticación
 
-Respuesta exitosa:
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/complete-profile` (token requerido, perfil incompleto permitido)
+- `GET /api/auth/profile-status` (token requerido)
+- `GET /api/auth/me` (protegido)
+- `POST /api/auth/logout` (protegido)
+- `POST /api/auth/change-password` (protegido)
 
-- `200 OK` con mensaje `Usuario aprobado exitosamente`.
+### Usuarios
 
----
+- `GET /api/users` (Admin)
+- `GET /api/users/role/:role` (Admin)
+- `GET /api/users/admin/pending` (Admin)
+- `GET /api/users/admin/stats` (Admin)
+- `GET /api/users/:id`
+- `PUT /api/users/:id`
+- `PATCH /api/users/:id/profile-photo`
+- `POST /api/users/:id/approve` (Admin)
+- `PATCH /api/users/:id/status` (Admin)
+- `DELETE /api/users/:id` (Admin)
 
-## 2) Cambiar estado de usuario
+### Académico
 
-- Método: `PATCH`
-- Endpoint: `/api/users/:id/status`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-- `:id` debe ser el **ID del usuario** (`users._id`).
+- `GET|POST /api/academic/school-years`
+- `GET /api/academic/school-years/active`
+- `PATCH /api/academic/school-years/:id/activate` (Admin)
+- `DELETE /api/academic/school-years/:id` (Admin)
+- `POST /api/academic/promotions` (Admin)
+- `GET /api/academic/school-years/:school_year_id/periods`
+- `POST /api/academic/periods` (Admin)
+- `DELETE /api/academic/periods/:id` (Admin)
+- `GET|POST|PUT|DELETE /api/academic/grades` (Admin en mutaciones)
+- `GET|POST|PUT|DELETE /api/academic/areas` (Admin en mutaciones)
+- `GET|POST|PUT|DELETE /api/academic/aulas` (Admin en mutaciones)
 
-Body:
+### Grupos
 
-```json
-{
-  "status": "inactive"
-}
-```
+- `GET /api/groups/school-year/:school_year_id`
+- `POST /api/groups` (Admin)
+- `GET|PUT|DELETE /api/groups/:id` (Admin en mutaciones)
+- `POST /api/groups/enrollments` (Admin)
+- `POST /api/groups/enrollments/transfer` (Admin)
+- `PATCH /api/groups/enrollments/:id/status` (Admin)
+- `GET /api/groups/:group_id/students`
+- `GET /api/groups/enrollments/student/:student_id`
+- `POST /api/groups/teachers/assign` (Admin)
+- `GET /api/groups/:group_id/teachers`
+- `GET /api/groups/teachers/:teacher_id/groups`
+- `POST /api/groups/grade-areas` (Admin)
+- `GET /api/groups/grade-areas/:grade_id`
 
-Valores válidos de `status` (actual): `active`, `pending`, `inactive`, `blocked`, `egresado`.
+### Evaluaciones
 
-Validaciones:
+- `GET|POST|PUT|DELETE /api/evaluations/grade-items` (Admin/Teacher en mutaciones)
+- `POST /api/evaluations/scores` (Admin/Teacher)
+- `GET /api/evaluations/scores/student/:student_id`
+- `GET /api/evaluations/scores/grade-item/:grade_item_id`
+- `POST /api/evaluations/period-results/calculate` (Admin/Teacher)
+- `GET /api/evaluations/period-results/student/:student_id`
+- `POST /api/evaluations/final-results/calculate` (Admin)
+- `GET /api/evaluations/final-results/school-year/:school_year_id` (Admin)
+- `GET /api/evaluations/final-results/student/:student_id/year/:school_year_id`
+- `GET /api/evaluations/stats/school-year/:school_year_id` (Admin)
 
-1. `status` es obligatorio.
-2. El usuario debe existir.
-3. El usuario debe tener perfil personal (`person_id`).
+## Validación y errores
 
-Respuesta exitosa:
-
-- `200 OK` con mensaje `Estado del usuario actualizado a <status>`.
-
----
-
-## 3) Crear periodo
-
-- Método: `POST`
-- Endpoint: `/api/academic/periods`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "school_year_id": "65f0c1a2b3c4d5e6f7a8b9c0",
-  "name": "Periodo 1",
-  "weight": 0.25,
-  "start_date": "2026-02-01",
-  "end_date": "2026-04-30"
-}
-```
-
-Validaciones:
-
-1. `school_year_id`, `name`, `weight`, `start_date`, `end_date` son obligatorios.
-2. `weight` debe estar entre `0` y `1`.
-3. `start_date` debe ser menor que `end_date`.
-4. La suma de pesos de periodos del mismo año escolar no puede superar `1.0`.
-
-Respuesta exitosa:
-
-- `201 Created` con el periodo creado.
-
----
-
-## 4) Crear aula
-
-- Método: `POST`
-- Endpoint: `/api/academic/aulas`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
+- Todas las rutas relevantes validan `body/params/query` con Zod.
+- Formato de error estándar:
 
 ```json
 {
-  "name": "Aula 101",
-  "max_capacity": 35
+  "status": "fail",
+  "message": "Invalid request input",
+  "details": []
 }
 ```
 
-Validaciones:
-
-1. `name` es obligatorio.
-2. `max_capacity` es obligatorio.
-3. `max_capacity` debe ser mayor a `0`.
-
-Respuesta exitosa:
-
-- `201 Created` con el aula creada.
-
----
-
-## 5) Crear grupo
-
-- Método: `POST`
-- Endpoint: `/api/groups`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "name": "6A",
-  "grade_id": "ID_DEL_GRADO",
-  "school_year_id": "ID_DEL_AÑO_ESCOLAR",
-  "max_capacity": 35
-}
-```
-
-Validaciones:
-
-1. `name`, `grade_id`, `school_year_id`, `max_capacity` son obligatorios.
-2. `max_capacity` debe ser mayor a `0`.
-3. `grade_id` debe existir (si no, `404 Grado no encontrado`).
-4. `school_year_id` debe existir (si no, `404 Año escolar no encontrado`).
-
-Respuesta exitosa:
-
-- `201 Created` con el grupo creado.
-
----
-
-## 6) Traslado de grupo (histórico completo)
-
-- Método: `POST`
-- Endpoint: `/api/groups/enrollments/transfer`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "student_id": "ID_ESTUDIANTE",
-  "school_year_id": "ID_AÑO_ESCOLAR",
-  "to_group_id": "ID_GRUPO_DESTINO",
-  "reason": "Cambio de jornada",
-  "observations": "Solicitud de coordinación"
-}
-```
-
-Validaciones:
-
-1. Debe existir una matrícula `active` del estudiante en ese año escolar.
-2. El grupo destino debe ser diferente al actual.
-3. El grupo destino debe pertenecer al mismo `school_year_id`.
-4. Si el grupo destino llegó a capacidad máxima, se rechaza la operación.
-
-Comportamiento:
-
-1. Se cierra la matrícula activa actual con estado `transferred`.
-2. Se crea una nueva matrícula `active` enlazada por `previous_enrollment_id`.
-3. Se sincroniza `Student.group_id` al grupo destino.
-
-Respuesta exitosa:
-
-- `201 Created` con la nueva matrícula activa.
-
----
-
-## 7) Matricular estudiante en grupo
-
-- Método: `POST`
-- Endpoint: `/api/groups/enrollments`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "student_id": "ID_ESTUDIANTE",
-  "group_id": "ID_GRUPO",
-  "school_year_id": "ID_AÑO_ESCOLAR"
-}
-```
-
-Validaciones:
-
-1. `student_id`, `group_id` y `school_year_id` son obligatorios.
-2. El estudiante debe existir.
-3. El grupo debe existir.
-4. El grupo debe pertenecer al `school_year_id` enviado.
-5. El estudiante no puede tener otra matrícula `active` en ese mismo año escolar.
-6. El grupo no puede exceder su capacidad máxima.
-
-Comportamiento:
-
-1. Crea matrícula en `enrollments` con `status: active`.
-2. Sincroniza `Student.group_id` al grupo matriculado.
-
-Respuesta exitosa:
-
-- `201 Created` con mensaje `Estudiante inscrito exitosamente` y la matrícula creada.
-
----
-
-## 8) Asignar/Cambiar aula a estudiante
-
-- Método: `PATCH`
-- Endpoint: `/api/students/:id/aula`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "aula_id": "ID_AULA"
-}
-```
-
-Validaciones:
-
-1. `aula_id` es obligatorio.
-2. El estudiante debe existir.
-3. El aula debe existir.
-4. Si el aula está llena, se rechaza (no hay override).
-
-Respuesta exitosa:
-
-- `200 OK` con el estudiante actualizado.
-
----
-
-## 9) Promoción anual masiva
-
-- Método: `POST`
-- Endpoint: `/api/academic/promotions`
-- Requiere token de **admin**
-- Headers:
-  - `Authorization: Bearer <token>`
-  - `Content-Type: application/json`
-
-Body:
-
-```json
-{
-  "from_school_year_id": "ID_AÑO_ORIGEN",
-  "to_school_year_id": "ID_AÑO_DESTINO"
-}
-```
-
-Reglas aplicadas:
-
-1. `passed` -> sube de grado automáticamente.
-2. `failed` -> repite grado.
-3. `repeating` -> queda para decisión manual del admin (se reporta en `manual_cases`).
-4. Si aprueba en grado 11 -> se marca `Person.status = egresado`.
-5. Si falta `FinalResult` del año origen para algún estudiante activo, se rechaza la ejecución.
-
-Respuesta exitosa:
-
-- `200 OK` con resumen (`promoted`, `repeated`, `graduated`, `manual_review`).

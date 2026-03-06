@@ -2,20 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
 COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
-# Instalar dependencias (modo producción)
-RUN yarn install --production
+COPY . .
 
-# Copiar código
-COPY src/ ./src/
-
+ENV NODE_ENV=production
 EXPOSE 8000
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8000/health', r => { if (r.statusCode !== 200) process.exit(1) })"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
+  CMD wget -qO- http://localhost:8000/health >/dev/null || exit 1
 
-# Ejecutar app
 CMD ["yarn", "start"]

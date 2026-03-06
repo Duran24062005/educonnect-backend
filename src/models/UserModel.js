@@ -61,7 +61,6 @@ userSchema.methods.toJSON = function () {
 
 // Índice único para email. Para person_id usamos sparse
 // para que múltiples nulls no violen la unicidad
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ person_id: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('User', userSchema);

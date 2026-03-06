@@ -33,7 +33,6 @@ const schoolYearSchema = new mongoose.Schema(
 );
 
 // Índices
-schoolYearSchema.index({ year: 1 }, { unique: true });
 schoolYearSchema.index({ is_active: 1 });
 
 export default mongoose.model('SchoolYear', schoolYearSchema);

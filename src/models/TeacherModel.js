@@ -25,7 +25,6 @@ const teacherSchema = new mongoose.Schema(
 );
 
 // Índices
-teacherSchema.index({ user_id: 1 }, { unique: true });
 teacherSchema.index({ area: 1 });
 
 export default mongoose.model('Teacher', teacherSchema);

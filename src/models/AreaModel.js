@@ -25,4 +25,6 @@ const areaSchema = new mongoose.Schema(
     }
 );
 
+areaSchema.index({ name: 1 });
+
 export default mongoose.model('Area', areaSchema);

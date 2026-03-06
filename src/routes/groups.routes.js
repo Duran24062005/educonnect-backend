@@ -1,32 +1,45 @@
 import { Router } from 'express';
 import GroupController from '../controllers/GroupController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
+import { validateRequest } from '../middlewares/validateRequest.js';
+import {
+    createGroupSchema,
+    updateGroupSchema,
+    groupIdSchema,
+    groupsBySchoolYearSchema,
+    enrollStudentSchema,
+    transferEnrollmentSchema,
+    enrollmentStatusSchema,
+    studentsByGroupSchema,
+    enrollmentsByStudentSchema,
+    assignTeacherSchema,
+    teachersByGroupSchema,
+    groupsByTeacherSchema,
+    assignAreaToGradeSchema,
+    areasByGradeSchema,
+} from '../validators/groups.validators.js';
 
 const router = Router();
 
 router.use(protect);
 
-// ---- Grupos ----
-router.get('/school-year/:school_year_id', GroupController.getGroupsBySchoolYear);
-router.get('/:id', GroupController.getGroupById);
-router.post('/', authorize('admin'), GroupController.createGroup);
-router.put('/:id', authorize('admin'), GroupController.updateGroup);
-router.delete('/:id', authorize('admin'), GroupController.deleteGroup);
+router.get('/school-year/:school_year_id', validateRequest(groupsBySchoolYearSchema), GroupController.getGroupsBySchoolYear);
+router.post('/enrollments', authorize('admin'), validateRequest(enrollStudentSchema), GroupController.enrollStudent);
+router.post('/enrollments/transfer', authorize('admin'), validateRequest(transferEnrollmentSchema), GroupController.transferEnrollment);
+router.patch('/enrollments/:id/status', authorize('admin'), validateRequest(enrollmentStatusSchema), GroupController.changeEnrollmentStatus);
+router.get('/enrollments/student/:student_id', validateRequest(enrollmentsByStudentSchema), GroupController.getEnrollmentsByStudent);
 
-// ---- Inscripciones ----
-router.post('/enrollments', authorize('admin'), GroupController.enrollStudent);
-router.post('/enrollments/transfer', authorize('admin'), GroupController.transferEnrollment);
-router.patch('/enrollments/:id/status', authorize('admin'), GroupController.changeEnrollmentStatus);
-router.get('/:group_id/students', GroupController.getStudentsByGroup);
-router.get('/enrollments/student/:student_id', GroupController.getEnrollmentsByStudent);
+router.post('/teachers/assign', authorize('admin'), validateRequest(assignTeacherSchema), GroupController.assignTeacher);
+router.get('/teachers/:teacher_id/groups', validateRequest(groupsByTeacherSchema), GroupController.getGroupsByTeacher);
 
-// ---- Profesores ----
-router.post('/teachers/assign', authorize('admin'), GroupController.assignTeacher);
-router.get('/:group_id/teachers', GroupController.getTeachersByGroup);
-router.get('/teachers/:teacher_id/groups', GroupController.getGroupsByTeacher);
+router.post('/grade-areas', authorize('admin'), validateRequest(assignAreaToGradeSchema), GroupController.assignAreaToGrade);
+router.get('/grade-areas/:grade_id', validateRequest(areasByGradeSchema), GroupController.getAreasByGrade);
 
-// ---- Grade Areas ----
-router.post('/grade-areas', authorize('admin'), GroupController.assignAreaToGrade);
-router.get('/grade-areas/:grade_id', GroupController.getAreasByGrade);
+router.post('/', authorize('admin'), validateRequest(createGroupSchema), GroupController.createGroup);
+router.get('/:group_id/students', validateRequest(studentsByGroupSchema), GroupController.getStudentsByGroup);
+router.get('/:group_id/teachers', validateRequest(teachersByGroupSchema), GroupController.getTeachersByGroup);
+router.get('/:id', validateRequest(groupIdSchema), GroupController.getGroupById);
+router.put('/:id', authorize('admin'), validateRequest(updateGroupSchema), GroupController.updateGroup);
+router.delete('/:id', authorize('admin'), validateRequest(groupIdSchema), GroupController.deleteGroup);
 
 export default router;

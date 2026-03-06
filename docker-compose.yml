@@ -1,28 +1,32 @@
 services:
-  # Servicio de API Node.js
-  api:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: educonnect-api
+    container_name: educonnect-backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-8000}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://admin:admin123@mongodb:27017/educonnect?authSource=admin}
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      EMAIL_API_BASE_URL: ${EMAIL_API_BASE_URL:-http://localhost:8001}
     ports:
       - "${PORT:-8000}:8000"
-    environment:
-      - NODE_ENV=development
-      - PORT=8000
-      - MONGO_URI_CLOUD=${MONGO_URI_CLOUD}
-      - JWT_SECRET=${JWT_SECRET:-tu-secreto-super-seguro-cambiar-en-produccion}
-      - JWT_EXPIRE=${JWT_EXPIRE:-7d}
     depends_on:
       mongodb:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./scripts:/app/scripts
     networks:
       - educonnect-network
     restart: unless-stopped
 
-  # Servicio de MongoDB
   mongodb:
     image: mongo:7
     container_name: educonnect-mongodb
@@ -33,14 +37,14 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-admin123}
       MONGO_INITDB_DATABASE: educonnect
     volumes:
-      - mongo-data:/data/db
-    networks:
-      - educonnect-network
+      - mongo_data:/data/db
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks:
+      - educonnect-network
     restart: unless-stopped
 
 networks:
@@ -48,5 +52,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-data:
+  mongo_data:
     driver: local
