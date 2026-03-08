@@ -31,7 +31,6 @@
     "scripts": {
         "dev": "nodemon src/index.js",
         "start": "node src/index.js",
-        "seed:test-users": "node database/seed-test-users.js",
         "seed": "node scripts/seed.js",
         "test": "NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand"
     }

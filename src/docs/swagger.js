@@ -21,6 +21,7 @@ const options = {
             { name: 'Academic', description: 'Años escolares, periodos, grados, áreas y aulas' },
             { name: 'Groups', description: 'Grupos, matrículas y asignaciones' },
             { name: 'Evaluations', description: 'Ítems, notas y resultados' },
+            { name: 'Analytics', description: 'Métricas por scope (student, teacher, admin)' },
         ],
         components: {
             securitySchemes: {
@@ -926,6 +927,154 @@ const options = {
                     security: [{ bearerAuth: [] }],
                     parameters: [{ $ref: '#/components/parameters/SchoolYearIdParam' }],
                     responses: { 200: { description: 'Estadísticas calculadas' } },
+                },
+            },
+
+            '/api/analytics/student/me/overview': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Resumen anual del estudiante autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Resumen del estudiante' } },
+                },
+            },
+            '/api/analytics/student/me/areas': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Métricas por área del estudiante autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Métricas por área' } },
+                },
+            },
+            '/api/analytics/student/me/area-trend': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Evolución por periodo en un área (estudiante autenticado)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'area_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Tendencia por área' } },
+                },
+            },
+            '/api/analytics/student/me/period-summary': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Resumen por periodo del estudiante autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Resumen por periodo' } },
+                },
+            },
+            '/api/analytics/teacher/me/groups': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Grupos donde dicta el docente autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Grupos del docente' } },
+                },
+            },
+            '/api/analytics/teacher/me/group-performance': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Rendimiento de grupo en área del docente',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'group_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'area_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Rendimiento del grupo' } },
+                },
+            },
+            '/api/analytics/teacher/me/group-trend': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Tendencia por periodo del grupo en área del docente',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'group_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'area_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Tendencia del grupo' } },
+                },
+            },
+            '/api/analytics/teacher/me/student-detail': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Detalle de un estudiante en área del docente',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'student_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'area_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Detalle del estudiante' } },
+                },
+            },
+            '/api/analytics/admin/institution-overview': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Resumen institucional (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Resumen institucional' } },
+                },
+            },
+            '/api/analytics/admin/institution-trend': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Tendencia institucional por periodo (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Tendencia institucional' } },
+                },
+            },
+            '/api/analytics/admin/by-grade': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Comparativa por grado (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Comparativa por grado' } },
+                },
+            },
+            '/api/analytics/admin/by-area': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Comparativa por área (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'grade_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Comparativa por área' } },
+                },
+            },
+            '/api/analytics/admin/grade-detail': {
+                get: {
+                    tags: ['Analytics'],
+                    summary: 'Detalle por grado (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'grade_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                        { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: { 200: { description: 'Detalle del grado' } },
                 },
             },
         },
