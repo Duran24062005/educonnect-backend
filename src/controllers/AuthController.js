@@ -72,7 +72,7 @@ class AuthController {
 
         const result = await AuthService.login(email, password);
 
-        /*if (result) {
+        if (result) {
             // Solo enviar email de bienvenida si el perfil está completo y tenemos nombre
             let emailData = null;
             if (result.profile_complete && result.person) {
@@ -83,7 +83,7 @@ class AuthController {
                 );
             }
 
-            }*/
+        }
         res.status(200).json({
             status: 'success',
             message: 'Login exitoso',
