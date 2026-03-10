@@ -14,6 +14,12 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 
 - `prds/001-platform-spec.md` — Documento general (este archivo)
 - `prds/002-user-registration-roles.md` — PRD de registro y roles (detallado)
+- `prds/003-authentication-account-lifecycle.md` — Autenticación, login, perfil y contraseña
+- `prds/004-user-administration-approvals.md` — Administración, aprobación y estados de usuario
+- `prds/005-academic-structure-lifecycle.md` — Años escolares, periodos, grados, áreas, aulas y promoción
+- `prds/006-groups-enrollments-assignments.md` — Grupos, matrículas, traslados, docentes y aulas
+- `prds/007-evaluations-results-calculation.md` — Evaluaciones, notas y resultados académicos
+- `prds/008-analytics-role-based-dashboards.md` — Dashboards analíticos por rol
 
 ## Convenciones
 
@@ -23,6 +29,7 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 ## Registro de cambios
 
 - 2026-02-03: Creado documento y añadido PRD de registro (002)
+- 2026-03-10: Añadidos PRDs 003-008 para documentar autenticación, usuarios, estructura académica, grupos, evaluaciones y analítica
 
 ## Enlaces rápidos
 
