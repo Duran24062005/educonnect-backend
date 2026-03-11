@@ -48,10 +48,22 @@ class StudentRepository {
 class GroupTeacherRepository {
     async create(data) { return await new GroupTeacher(data).save(); }
     async findByGroup(group_id) {
-        return await GroupTeacher.find({ group_id }).populate('teacher_id').populate('area_id');
+        return await GroupTeacher.find({ group_id })
+            .populate({
+                path: 'teacher_id',
+                populate: {
+                    path: 'user_id',
+                    populate: {
+                        path: 'person_id',
+                    },
+                },
+            })
+            .populate('area_id');
     }
     async findByTeacher(teacher_id) {
-        return await GroupTeacher.find({ teacher_id }).populate('group_id').populate('area_id');
+        return await GroupTeacher.find({ teacher_id })
+            .populate('group_id')
+            .populate('area_id');
     }
     async exists(teacher_id, group_id, area_id) {
         return !!(await GroupTeacher.findOne({ teacher_id, group_id, area_id }));

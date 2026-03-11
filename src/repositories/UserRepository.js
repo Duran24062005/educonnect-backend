@@ -10,6 +10,39 @@ class UserRepository {
         return String(email || '').trim().toLowerCase();
     }
 
+    buildProfileLookups() {
+        return [
+            {
+                $lookup: {
+                    from: 'students',
+                    localField: '_id',
+                    foreignField: 'user_id',
+                    as: 'student_profile',
+                },
+            },
+            {
+                $lookup: {
+                    from: 'teachers',
+                    localField: '_id',
+                    foreignField: 'user_id',
+                    as: 'teacher_profile',
+                },
+            },
+            {
+                $addFields: {
+                    student_id: { $arrayElemAt: ['$student_profile._id', 0] },
+                    teacher_id: { $arrayElemAt: ['$teacher_profile._id', 0] },
+                },
+            },
+            {
+                $project: {
+                    student_profile: 0,
+                    teacher_profile: 0,
+                },
+            },
+        ];
+    }
+
     async create(data) {
         const user = new User(data);
         return await user.save();
@@ -67,6 +100,7 @@ class UserRepository {
 
         const users = await User.aggregate([
             ...basePipeline,
+            ...this.buildProfileLookups(),
             { $sort: { created_at: -1 } },
             { $skip: skip },
             { $limit: limit },
@@ -154,6 +188,7 @@ class UserRepository {
 
         const users = await User.aggregate([
             ...basePipeline,
+            ...this.buildProfileLookups(),
             { $sort: { created_at: -1 } },
             { $skip: skip },
             { $limit: limit },

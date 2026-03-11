@@ -14,6 +14,21 @@ import { AppError } from '../utils/error.js';
  * Lógica de negocio para grupos, inscripciones y asignaciones
  */
 class GroupService {
+    async withCapacityMetrics(group) {
+        if (!group) return group;
+
+        const active_enrollments = await enrollmentRepository.countActiveByGroup(group._id);
+        const max_capacity = Number(group.max_capacity || 0);
+        const available_slots = Math.max(max_capacity - active_enrollments, 0);
+
+        const payload = typeof group.toObject === 'function' ? group.toObject() : { ...group };
+        return {
+            ...payload,
+            active_enrollments,
+            available_slots,
+        };
+    }
+
     // ===========================
     // GRUPOS
     // ===========================
@@ -37,13 +52,14 @@ class GroupService {
     }
 
     async getGroupsBySchoolYear(school_year_id) {
-        return await groupRepository.findBySchoolYear(school_year_id);
+        const groups = await groupRepository.findBySchoolYear(school_year_id);
+        return await Promise.all(groups.map((group) => this.withCapacityMetrics(group)));
     }
 
     async getGroupById(id) {
         const group = await groupRepository.findById(id);
         if (!group) throw new AppError('Grupo no encontrado', 404);
-        return group;
+        return await this.withCapacityMetrics(group);
     }
 
     async updateGroup(id, data) {

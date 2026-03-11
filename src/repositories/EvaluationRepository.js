@@ -8,9 +8,23 @@ import FinalResult from '../models/FinalResultModel.js';
 class EnrollmentRepository {
     async create(data) { return await new Enrollment(data).save(); }
 
+    enrollmentStudentPopulate() {
+        return {
+            path: 'student_id',
+            populate: {
+                path: 'user_id',
+                populate: {
+                    path: 'person_id',
+                },
+            },
+        };
+    }
+
     async findById(id) {
         return await Enrollment.findById(id)
-            .populate('student_id').populate('school_year_id').populate('group_id');
+            .populate(this.enrollmentStudentPopulate())
+            .populate('school_year_id')
+            .populate('group_id');
     }
 
     async findByStudentAndYear(student_id, school_year_id) {
@@ -22,18 +36,27 @@ class EnrollmentRepository {
     }
 
     async findByGroup(group_id, status = 'active') {
-        return await Enrollment.find({ group_id, status }).populate('student_id');
+        return await Enrollment.find({ group_id, status })
+            .populate(this.enrollmentStudentPopulate())
+            .populate('school_year_id')
+            .populate('group_id');
     }
 
     async findBySchoolYear(school_year_id, status = null) {
         const filter = { school_year_id };
         if (status) filter.status = status;
 
-        return await Enrollment.find(filter).populate('student_id').populate('group_id');
+        return await Enrollment.find(filter)
+            .populate(this.enrollmentStudentPopulate())
+            .populate('group_id')
+            .populate('school_year_id');
     }
 
     async findByStudent(student_id) {
-        return await Enrollment.find({ student_id }).populate('school_year_id').populate('group_id');
+        return await Enrollment.find({ student_id })
+            .populate('school_year_id')
+            .populate('group_id')
+            .sort({ created_at: -1 });
     }
 
     async findActiveByStudent(student_id) {
