@@ -12,13 +12,16 @@ const computeAverage = (values) => {
     return round2(values.reduce((sum, value) => sum + value, 0) / values.length);
 };
 
-const buildStudentNameMap = (students) => {
+const buildStudentProfileMap = (students) => {
     const map = new Map();
 
     for (const student of students) {
         const person = student.user_id?.person_id;
         const fullName = person ? `${person.first_name} ${person.last_name}`.trim() : 'Sin nombre';
-        map.set(student._id.toString(), fullName);
+        map.set(student._id.toString(), {
+            full_name: fullName,
+            email: student.user_id?.email || null,
+        });
     }
 
     return map;
@@ -262,13 +265,15 @@ class AnalyticsService {
         }
 
         const studentsDocs = await AnalyticsRepository.findStudentsByIds(studentIds);
-        const studentNameMap = buildStudentNameMap(studentsDocs);
+        const studentProfileMap = buildStudentProfileMap(studentsDocs);
 
         const students = studentIds.map((id) => {
             const avg = computeAverage(valuesByStudent.get(id));
+            const studentProfile = studentProfileMap.get(id) || {};
             return {
                 student_id: id,
-                student_name: studentNameMap.get(id) || 'Sin nombre',
+                student_name: studentProfile.full_name || 'Sin nombre',
+                student_email: studentProfile.email,
                 average: avg,
                 status: avg >= PASS_SCORE ? 'passed' : 'failed',
             };
@@ -365,7 +370,8 @@ class AnalyticsService {
         });
 
         const studentDocs = await AnalyticsRepository.findStudentsByIds([studentId]);
-        const studentNameMap = buildStudentNameMap(studentDocs);
+        const studentProfileMap = buildStudentProfileMap(studentDocs);
+        const studentProfile = studentProfileMap.get(studentId.toString()) || {};
 
         const scoreByPeriod = new Map();
         for (const row of results) {
@@ -380,7 +386,8 @@ class AnalyticsService {
         return {
             student: {
                 _id: studentId,
-                full_name: studentNameMap.get(studentId.toString()) || 'Sin nombre',
+                full_name: studentProfile.full_name || 'Sin nombre',
+                email: studentProfile.email,
             },
             area: { _id: area._id, name: area.name },
             final_average: computeAverage(periodRows.map((row) => row.average)),
