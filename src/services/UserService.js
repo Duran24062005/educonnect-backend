@@ -3,11 +3,9 @@ import PersonRepository from '../repositories/PersonRepository.js';
 import { AppError } from '../utils/error.js';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { ensureUploadDir } from '../utils/uploads.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const UPLOADS_PROFILE_DIR = path.resolve(__dirname, '../uploads/profiles');
+const UPLOADS_PROFILE_DIR = ensureUploadDir('profiles');
 
 /**
  * UserService

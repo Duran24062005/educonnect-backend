@@ -16,6 +16,7 @@ import groupsRouter from './routes/groups.routes.js';
 import evaluationsRouter from './routes/evaluations.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
+import { getUploadsRootDir } from './utils/uploads.js';
 
 const app = express();
 
@@ -52,7 +53,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(getUploadsRootDir()));
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);

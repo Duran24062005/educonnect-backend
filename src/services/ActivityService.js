@@ -1,6 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { activityRepository, activitySubmissionRepository } from '../repositories/ActivityRepository.js';
 import {
     teacherRepository,
@@ -18,10 +17,9 @@ import {
     ACTIVITY_SUBMISSION_TYPE,
     ACTIVITY_UPLOAD_SUBDIR,
 } from '../constants/activity.constants.js';
+import { ensureUploadDir } from '../utils/uploads.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, `../uploads/${ACTIVITY_UPLOAD_SUBDIR}`);
+const uploadsDir = ensureUploadDir(ACTIVITY_UPLOAD_SUBDIR);
 
 const round2 = (value) => Number((value || 0).toFixed(2));
 

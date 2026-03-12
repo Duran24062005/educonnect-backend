@@ -1,16 +1,9 @@
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import AppError from '../utils/AppError.js';
+import { ensureUploadDir } from '../utils/uploads.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDir = path.resolve(__dirname, '../uploads/profiles');
-
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+const uploadDir = ensureUploadDir('profiles');
 
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => {
