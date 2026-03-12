@@ -8,6 +8,10 @@
 .idea/usage.statistics.xml
 .idea/shelf
 
+# example files
+/src/uploads/activity-submissions
+.gitignore
+
 # deps
 node_modules/
 
