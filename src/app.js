@@ -15,6 +15,7 @@ import academicRouter from './routes/academic.routes.js';
 import groupsRouter from './routes/groups.routes.js';
 import evaluationsRouter from './routes/evaluations.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
+import activitiesRouter from './routes/activities.routes.js';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/academic', academicRouter);
 app.use('/api/groups', groupsRouter);
 app.use('/api/evaluations', evaluationsRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/activities', activitiesRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
