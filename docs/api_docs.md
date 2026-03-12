@@ -57,6 +57,7 @@ Generada desde `src/docs/swagger.js`.
 - `GET /api/groups/school-year/:school_year_id`
 - `POST /api/groups` (Admin)
 - `GET|PUT|DELETE /api/groups/:id` (Admin en mutaciones)
+- `GET /api/groups/:group_id/detail-summary` (Admin)
 - `POST /api/groups/enrollments` (Admin)
 - `POST /api/groups/enrollments/transfer` (Admin)
 - `PATCH /api/groups/enrollments/:id/status` (Admin)
@@ -81,6 +82,37 @@ Generada desde `src/docs/swagger.js`.
 - `GET /api/evaluations/final-results/student/:student_id/year/:school_year_id`
 - `GET /api/evaluations/stats/school-year/:school_year_id` (Admin)
 
+### Analytics
+
+- `GET /api/analytics/student/me/overview` (Student)
+- `GET /api/analytics/student/me/areas` (Student)
+- `GET /api/analytics/student/me/area-trend` (Student)
+- `GET /api/analytics/student/me/period-summary` (Student)
+- `GET /api/analytics/teacher/me/groups` (Teacher)
+- `GET /api/analytics/teacher/me/dashboard-summary` (Teacher)
+- `GET /api/analytics/teacher/me/group-performance` (Teacher)
+- `GET /api/analytics/teacher/me/group-trend` (Teacher)
+- `GET /api/analytics/teacher/me/student-detail` (Teacher)
+- `GET /api/analytics/admin/dashboard-summary` (Admin)
+- `GET /api/analytics/admin/institution-overview` (Admin)
+- `GET /api/analytics/admin/institution-trend` (Admin)
+- `GET /api/analytics/admin/by-grade` (Admin)
+- `GET /api/analytics/admin/by-area` (Admin)
+- `GET /api/analytics/admin/grade-detail` (Admin)
+
+## Endpoints agregados de rendimiento
+
+Para reducir requests por pantalla, el backend ahora expone respuestas agregadas listas para UI:
+
+- `GET /api/analytics/admin/dashboard-summary`
+  - combina stats de usuarios, pendientes y resumen institucional del anio escolar
+- `GET /api/analytics/teacher/me/dashboard-summary`
+  - combina asignaciones del docente, metricas por grupo-area y tendencia por periodo
+- `GET /api/groups/:group_id/detail-summary`
+  - combina grupo, matriculas activas, docentes asignados, areas del grado y opciones de docentes
+
+Estos endpoints no reemplazan los anteriores; conviven para compatibilidad y deben preferirse en dashboards o pantallas de detalle pesadas.
+
 ## Validación y errores
 
 - Todas las rutas relevantes validan `body/params/query` con Zod.
@@ -93,4 +125,3 @@ Generada desde `src/docs/swagger.js`.
   "details": []
 }
 ```
-

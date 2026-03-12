@@ -1,8 +1,12 @@
 import mongoose from 'mongoose';
 import AppError from '../utils/AppError.js';
 import AnalyticsRepository from '../repositories/AnalyticsRepository.js';
+import UserService from './UserService.js';
+import SimpleMemoryCache from '../utils/simpleMemoryCache.js';
 
 const PASS_SCORE = 6;
+const SUMMARY_CACHE_TTL_MS = 30_000;
+const summaryCache = new SimpleMemoryCache();
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 const round2 = (value) => Number((value || 0).toFixed(2));
@@ -219,6 +223,161 @@ class AnalyticsService {
                 area_name: item.area_id?.name,
             })),
         };
+    }
+
+    buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap) {
+        const resultsByAssignment = new Map();
+
+        for (const assignment of assignments) {
+            resultsByAssignment.set(`${toIdString(assignment.group_id)}:${toIdString(assignment.area_id)}`, []);
+        }
+
+        for (const row of results) {
+            const studentId = toIdString(row.student_id);
+            const areaId = toIdString(row.area_id);
+            for (const assignment of assignments) {
+                const assignmentGroupId = toIdString(assignment.group_id);
+                const assignmentAreaId = toIdString(assignment.area_id);
+                if (assignmentAreaId !== areaId) continue;
+
+                const studentIds = enrollmentsByGroup.get(assignmentGroupId) || [];
+                if (studentIds.includes(studentId)) {
+                    resultsByAssignment.get(`${assignmentGroupId}:${assignmentAreaId}`)?.push(row);
+                }
+            }
+        }
+
+        return assignments.map((assignment) => {
+            const groupId = toIdString(assignment.group_id);
+            const areaId = toIdString(assignment.area_id);
+            const assignmentResults = resultsByAssignment.get(`${groupId}:${areaId}`) || [];
+            const studentIds = enrollmentsByGroup.get(groupId) || [];
+
+            const valuesByStudent = new Map();
+            const periodValuesByStudent = new Map();
+
+            for (const studentId of studentIds) {
+                valuesByStudent.set(studentId, []);
+            }
+            for (const period of periods) {
+                periodValuesByStudent.set(period._id.toString(), new Map());
+                for (const studentId of studentIds) {
+                    periodValuesByStudent.get(period._id.toString()).set(studentId, 0);
+                }
+            }
+
+            for (const row of assignmentResults) {
+                const studentId = toIdString(row.student_id);
+                const periodId = toIdString(row.period_id);
+                if (valuesByStudent.has(studentId)) {
+                    valuesByStudent.get(studentId).push(row.final_score);
+                }
+                periodValuesByStudent.get(periodId)?.set(studentId, row.final_score);
+            }
+
+            const students = studentIds.map((studentId) => {
+                const average = computeAverage(valuesByStudent.get(studentId) || []);
+                const studentProfile = studentProfileMap.get(studentId) || {};
+                return {
+                    student_id: studentId,
+                    student_name: studentProfile.full_name || 'Sin nombre',
+                    student_email: studentProfile.email || null,
+                    average,
+                    status: average >= PASS_SCORE ? 'passed' : 'failed',
+                };
+            });
+
+            const periodsSummary = periods.map((period) => {
+                const values = Array.from(periodValuesByStudent.get(period._id.toString())?.values() || []);
+                const passed = values.filter((value) => value >= PASS_SCORE).length;
+                return {
+                    period_name: period.name,
+                    average: computeAverage(values),
+                    passed,
+                    failed: values.length - passed,
+                };
+            });
+
+            const averages = students.map((student) => student.average);
+            const passed = students.filter((student) => student.status === 'passed').length;
+
+            return {
+                group_id: assignment.group_id?._id,
+                group_name: assignment.group_id?.name,
+                grade_name: assignment.group_id?.grade_id?.name || 'Grado',
+                area_id: assignment.area_id?._id,
+                area_name: assignment.area_id?.name || 'Área',
+                student_count: students.length,
+                average: computeAverage(averages),
+                passed,
+                failed: students.length - passed,
+                periods: periodsSummary,
+                students,
+            };
+        });
+    }
+
+    async getTeacherDashboardSummary(userId, schoolYearId) {
+        const cacheKey = `teacher-dashboard:${userId}:${schoolYearId}`;
+        return summaryCache.getOrSet(cacheKey, async () => {
+            const { teacher } = await this.getTeacherContext(userId, schoolYearId);
+            const assignments = await AnalyticsRepository.findTeacherAssignmentsByYear(teacher._id, schoolYearId);
+            const periods = await AnalyticsRepository.findPeriodsBySchoolYear(schoolYearId);
+
+            if (!assignments.length) {
+                return {
+                    school_year_id: schoolYearId,
+                    summary: {
+                        assignment_count: 0,
+                        group_count: 0,
+                        student_count: 0,
+                        average: 0,
+                        passed: 0,
+                        failed: 0,
+                    },
+                    groups: [],
+                };
+            }
+
+            const uniqueGroupIds = [...new Set(assignments.map((assignment) => toIdString(assignment.group_id)).filter(Boolean))];
+            const uniqueAreaIds = [...new Set(assignments.map((assignment) => toIdString(assignment.area_id)).filter(Boolean))];
+            const enrollmentsByGroup = new Map();
+            const allStudentIds = new Set();
+
+            await Promise.all(uniqueGroupIds.map(async (groupId) => {
+                const enrollments = await AnalyticsRepository.findActiveEnrollmentsByGroupAndYear(groupId, schoolYearId);
+                const studentIds = enrollments.map((enrollment) => enrollment.student_id.toString());
+                enrollmentsByGroup.set(groupId, studentIds);
+                studentIds.forEach((studentId) => allStudentIds.add(studentId));
+            }));
+
+            const studentIds = Array.from(allStudentIds);
+            const results = studentIds.length
+                ? await AnalyticsRepository.findPeriodAreaResults({
+                    student_id: { $in: studentIds },
+                    area_id: { $in: uniqueAreaIds },
+                    period_id: { $in: periods.map((period) => period._id) },
+                })
+                : [];
+            const studentDocs = studentIds.length ? await AnalyticsRepository.findStudentsByIds(studentIds) : [];
+            const studentProfileMap = buildStudentProfileMap(studentDocs);
+            const groups = this.buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap);
+            const allStudents = groups.flatMap((group) => group.students);
+            const passed = allStudents.filter((student) => student.status === 'passed').length;
+
+            return {
+                school_year_id: schoolYearId,
+                summary: {
+                    assignment_count: assignments.length,
+                    group_count: uniqueGroupIds.length,
+                    student_count: studentIds.length,
+                    average: computeAverage(allStudents.map((student) => student.average)),
+                    passed,
+                    failed: allStudents.length - passed,
+                },
+                groups,
+            };
+        }, SUMMARY_CACHE_TTL_MS);
     }
 
     async getTeacherGroupPerformance(userId, schoolYearId, groupId, areaId, periodId = null) {
@@ -677,6 +836,35 @@ class AnalyticsService {
                 average: area.average,
             })),
         };
+    }
+
+    async getAdminDashboardSummary(schoolYearId) {
+        const cacheKey = `admin-dashboard:${schoolYearId}`;
+        return summaryCache.getOrSet(cacheKey, async () => {
+            await this.ensureSchoolYear(schoolYearId);
+
+            const [stats, pendingUsers, institutionOverview, institutionTrend, grades, areas] = await Promise.all([
+                UserService.getStatistics(),
+                UserService.getPendingUsers(),
+                this.getAdminInstitutionOverview(schoolYearId),
+                this.getAdminInstitutionTrend(schoolYearId),
+                this.getAdminByGrade(schoolYearId),
+                this.getAdminByArea(schoolYearId),
+            ]);
+
+            return {
+                school_year_id: schoolYearId,
+                stats,
+                pending: {
+                    count: pendingUsers.length,
+                    users: pendingUsers.slice(0, 5),
+                },
+                institution_overview: institutionOverview?.summary || null,
+                institution_trend: institutionTrend?.periods || [],
+                institution_grades: grades?.grades || [],
+                institution_areas: areas?.areas || [],
+            };
+        }, SUMMARY_CACHE_TTL_MS);
     }
 }
 

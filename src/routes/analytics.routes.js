@@ -8,9 +8,11 @@ import {
     studentAreaTrendQuerySchema,
     studentPeriodSummaryQuerySchema,
     teacherGroupsQuerySchema,
+    teacherDashboardSummaryQuerySchema,
     teacherGroupPerformanceQuerySchema,
     teacherGroupTrendQuerySchema,
     teacherStudentDetailQuerySchema,
+    adminDashboardSummaryQuerySchema,
     adminInstitutionOverviewQuerySchema,
     adminInstitutionTrendQuerySchema,
     adminByGradeQuerySchema,
@@ -28,10 +30,12 @@ router.get('/student/me/area-trend', authorize('student'), validateRequest(stude
 router.get('/student/me/period-summary', authorize('student'), validateRequest(studentPeriodSummaryQuerySchema), AnalyticsController.studentPeriodSummary);
 
 router.get('/teacher/me/groups', authorize('teacher'), validateRequest(teacherGroupsQuerySchema), AnalyticsController.teacherGroups);
+router.get('/teacher/me/dashboard-summary', authorize('teacher'), validateRequest(teacherDashboardSummaryQuerySchema), AnalyticsController.teacherDashboardSummary);
 router.get('/teacher/me/group-performance', authorize('teacher'), validateRequest(teacherGroupPerformanceQuerySchema), AnalyticsController.teacherGroupPerformance);
 router.get('/teacher/me/group-trend', authorize('teacher'), validateRequest(teacherGroupTrendQuerySchema), AnalyticsController.teacherGroupTrend);
 router.get('/teacher/me/student-detail', authorize('teacher'), validateRequest(teacherStudentDetailQuerySchema), AnalyticsController.teacherStudentDetail);
 
+router.get('/admin/dashboard-summary', authorize('admin'), validateRequest(adminDashboardSummaryQuerySchema), AnalyticsController.adminDashboardSummary);
 router.get('/admin/institution-overview', authorize('admin'), validateRequest(adminInstitutionOverviewQuerySchema), AnalyticsController.adminInstitutionOverview);
 router.get('/admin/institution-trend', authorize('admin'), validateRequest(adminInstitutionTrendQuerySchema), AnalyticsController.adminInstitutionTrend);
 router.get('/admin/by-grade', authorize('admin'), validateRequest(adminByGradeQuerySchema), AnalyticsController.adminByGrade);

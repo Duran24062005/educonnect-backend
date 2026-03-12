@@ -18,6 +18,11 @@ class GroupController {
         res.status(200).json({ status: 'success', data: result });
     });
 
+    getGroupDetailSummary = asyncHandler(async (req, res) => {
+        const result = await GroupService.getGroupDetailSummary(req.params.group_id);
+        res.status(200).json({ status: 'success', data: result });
+    });
+
     updateGroup = asyncHandler(async (req, res) => {
         const result = await GroupService.updateGroup(req.params.id, req.body);
         res.status(200).json({ status: 'success', data: result });

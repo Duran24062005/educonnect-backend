@@ -7,6 +7,7 @@ import {
 } from '../repositories/PersonProfileRepository.js';
 import { schoolYearRepository, gradeRepository, areaRepository } from '../repositories/AcademicRepository.js';
 import { enrollmentRepository } from '../repositories/EvaluationRepository.js';
+import UserRepository from '../repositories/UserRepository.js';
 import { AppError } from '../utils/error.js';
 
 /**
@@ -60,6 +61,40 @@ class GroupService {
         const group = await groupRepository.findById(id);
         if (!group) throw new AppError('Grupo no encontrado', 404);
         return await this.withCapacityMetrics(group);
+    }
+
+    normalizeTeacherOption(user) {
+        const person = user?.person_id || user?.person || user?.user_id?.person_id || user?.user_id?.person || null;
+        return {
+            id: user?.teacher_id?._id || user?.teacher_id || null,
+            label: person
+                ? `${person.first_name || ''} ${person.last_name || ''}`.trim() + ` (${user?.email || 'sin correo'})`
+                : user?.email || 'Sin correo',
+        };
+    }
+
+    async getGroupDetailSummary(id) {
+        const group = await this.getGroupById(id);
+        const students = await this.getStudentsByGroup(id);
+        const teachers = await this.getTeachersByGroup(id);
+
+        const currentGradeId = group?.grade_id?._id || group?.grade_id || null;
+        const [gradeAreas, allAreas, teachersPage] = await Promise.all([
+            currentGradeId ? this.getAreasByGrade(currentGradeId) : [],
+            areaRepository.findAll(),
+            UserRepository.findByRole('teacher', 1, 500),
+        ]);
+
+        return {
+            group,
+            students,
+            teachers,
+            grade_areas: gradeAreas,
+            areas: allAreas,
+            teacher_options: teachersPage.users
+                .map((user) => this.normalizeTeacherOption(user))
+                .filter((entry) => Boolean(entry.id)),
+        };
     }
 
     async updateGroup(id, data) {

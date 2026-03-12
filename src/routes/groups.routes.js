@@ -6,6 +6,7 @@ import {
     createGroupSchema,
     updateGroupSchema,
     groupIdSchema,
+    groupDetailSummarySchema,
     groupsBySchoolYearSchema,
     enrollStudentSchema,
     transferEnrollmentSchema,
@@ -36,6 +37,7 @@ router.post('/grade-areas', authorize('admin'), validateRequest(assignAreaToGrad
 router.get('/grade-areas/:grade_id', validateRequest(areasByGradeSchema), GroupController.getAreasByGrade);
 
 router.post('/', authorize('admin'), validateRequest(createGroupSchema), GroupController.createGroup);
+router.get('/:group_id/detail-summary', authorize('admin'), validateRequest(groupDetailSummarySchema), GroupController.getGroupDetailSummary);
 router.get('/:group_id/students', validateRequest(studentsByGroupSchema), GroupController.getStudentsByGroup);
 router.get('/:group_id/teachers', validateRequest(teachersByGroupSchema), GroupController.getTeachersByGroup);
 router.get('/:id', validateRequest(groupIdSchema), GroupController.getGroupById);

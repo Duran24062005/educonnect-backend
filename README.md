@@ -95,6 +95,14 @@ Swagger UI is available at:
 
 - `http://localhost:8000/api-docs`
 
+Performance-oriented aggregated endpoints added in this phase:
+
+- `GET /api/analytics/admin/dashboard-summary`
+- `GET /api/analytics/teacher/me/dashboard-summary`
+- `GET /api/groups/:group_id/detail-summary`
+
+These endpoints are intended to reduce frontend request waterfalls in dashboards and group detail screens.
+
 ## Seeding Example Data
 
 ```bash
@@ -119,6 +127,7 @@ Included integration tests cover:
 - create student flow
 - list students
 - validation/error cases
+- aggregated performance summary endpoints
 
 ## Security and Production Notes
 

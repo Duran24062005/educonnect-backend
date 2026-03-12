@@ -32,6 +32,7 @@ export const updateGroupSchema = {
 };
 
 export const groupIdSchema = { params: idParamSchema };
+export const groupDetailSummarySchema = { params: groupParamSchema };
 export const groupsBySchoolYearSchema = { params: schoolYearParamSchema };
 
 export const enrollStudentSchema = {

@@ -62,11 +62,21 @@ class AnalyticsController {
         res.status(200).json({ status: 'success', data });
     });
 
+    teacherDashboardSummary = asyncHandler(async (req, res) => {
+        const data = await AnalyticsService.getTeacherDashboardSummary(req.userId, req.query.school_year_id);
+        res.status(200).json({ status: 'success', data });
+    });
+
     adminInstitutionOverview = asyncHandler(async (req, res) => {
         const data = await AnalyticsService.getAdminInstitutionOverview(
             req.query.school_year_id,
             req.query.period_id
         );
+        res.status(200).json({ status: 'success', data });
+    });
+
+    adminDashboardSummary = asyncHandler(async (req, res) => {
+        const data = await AnalyticsService.getAdminDashboardSummary(req.query.school_year_id);
         res.status(200).json({ status: 'success', data });
     });
 

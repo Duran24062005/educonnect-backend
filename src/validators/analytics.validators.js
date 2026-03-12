@@ -15,6 +15,7 @@ export const studentAreaTrendQuerySchema = {
 export const studentPeriodSummaryQuerySchema = { query: schoolYearRequired };
 
 export const teacherGroupsQuerySchema = { query: schoolYearRequired };
+export const teacherDashboardSummaryQuerySchema = { query: schoolYearRequired };
 export const teacherGroupPerformanceQuerySchema = {
     query: schoolYearRequired.extend({
         group_id: objectIdSchema,
@@ -40,6 +41,7 @@ export const adminInstitutionOverviewQuerySchema = {
         period_id: objectIdSchema.optional(),
     }),
 };
+export const adminDashboardSummaryQuerySchema = { query: schoolYearRequired };
 export const adminInstitutionTrendQuerySchema = { query: schoolYearRequired };
 export const adminByGradeQuerySchema = {
     query: schoolYearRequired.extend({
