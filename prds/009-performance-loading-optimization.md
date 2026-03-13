@@ -25,6 +25,15 @@ Consecuencia:
 - vista de detalle de grupo
 - reutilización de datos compartidos de sesión y contexto académico
 
+## Repositorios impactados
+
+Esta iniciativa cruza producto, pero no convierte a `educonnect-backend` y `educonnect-portal` en un mismo repositorio.
+
+- En `educonnect-backend` se documentan los endpoints agregados, la cache de lectura y las decisiones de API.
+- En `educonnect-portal` se documentan lazy loading, React Query, chunks, placeholders y consumo de esos endpoints.
+
+Este PRD vive en el backend porque una parte del alcance introduce contratos HTTP nuevos. La documentacion de consumo del portal debe mantenerse en el repo del portal.
+
 ## Fuera de alcance
 
 - optimización mobile nativa
@@ -134,6 +143,13 @@ Se introduce `simpleMemoryCache` para respuestas agregadas de lectura:
 
 Esta cache es una optimización de lectura, no una fuente de verdad.
 
+Responsabilidad explicita del backend en esta fase:
+
+- agregar endpoints listos para UI sin romper los legados
+- reducir recomputacion de agregados frecuentes
+- mantener permisos y reglas de negocio intactos
+- exponer contratos estables para que el portal pueda optimizar su carga
+
 ## Frontend
 
 ### Pantallas impactadas
@@ -149,6 +165,13 @@ Esta cache es una optimización de lectura, no una fuente de verdad.
 - dashboard teacher deja de disparar performance y trend por cada asignación al entrar
 - detalle de grupo deja de paginar docentes en cascada desde el cliente
 - estadísticas anuales reutilizan el resumen agregado en vez de pedir analytics por separado
+
+Responsabilidad explicita del frontend en esta fase:
+
+- cargar modulos pesados bajo demanda
+- cachear respuestas agregadas para evitar refetch redundante
+- mantener la UI estable durante cambios de filtros
+- decidir que vistas consumen endpoints nuevos y cuales conservan rutas legadas
 
 ## Criterios de aceptación
 
