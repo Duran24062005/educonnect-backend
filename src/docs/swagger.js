@@ -22,6 +22,7 @@ const options = {
             { name: 'Groups', description: 'Grupos, matrículas y asignaciones' },
             { name: 'Evaluations', description: 'Ítems, notas y resultados' },
             { name: 'Analytics', description: 'Métricas por scope (student, teacher, admin)' },
+            { name: 'Notifications', description: 'Notificaciones in-app y anuncios dirigidos' },
         ],
         components: {
             securitySchemes: {
@@ -75,6 +76,41 @@ const options = {
                         document_number: { type: 'string' },
                         phone: { type: 'string' },
                         requested_role: { type: 'string', enum: ['Student', 'Teacher', 'Parent', 'Guardian'] },
+                    },
+                },
+                NotificationItem: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        type: { type: 'string' },
+                        title: { type: 'string' },
+                        message: { type: 'string' },
+                        audience_role: { type: 'string', enum: ['admin', 'teacher', 'student'] },
+                        is_read: { type: 'boolean' },
+                        read_at: { type: 'string', nullable: true },
+                        created_at: { type: 'string' },
+                        source_type: { type: 'string', nullable: true },
+                        source_id: { type: 'string', nullable: true },
+                        metadata: { type: 'object' },
+                    },
+                },
+                AdminAnnouncementBody: {
+                    type: 'object',
+                    required: ['title', 'message', 'target_role'],
+                    properties: {
+                        title: { type: 'string' },
+                        message: { type: 'string' },
+                        target_role: { type: 'string', enum: ['admin', 'teacher', 'student', 'teacher_student', 'teacher_admin', 'all'] },
+                    },
+                },
+                TeacherAnnouncementBody: {
+                    type: 'object',
+                    required: ['title', 'message', 'scope'],
+                    properties: {
+                        title: { type: 'string' },
+                        message: { type: 'string' },
+                        scope: { type: 'string', enum: ['all_my_students', 'group'] },
+                        group_id: { type: 'string', nullable: true },
                     },
                 },
             },
@@ -224,6 +260,61 @@ const options = {
                         }),
                     },
                     responses: { 200: { description: 'Contraseña actualizada' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/notifications/me': {
+                get: {
+                    tags: ['Notifications'],
+                    summary: 'Listar notificaciones del usuario autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'read', in: 'query', schema: { type: 'boolean' } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+                    ],
+                    responses: { 200: { description: 'Listado de notificaciones' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/notifications/me/unread-count': {
+                get: {
+                    tags: ['Notifications'],
+                    summary: 'Contar notificaciones no leídas del usuario autenticado',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Conteo de no leídas' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/notifications/me/read-all': {
+                patch: {
+                    tags: ['Notifications'],
+                    summary: 'Marcar todas las notificaciones propias como leídas',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Notificaciones actualizadas' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/notifications/{id}/read': {
+                patch: {
+                    tags: ['Notifications'],
+                    summary: 'Marcar una notificación propia como leída',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Notificación actualizada' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/notifications/admin/announcements': {
+                post: {
+                    tags: ['Notifications'],
+                    summary: 'Crear anuncio manual para un rol desde admin',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: jsonContent({ $ref: '#/components/schemas/AdminAnnouncementBody' }) },
+                    responses: { 201: { description: 'Anuncio enviado' }, 401: { $ref: '#/components/responses/Unauthorized' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/notifications/teacher/announcements': {
+                post: {
+                    tags: ['Notifications'],
+                    summary: 'Crear anuncio manual para estudiantes desde teacher',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: jsonContent({ $ref: '#/components/schemas/TeacherAnnouncementBody' }) },
+                    responses: { 201: { description: 'Anuncio enviado' }, 401: { $ref: '#/components/responses/Unauthorized' }, 403: { $ref: '#/components/responses/Forbidden' } },
                 },
             },
 

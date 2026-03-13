@@ -18,6 +18,7 @@ import {
     ACTIVITY_UPLOAD_SUBDIR,
 } from '../constants/activity.constants.js';
 import { ensureUploadDir } from '../utils/uploads.js';
+import NotificationService from './NotificationService.js';
 
 const uploadsDir = ensureUploadDir(ACTIVITY_UPLOAD_SUBDIR);
 
@@ -347,6 +348,7 @@ class ActivityService {
 
         const activity = await activityRepository.create(payload);
         const hydrated = await activityRepository.findById(activity._id);
+        await NotificationService.notifyActivityCreated(hydrated);
         return {
             activity: serializeActivity(hydrated, { rubric_locked: false }),
         };
@@ -685,6 +687,8 @@ class ActivityService {
             });
             submission = await activitySubmissionRepository.findById(submission._id);
         }
+
+        await NotificationService.notifyActivitySubmitted(activity, student._id, now);
 
         return {
             activity: serializeActivity(activity, {

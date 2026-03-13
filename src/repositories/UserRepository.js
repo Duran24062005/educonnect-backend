@@ -225,6 +225,27 @@ class UserRepository {
         const person = await Person.findOne({ document_number });
         return person !== null;
     }
+
+    async findActiveByRole(role) {
+        const roleMap = {
+            student: 'Student',
+            teacher: 'Teacher',
+            admin: 'Admin',
+            parent: 'Parent',
+            guardian: 'Parent',
+        };
+
+        const normalizedRole = roleMap[String(role || '').toLowerCase()] || role;
+        return await User.find()
+            .populate({
+                path: 'person_id',
+                match: {
+                    role: normalizedRole,
+                    status: 'active',
+                },
+            })
+            .then((users) => users.filter((user) => user.person_id));
+    }
 }
 
 export default new UserRepository();

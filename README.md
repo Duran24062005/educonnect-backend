@@ -45,6 +45,7 @@ Este backend no es responsable de:
 - `evaluations`: notas, resultados y estadisticas
 - `analytics`: dashboards agregados para admin y teacher
 - `activities`: actividades, entregas y archivos
+- `notifications`: notificaciones in-app, conteo de no leidas y anuncios dirigidos
 
 ## Arquitectura actual
 
@@ -101,6 +102,7 @@ Routers montados:
 - `/api/evaluations`
 - `/api/analytics`
 - `/api/activities`
+- `/api/notifications`
 
 ## Endpoints agregados orientados a performance
 
@@ -235,6 +237,7 @@ Cobertura actual de alto nivel:
 - autenticacion
 - usuarios / estudiantes
 - actividades
+- notificaciones y anuncios
 - endpoints agregados de performance
 
 Los tests viven en `tests/` y usan `mongodb-memory-server` para aislar la base.
@@ -247,6 +250,7 @@ Lectura recomendada:
 - [`docs/repository-context.md`](./docs/repository-context.md)
 - [`docs/Architecture.md`](./docs/Architecture.md)
 - [`docs/api_docs.md`](./docs/api_docs.md)
+- [`prds/010-notifications-announcements.md`](./prds/010-notifications-announcements.md)
 - [`prds/009-performance-loading-optimization.md`](./prds/009-performance-loading-optimization.md)
 
 ## Convenciones operativas

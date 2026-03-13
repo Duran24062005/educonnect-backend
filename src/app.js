@@ -16,6 +16,7 @@ import groupsRouter from './routes/groups.routes.js';
 import evaluationsRouter from './routes/evaluations.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
+import notificationsRouter from './routes/notifications.routes.js';
 import { getUploadsRootDir } from './utils/uploads.js';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/groups', groupsRouter);
 app.use('/api/evaluations', evaluationsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/activities', activitiesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

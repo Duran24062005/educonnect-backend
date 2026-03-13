@@ -41,3 +41,4 @@ Cuando cambie alguno de estos elementos, esta carpeta debe revisarse:
 - estrategia de uploads
 - seeds o flujos operativos de desarrollo
 - contratos usados por dashboards agregados
+- contratos de notificaciones, anuncios y estrategia de entrega in-app

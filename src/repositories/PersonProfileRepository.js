@@ -34,7 +34,15 @@ class TeacherRepository {
 class StudentRepository {
     async create(data) { return await new Student(data).save(); }
     async findById(id) {
-        return await Student.findById(id).populate('user_id').populate('aula_id').populate('group_id');
+        return await Student.findById(id)
+            .populate({
+                path: 'user_id',
+                populate: {
+                    path: 'person_id',
+                },
+            })
+            .populate('aula_id')
+            .populate('group_id');
     }
     async findByUserId(user_id) { return await Student.findOne({ user_id }); }
     async findByGroup(group_id) { return await Student.find({ group_id }).populate('user_id'); }

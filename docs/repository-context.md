@@ -49,6 +49,7 @@ Si algo cruza ambos repositorios:
 - `evaluations`: notas, resultados, estadisticas y calculos
 - `analytics`: dashboards agregados por rol
 - `activities`: actividades, entregas y uploads asociados
+- `notifications`: notificaciones persistidas, conteo unread y anuncios dirigidos
 
 ## Dependencias externas relevantes
 
@@ -68,6 +69,8 @@ El portal depende de:
 - `403` para falta de permisos o cuenta restringida
 - payloads agregados en analytics y group detail
 - URLs de archivos accesibles bajo `/uploads`
+- endpoints de notificaciones y anuncios
+- consistencia entre `unread-count`, listado y marca de lectura
 
 Cuando se cambie alguno de estos puntos:
 
@@ -109,6 +112,7 @@ Objetivo de las pruebas actuales:
 
 - proteger flujos criticos
 - validar endpoints agregados
+- validar disparadores automaticos de notificaciones y anuncios manuales
 - reducir regresiones de permisos y validacion
 
 ## Checklist cuando se agrega una funcionalidad

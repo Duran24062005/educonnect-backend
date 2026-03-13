@@ -42,6 +42,13 @@ class EnrollmentRepository {
             .populate('group_id');
     }
 
+    async findByGroups(group_ids = [], status = 'active') {
+        return await Enrollment.find({ group_id: { $in: group_ids }, status })
+            .populate(this.enrollmentStudentPopulate())
+            .populate('school_year_id')
+            .populate('group_id');
+    }
+
     async findBySchoolYear(school_year_id, status = null) {
         const filter = { school_year_id };
         if (status) filter.status = status;
