@@ -33,7 +33,9 @@ Este backend no es responsable de:
 - Zod
 - Swagger UI
 - Jest + Supertest
+- TypeScript
 - Docker + Docker Compose
+- Vercel serverless entrypoint
 
 ## Dominios cubiertos hoy
 
@@ -57,8 +59,8 @@ Estructura principal:
 
 ```text
 src/
-  app.js                  # Configuracion de Express y montaje de routers
-  index.js                # Bootstrap del servidor y conexion a MongoDB
+  app.ts                  # Configuracion de Express y montaje de routers
+  index.ts                # Bootstrap del servidor Node y conexion a MongoDB
   config/                 # Configuracion y conexion
   constants/              # Constantes de dominio
   controllers/            # Adaptacion HTTP
@@ -72,7 +74,10 @@ src/
   uploads/                # Archivos locales en desarrollo
   utils/                  # Helpers compartidos
   validators/             # Validacion Zod por endpoint
+  types/                  # Tipos compartidos y extensiones globales
+api/                      # Entrypoint serverless para Vercel
 scripts/                  # Seeds y scripts utilitarios
+database/                 # Seeds/documentacion de datos fuera de runtime HTTP
 tests/                    # Integracion end-to-end contra app Express
 docs/                     # Documentacion del repositorio
 prds/                     # Documentos funcionales/producto ligados a este repo
@@ -82,8 +87,9 @@ prds/                     # Documentos funcionales/producto ligados a este repo
 
 Puntos de entrada:
 
-- `src/index.js`: inicia servidor y conecta MongoDB
-- `src/app.js`: configura middlewares, CORS, uploads, Swagger y routers
+- `src/index.ts`: inicia servidor Node tradicional y conecta MongoDB
+- `src/app.ts`: configura middlewares, CORS, uploads, Swagger y routers
+- `api/index.ts`: entrada serverless para despliegues en Vercel
 
 Rutas base publicadas:
 
@@ -175,6 +181,13 @@ docker compose up -d mongodb
 yarn dev
 ```
 
+Comandos utiles:
+
+```bash
+yarn typecheck
+yarn build
+```
+
 3. Verificar:
 
 - API: `http://localhost:8000`
@@ -184,6 +197,7 @@ yarn dev
 Modo produccion local:
 
 ```bash
+yarn build
 yarn start
 ```
 
@@ -206,6 +220,7 @@ Scripts disponibles:
 
 - `yarn seed`: datos base de ejemplo
 - `yarn seed:analytics`: dataset enfocado en dashboards y endpoints agregados
+- `yarn seed:test-users`: datos de prueba orientados a autenticacion/usuarios
 
 Usalos solo en entornos de desarrollo o pruebas controladas.
 
@@ -223,6 +238,20 @@ Esto implica:
 - en serverless los uploads son efimeros
 - `/tmp` no debe asumirse como almacenamiento persistente
 - si el producto necesita permanencia real, debe integrarse un storage externo
+
+## Deploy en Vercel
+
+El repositorio soporta despliegue en Vercel usando una entrada serverless dedicada:
+
+- `api/index.ts`: asegura conexion a MongoDB y delega la request a la app Express
+- `vercel.json`: enruta `/(.*)` hacia `api/index.ts`
+- `src/index.ts`: evita ejecutar `app.listen()` cuando corre dentro de Vercel
+
+Esto significa que:
+
+- el deploy en Vercel no depende de `src/index.ts` como punto de entrada HTTP
+- las funciones reutilizan la app Express existente
+- la conexion a base se inicializa por request cold start y se reutiliza mientras el runtime siga vivo
 
 ## Testing
 

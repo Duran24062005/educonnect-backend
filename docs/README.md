@@ -29,7 +29,8 @@ Importante:
 - `README.md`: onboarding rapido del repo
 - `docs/repository-context.md`: alcance, ownership y criterios de documentacion
 - `src/`: implementacion real
-- `src/docs/swagger.js`: referencia viva de endpoints documentados
+- `src/docs/swagger.ts`: referencia viva de endpoints documentados
+- `api/index.ts`: entrada real usada por Vercel en despliegue serverless
 - `prds/`: contexto funcional relacionado con trabajo de este repositorio
 
 ## Regla de mantenimiento
@@ -39,6 +40,7 @@ Cuando cambie alguno de estos elementos, esta carpeta debe revisarse:
 - rutas o payloads HTTP
 - variables de entorno
 - estrategia de uploads
+- estrategia de despliegue y entrypoints serverless
 - seeds o flujos operativos de desarrollo
 - contratos usados por dashboards agregados
 - contratos de notificaciones, anuncios y estrategia de entrega in-app

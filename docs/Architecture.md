@@ -13,14 +13,17 @@ Además, se incorporan capas transversales:
 - `config`: configuración centralizada de entorno y conexión a MongoDB.
 - `docs`: OpenAPI/Swagger y documentación funcional.
 - `tests`: pruebas de integración con Jest + Supertest.
+- `types`: tipos compartidos y extensiones de Express/Mongoose.
+- `api`: entrada serverless para Vercel, separada del bootstrap Node tradicional.
 
 ## Estructura actual de `src/`
 
 ```text
 src/
-  app.js
-  index.js
+  app.ts
+  index.ts
   config/
+  constants/
   controllers/
   docs/
   middlewares/
@@ -28,8 +31,12 @@ src/
   repositories/
   routes/
   services/
+  types/
   utils/
   validators/
+api/
+database/
+tests/
 ```
 
 ## Responsabilidades por capa
@@ -65,4 +72,5 @@ Mejoras aplicadas:
 - Documentación OpenAPI en `/api-docs`.
 - Índices relevantes en entidades académicas.
 - Pruebas de integración para flujos críticos.
-
+- Migración de backend a TypeScript para mejorar seguridad de tipos y mantenimiento.
+- Separación entre entrada Node (`src/index.ts`) y entrada serverless (`api/index.ts`) para soportar Vercel sin duplicar la app Express.
