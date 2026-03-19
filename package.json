@@ -22,17 +22,30 @@
         "validator": "^13.11.0"
     },
     "devDependencies": {
+        "@types/cors": "^2.8.19",
         "@types/express": "5.0.0",
+        "@types/jest": "^30.0.0",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/multer": "^2.0.0",
+        "@types/node": "^25.2.3",
+        "@types/supertest": "^6.0.3",
+        "@types/swagger-jsdoc": "^6.0.4",
+        "@types/swagger-ui-express": "^4.1.8",
         "jest": "^30.0.5",
         "mongodb-memory-server": "^10.2.1",
-        "nodemon": "^3.1.10",
-        "supertest": "^7.1.4"
+        "supertest": "^7.1.4",
+        "ts-jest": "^29.4.1",
+        "tsx": "^4.20.6",
+        "typescript": "^5.9.2"
     },
     "scripts": {
-        "dev": "nodemon src/index.js",
-        "start": "node src/index.js",
-        "seed": "node scripts/seed.js",
-        "seed:analytics": "node scripts/seed-analytics-data.js",
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc -p tsconfig.json",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "start": "node dist/index.js",
+        "seed": "tsx scripts/seed.ts",
+        "seed:analytics": "tsx scripts/seed-analytics-data.ts",
+        "seed:test-users": "tsx database/seed-test-users.ts",
         "test": "NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand"
     }
 }
