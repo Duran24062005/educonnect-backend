@@ -17,6 +17,30 @@ const computeAverage = (values) => {
     return round2(values.reduce((sum, value) => sum + value, 0) / values.length);
 };
 
+const getPerformanceLevel = (score) => {
+    const value = Number(score || 0);
+    if (value >= 9) return 'SUPERIOR';
+    if (value >= 8) return 'ALTO';
+    if (value >= 6) return 'BÁSICO';
+    return 'BAJO';
+};
+
+const createPerformanceLevels = () => ({
+    SUPERIOR: 0,
+    ALTO: 0,
+    BÁSICO: 0,
+    BAJO: 0,
+});
+
+const countPerformanceLevels = (items, getScore) => {
+    const levels = createPerformanceLevels();
+    for (const item of items) {
+        const level = getPerformanceLevel(getScore(item));
+        levels[level] += 1;
+    }
+    return levels;
+};
+
 const buildStudentProfileMap = (students) => {
     const map = new Map();
 
@@ -285,6 +309,7 @@ class AnalyticsService {
                     student_email: studentProfile.email || null,
                     average,
                     status: average >= PASS_SCORE ? 'passed' : 'failed',
+                    performance_level: getPerformanceLevel(average),
                 };
             });
 
@@ -296,6 +321,7 @@ class AnalyticsService {
                     average: computeAverage(values),
                     passed,
                     failed: values.length - passed,
+                    performance_levels: countPerformanceLevels(values, (value) => value),
                 };
             });
 
@@ -312,6 +338,8 @@ class AnalyticsService {
                 average: computeAverage(averages),
                 passed,
                 failed: students.length - passed,
+                approval_rate: students.length ? round2((passed / students.length) * 100) : 0,
+                performance_levels: countPerformanceLevels(students, (student) => student.average),
                 periods: periodsSummary,
                 students,
             };
@@ -335,8 +363,14 @@ class AnalyticsService {
                         average: 0,
                         passed: 0,
                         failed: 0,
+                        approval_rate: 0,
+                        performance_levels: createPerformanceLevels(),
                     },
                     groups: [],
+                    period_trend: [],
+                    top_groups: [],
+                    attention_students: [],
+                    highlight_students: [],
                 };
             }
 
@@ -363,8 +397,110 @@ class AnalyticsService {
             const studentDocs = studentIds.length ? await AnalyticsRepository.findStudentsByIds(studentIds) : [];
             const studentProfileMap = buildStudentProfileMap(studentDocs);
             const groups = this.buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap);
-            const allStudents = groups.flatMap((group) => group.students);
-            const passed = allStudents.filter((student) => student.status === 'passed').length;
+            const uniqueStudentsMap = new Map();
+
+            for (const group of groups) {
+                for (const student of group.students) {
+                    const existing = uniqueStudentsMap.get(student.student_id);
+                    if (!existing) {
+                        uniqueStudentsMap.set(student.student_id, {
+                            ...student,
+                            assignments: [{
+                                group_id: group.group_id,
+                                group_name: group.group_name,
+                                area_id: group.area_id,
+                                area_name: group.area_name,
+                                average: student.average,
+                                performance_level: student.performance_level,
+                            }],
+                        });
+                        continue;
+                    }
+
+                    existing.assignments.push({
+                        group_id: group.group_id,
+                        group_name: group.group_name,
+                        area_id: group.area_id,
+                        area_name: group.area_name,
+                        average: student.average,
+                        performance_level: student.performance_level,
+                    });
+
+                    const bestAverage = Math.max(existing.average, student.average);
+                    existing.average = round2(bestAverage);
+                    existing.status = bestAverage >= PASS_SCORE ? 'passed' : 'failed';
+                    existing.performance_level = getPerformanceLevel(bestAverage);
+                }
+            }
+
+            const uniqueStudents = Array.from(uniqueStudentsMap.values());
+            const passed = uniqueStudents.filter((student) => student.status === 'passed').length;
+            const periodTrend = periods.map((period) => {
+                const values = [];
+
+                for (const group of groups) {
+                    const periodSummary = group.periods.find((row) => row.period_name === period.name);
+                    if (periodSummary) {
+                        values.push(periodSummary.average);
+                    }
+                }
+
+                return {
+                    period_name: period.name,
+                    average: computeAverage(values),
+                    passed: groups.reduce((sum, group) => {
+                        const periodSummary = group.periods.find((row) => row.period_name === period.name);
+                        return sum + (periodSummary?.passed || 0);
+                    }, 0),
+                    failed: groups.reduce((sum, group) => {
+                        const periodSummary = group.periods.find((row) => row.period_name === period.name);
+                        return sum + (periodSummary?.failed || 0);
+                    }, 0),
+                };
+            });
+
+            const rankedGroups = [...groups]
+                .sort((a, b) => b.average - a.average)
+                .map((group, index) => ({
+                    group_id: group.group_id,
+                    group_name: group.group_name,
+                    grade_name: group.grade_name,
+                    area_id: group.area_id,
+                    area_name: group.area_name,
+                    average: group.average,
+                    student_count: group.student_count,
+                    passed: group.passed,
+                    failed: group.failed,
+                    performance_levels: group.performance_levels,
+                    position: index + 1,
+                }));
+
+            const attentionStudents = [...uniqueStudents]
+                .filter((student) => student.average < PASS_SCORE)
+                .sort((a, b) => a.average - b.average)
+                .slice(0, 5)
+                .map((student) => ({
+                    student_id: student.student_id,
+                    student_name: student.student_name,
+                    student_email: student.student_email,
+                    average: student.average,
+                    status: student.status,
+                    performance_level: student.performance_level,
+                    assignments: student.assignments,
+                }));
+
+            const highlightStudents = [...uniqueStudents]
+                .sort((a, b) => b.average - a.average)
+                .slice(0, 5)
+                .map((student) => ({
+                    student_id: student.student_id,
+                    student_name: student.student_name,
+                    student_email: student.student_email,
+                    average: student.average,
+                    status: student.status,
+                    performance_level: student.performance_level,
+                    assignments: student.assignments,
+                }));
 
             return {
                 school_year_id: schoolYearId,
@@ -372,11 +508,17 @@ class AnalyticsService {
                     assignment_count: assignments.length,
                     group_count: uniqueGroupIds.length,
                     student_count: studentIds.length,
-                    average: computeAverage(allStudents.map((student) => student.average)),
+                    average: computeAverage(uniqueStudents.map((student) => student.average)),
                     passed,
-                    failed: allStudents.length - passed,
+                    failed: uniqueStudents.length - passed,
+                    approval_rate: uniqueStudents.length ? round2((passed / uniqueStudents.length) * 100) : 0,
+                    performance_levels: countPerformanceLevels(uniqueStudents, (student) => student.average),
                 },
                 groups,
+                period_trend: periodTrend,
+                top_groups: rankedGroups,
+                attention_students: attentionStudents,
+                highlight_students: highlightStudents,
             };
         }, SUMMARY_CACHE_TTL_MS);
     }
