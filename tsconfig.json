@@ -16,6 +16,6 @@
     "types": ["node", "jest"],
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "dist", "src/uploads/**"]
 }

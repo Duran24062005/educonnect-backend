@@ -19,6 +19,35 @@ const DEFAULT_GROUP_SIZE = 8;
 const DEFAULT_GROUP_SUFFIXES = ['A', 'B'];
 const PASS_SCORE = 6;
 
+type CliOptions = {
+    activate: boolean;
+    year: number | null;
+    groupSize: number;
+};
+
+type SeedProfileInput = {
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: 'Teacher' | 'Student';
+    document_number: string;
+};
+
+type GradeDefinition = {
+    name: string;
+    level: string;
+    description: string;
+    _id?: unknown;
+};
+
+type ScoreSeedInput = {
+    studentIndex: number;
+    gradeIndex: number;
+    groupIndex: number;
+    areaIndex: number;
+    periodIndex: number;
+};
+
 const AREA_DEFINITIONS = [
     { name: 'Matematicas', description: 'Pensamiento numerico y resolucion de problemas', weekly_hours: 5 },
     { name: 'Lenguaje', description: 'Comprension lectora y expresion escrita', weekly_hours: 5 },
@@ -27,7 +56,7 @@ const AREA_DEFINITIONS = [
     { name: 'Ingles', description: 'Competencia comunicativa en segunda lengua', weekly_hours: 3 },
 ];
 
-const GRADE_DEFINITIONS = [
+const GRADE_DEFINITIONS: GradeDefinition[] = [
     { name: '6', level: 'Demo Analytics', description: 'Grado demo para analitica anual' },
     { name: '7', level: 'Demo Analytics', description: 'Grado demo para analitica anual' },
     { name: '8', level: 'Demo Analytics', description: 'Grado demo para analitica anual' },
@@ -46,7 +75,7 @@ const LAST_NAMES = [
 ];
 
 const cliArgs = process.argv.slice(2);
-const cliOptions = cliArgs.reduce((acc, arg) => {
+const cliOptions = cliArgs.reduce<CliOptions>((acc, arg) => {
     if (arg === '--activate') acc.activate = true;
     if (arg.startsWith('--year=')) acc.year = Number(arg.split('=')[1]);
     if (arg.startsWith('--group-size=')) acc.groupSize = Number(arg.split('=')[1]);
@@ -57,10 +86,10 @@ const cliOptions = cliArgs.reduce((acc, arg) => {
     groupSize: DEFAULT_GROUP_SIZE,
 });
 
-const round2 = (value) => Number((value || 0).toFixed(2));
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const round2 = (value: number) => Number((value || 0).toFixed(2));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const stringHash = (value) => {
+const stringHash = (value: string) => {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
         hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
@@ -68,12 +97,12 @@ const stringHash = (value) => {
     return Math.abs(hash);
 };
 
-const hashNoise = (seed, range = 1.2) => {
+const hashNoise = (seed: string, range = 1.2) => {
     const normalized = (stringHash(seed) % 1000) / 1000;
     return (normalized - 0.5) * range;
 };
 
-async function ensureUserWithProfile({ email, first_name, last_name, role, document_number }) {
+async function ensureUserWithProfile({ email, first_name, last_name, role, document_number }: SeedProfileInput) {
     let user = await User.findOne({ email });
 
     if (!user) {
@@ -114,7 +143,7 @@ async function ensureUserWithProfile({ email, first_name, last_name, role, docum
     return { user, person };
 }
 
-async function ensureSchoolYear(targetYear, shouldActivate) {
+async function ensureSchoolYear(targetYear: number, shouldActivate: boolean) {
     let schoolYear = await SchoolYear.findOne({ year: targetYear });
 
     if (!schoolYear) {
@@ -135,7 +164,7 @@ async function ensureSchoolYear(targetYear, shouldActivate) {
     return schoolYear;
 }
 
-async function ensurePeriods(schoolYearId, targetYear) {
+async function ensurePeriods(schoolYearId: unknown, targetYear: number) {
     const periods = [
         { name: 'Periodo 1', weight: 0.25, start_date: new Date(`${targetYear}-01-15T00:00:00.000Z`), end_date: new Date(`${targetYear}-03-31T23:59:59.999Z`) },
         { name: 'Periodo 2', weight: 0.25, start_date: new Date(`${targetYear}-04-01T00:00:00.000Z`), end_date: new Date(`${targetYear}-06-15T23:59:59.999Z`) },
@@ -190,7 +219,7 @@ async function ensureGrades() {
     return gradeDocs;
 }
 
-async function ensureGradeAreas(gradeDocs, areaDocs) {
+async function ensureGradeAreas(gradeDocs: any[], areaDocs: any[]) {
     for (const grade of gradeDocs) {
         for (const area of areaDocs) {
             const definition = AREA_DEFINITIONS.find((item) => item.name === area.name);
@@ -209,7 +238,7 @@ async function ensureGradeAreas(gradeDocs, areaDocs) {
     }
 }
 
-async function ensureGroups(gradeDocs, schoolYearId, groupSize) {
+async function ensureGroups(gradeDocs: any[], schoolYearId: unknown, groupSize: number) {
     const groups = [];
     for (const grade of gradeDocs) {
         for (const suffix of DEFAULT_GROUP_SUFFIXES) {
@@ -238,7 +267,7 @@ async function ensureGroups(gradeDocs, schoolYearId, groupSize) {
     return groups;
 }
 
-async function ensureTeachers(areaDocs, groups) {
+async function ensureTeachers(areaDocs: any[], groups: any[]) {
     const teachers = [];
 
     for (let index = 0; index < areaDocs.length; index += 1) {
@@ -287,13 +316,13 @@ async function ensureTeachers(areaDocs, groups) {
     return teachers;
 }
 
-function buildStudentIdentity(globalIndex) {
+function buildStudentIdentity(globalIndex: number) {
     const first_name = FIRST_NAMES[globalIndex % FIRST_NAMES.length];
     const last_name = LAST_NAMES[Math.floor(globalIndex / FIRST_NAMES.length) % LAST_NAMES.length];
     return { first_name, last_name };
 }
 
-function buildScore({ studentIndex, gradeIndex, groupIndex, areaIndex, periodIndex }) {
+function buildScore({ studentIndex, gradeIndex, groupIndex, areaIndex, periodIndex }: ScoreSeedInput) {
     const base = 5.15 + (gradeIndex * 0.45) + (groupIndex * 0.18) + ((studentIndex % 8) * 0.22);
     const areaModifier = [0.55, 0.2, 0.1, -0.25, 0.35][areaIndex] || 0;
     const periodModifier = [-0.2, 0.15, 0.35, 0.2][periodIndex] || 0;
@@ -301,7 +330,17 @@ function buildScore({ studentIndex, gradeIndex, groupIndex, areaIndex, periodInd
     return round2(clamp(base + areaModifier + periodModifier + noise, 3.2, 9.8));
 }
 
-async function seedStudentsAndResults({ groups, areaDocs, periodDocs, schoolYear }) {
+async function seedStudentsAndResults({
+    groups,
+    areaDocs,
+    periodDocs,
+    schoolYear,
+}: {
+    groups: any[];
+    areaDocs: any[];
+    periodDocs: any[];
+    schoolYear: any;
+}) {
     let globalStudentIndex = 0;
     let periodAreaRows = 0;
     let finalRows = 0;
@@ -424,8 +463,8 @@ async function runSeed() {
 
     try {
         const activeYear = await SchoolYear.findOne({ is_active: true });
-        const targetYear = Number.isInteger(cliOptions.year)
-            ? cliOptions.year
+        const targetYear: number = Number.isInteger(cliOptions.year)
+            ? (cliOptions.year as number)
             : (activeYear?.year || new Date().getFullYear() + 1);
 
         const schoolYear = await ensureSchoolYear(targetYear, cliOptions.activate || !activeYear);

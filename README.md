@@ -222,6 +222,8 @@ Scripts disponibles:
 - `yarn seed:analytics`: dataset enfocado en dashboards y endpoints agregados
 - `yarn seed:test-users`: datos de prueba orientados a autenticacion/usuarios
 
+Todos los seeds viven en `educonnect-backend/scripts/`.
+
 Usalos solo en entornos de desarrollo o pruebas controladas.
 
 ## Uploads y runtime

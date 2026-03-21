@@ -7,6 +7,14 @@ import Area from '../src/models/AreaModel.js';
 
 const DEFAULT_PASSWORD = 'EduConnect123!';
 
+type SeedProfileInput = {
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: 'Teacher' | 'Student';
+    document_number: string;
+};
+
 const teachers = [
     { email: 'teacher.math@educonnect.local', first_name: 'Laura', last_name: 'Ruiz', area: 'Mathematics', document_number: 'T-1001' },
     { email: 'teacher.lang@educonnect.local', first_name: 'Carlos', last_name: 'Gomez', area: 'Language', document_number: 'T-1002' },
@@ -27,7 +35,7 @@ const subjects = [
     { name: 'Social Studies', description: 'History and citizenship' },
 ];
 
-async function ensureUserWithProfile({ email, first_name, last_name, role, document_number }) {
+async function ensureUserWithProfile({ email, first_name, last_name, role, document_number }: SeedProfileInput) {
     let user = await User.findOne({ email });
 
     if (!user) {

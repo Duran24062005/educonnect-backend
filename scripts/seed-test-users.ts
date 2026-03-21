@@ -2,10 +2,23 @@ import appConfig from '../src/config/config.js';
 import User from '../src/models/UserModel.js';
 import Person from '../src/models/PersonModel.js';
 import Teacher from '../src/models/TeacherModel.js';
+import Student from '../src/models/StudentModel.js';
 
 const TEST_PASSWORD = 'Test12345*';
 
-const USERS_TO_SEED = [
+type SeedUser = {
+    email: string;
+    role: 'Admin' | 'Teacher' | 'Student';
+    first_name: string;
+    last_name: string;
+    phone: string;
+    document_type: 'CC' | 'RC' | 'CE';
+    document_number: string;
+    born_date: string;
+    area?: string;
+};
+
+const STAFF_USERS: SeedUser[] = [
     {
         email: 'admin1@educonnect.test',
         role: 'Admin',
@@ -94,7 +107,7 @@ const USERS_TO_SEED = [
 ];
 
 
-const USERS_TO_SEED2 = [
+const STUDENT_USERS: SeedUser[] = [
     {
         email: 'student1@educonnect.test',
         role: 'Student',
@@ -297,7 +310,9 @@ const USERS_TO_SEED2 = [
     }
 ];
 
-async function seedOne(personData) {
+const USERS_TO_SEED: SeedUser[] = [...STAFF_USERS, ...STUDENT_USERS];
+
+async function seedOne(personData: SeedUser) {
     let user = await User.findOne({ email: personData.email });
 
     if (!user) {
@@ -350,6 +365,14 @@ async function seedOne(personData) {
             teacherProfile.area = personData.area || teacherProfile.area;
             await teacherProfile.save();
             console.log(`~ Perfil Teacher actualizado: ${personData.email}`);
+        }
+    }
+
+    if (personData.role === 'Student') {
+        const studentProfile = await Student.findOne({ user_id: user._id });
+        if (!studentProfile) {
+            await Student.create({ user_id: user._id });
+            console.log(`+ Perfil Student creado: ${personData.email}`);
         }
     }
 }
