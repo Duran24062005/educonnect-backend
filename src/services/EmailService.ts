@@ -5,20 +5,36 @@ import AppConf from '../config/config.js';
 const EMAIL_API_BASE_URL = AppConf.app.emailApiBase;
 const shouldSendEmails = AppConf.app.nodeEnv !== 'test';
 
+type sendWelcomeEmailType = {
+    email: string;
+    firstName: string;
+    templateName: string;
+    emailToken?: string;
+}
+
 /**
- * Enviar email de bienvenida con token de verificación
+ * Enviar email usando una plantilla de bienvenida/login.
+ * Si se recibe token, se incluye el link de verificación.
  * @param {string} email - Email del usuario
  * @param {string} firstName - Nombre del usuario
- * @param {string} emailToken - Token para verificar email
+ * @param {string} templateName - Nombre de la plantilla
+ * @param {string | null} emailToken - Token opcional para verificación
  * @returns {Promise<Object>} Respuesta de la API
  */
-export const sendWelcomeEmail = async (email, firstName, emailToken) => {
+export const sendWelcomeEmail = async ({email, firstName, templateName, emailToken = null}: sendWelcomeEmailType) => {
     if (!shouldSendEmails) {
         return { sent: false, skipped: true, reason: 'Email disabled in test environment' };
     }
 
     try {
-        const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailToken}`;
+        const templateData = {
+            nombre: firstName,
+            empresa: 'EduConnect',
+        };
+
+        if (emailToken) {
+            templateData.verification_link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailToken}`;
+        }
 
         const response = await fetch(`${EMAIL_API_BASE_URL}/emails/send`, {
             method: 'POST',
@@ -28,12 +44,8 @@ export const sendWelcomeEmail = async (email, firstName, emailToken) => {
             body: JSON.stringify({
                 recipient: email,
                 subject: 'Bienvenido a EduConnect - Verifica tu email',
-                template_name: 'welcome_educonnect.html',
-                template_data: {
-                    nombre: firstName,
-                    empresa: 'EduConnect',
-                    verification_link: verificationLink,
-                },
+                template_name: templateName,
+                template_data: templateData,
                 user_id:3
             }),
         });

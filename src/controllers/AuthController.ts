@@ -50,16 +50,19 @@ class AuthController {
 
         const result = await AuthService.completeProfile(req.userId, profileData);
 
-        if (!req.user?.email) {
+        const authenticatedUserEmail = typeof req.user?.email === 'string' ? req.user.email : null;
+
+        if (!authenticatedUserEmail) {
             throw new AppError('Usuario autenticado sin email asociado', 500);
         }
 
         // Enviar email de bienvenida ahora que tenemos nombre y email
-        const emailResult = await sendWelcomeEmail(
-            req.user.email,
-            result.person.first_name,
-            result.token
-        );
+        const emailResult = await sendWelcomeEmail({
+            email: authenticatedUserEmail,
+            firstName: result.person.first_name,
+            templateName: 'template_welcome.html',
+            emailToken: result.token,
+        });
 
         res.status(200).json({
             status: 'success',
@@ -80,12 +83,14 @@ class AuthController {
         if (result) {
             // Solo enviar email de bienvenida si el perfil está completo y tenemos nombre
             let emailData = null;
-            if (result.profile_complete && result.person) {
-                emailData = await sendWelcomeEmail(
-                    result.user.email,
-                    result.person.first_name,
-                    result.token
-                );
+            const loginUserEmail = typeof result.user?.email === 'string' ? result.user.email : null;
+
+            if (result.profile_complete && result.person && loginUserEmail) {
+                emailData = await sendWelcomeEmail({
+                    email: loginUserEmail,
+                    firstName: result.person.first_name,
+                    templateName: 'educonnect_login.html',
+                });
             }
 
         }
