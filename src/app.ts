@@ -53,7 +53,11 @@ app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api-docs', (_req, res) => {
+    res.redirect(301, '/api-docs/');
+});
+app.use('/api-docs', swaggerUi.serveFiles(swaggerSpec));
+app.get('/api-docs/', swaggerUi.setup(swaggerSpec));
 app.use('/uploads', express.static(getUploadsRootDir()));
 
 app.use('/api/auth', authRouter);
