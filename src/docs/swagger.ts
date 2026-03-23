@@ -408,7 +408,7 @@ const options = {
             '/api/users/{id}/profile-photo': {
                 patch: {
                     tags: ['Users'],
-                    summary: 'Actualizar foto de perfil',
+                    summary: 'Actualizar foto de perfil en AWS S3',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
                     requestBody: {
@@ -422,7 +422,7 @@ const options = {
                             },
                         },
                     },
-                    responses: { 200: { description: 'Foto actualizada' } },
+                    responses: { 200: { description: 'Foto actualizada y URL firmada sincronizada' } },
                 },
             },
             '/api/users/role/{role}': {

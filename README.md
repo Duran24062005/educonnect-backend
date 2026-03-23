@@ -12,7 +12,7 @@ Este backend es responsable de:
 - autenticar usuarios y emitir JWT
 - aplicar permisos por rol y estado de cuenta
 - persistir datos academicos en MongoDB
-- servir uploads locales o temporales segun el runtime
+- almacenar archivos privados en AWS S3 y exponer URLs firmadas
 - centralizar reglas de negocio del dominio academico
 - publicar Swagger para exploracion de endpoints
 
@@ -71,7 +71,6 @@ src/
   routes/                 # Rutas por modulo
   schemas/                # Esquemas de apoyo
   services/               # Reglas de negocio
-  uploads/                # Archivos locales en desarrollo
   utils/                  # Helpers compartidos
   validators/             # Validacion Zod por endpoint
   types/                  # Tipos compartidos y extensiones globales
@@ -88,7 +87,7 @@ prds/                     # Documentos funcionales/producto ligados a este repo
 Puntos de entrada:
 
 - `src/index.ts`: inicia servidor Node tradicional y conecta MongoDB
-- `src/app.ts`: configura middlewares, CORS, uploads, Swagger y routers
+- `src/app.ts`: configura middlewares, CORS, Swagger y routers
 - `api/index.ts`: entrada serverless para despliegues en Vercel
 
 Rutas base publicadas:
@@ -96,7 +95,6 @@ Rutas base publicadas:
 - `GET /`: metadata minima de la API
 - `GET /health`: healthcheck simple
 - `GET /api-docs`: Swagger UI
-- `GET /uploads/*`: archivos servidos por Express
 
 Routers montados:
 
@@ -226,20 +224,24 @@ Todos los seeds viven en `educonnect-backend/scripts/`.
 
 Usalos solo en entornos de desarrollo o pruebas controladas.
 
-## Uploads y runtime
+## Storage de archivos
 
-Los archivos se sirven desde `/uploads`.
+Los uploads ya no se guardan en filesystem local.
 
-Comportamiento segun runtime:
+Comportamiento actual:
 
-- desarrollo / servidor tradicional: archivos bajo `src/uploads`
-- runtimes serverless detectados (`VERCEL`, `AWS_LAMBDA_FUNCTION_NAME`, `LAMBDA_TASK_ROOT`): archivos bajo `/tmp/educonnect-uploads`
+- las fotos de perfil y entregas de actividades se suben a un bucket privado de AWS S3
+- el backend persiste metadatos del objeto y una URL firmada expirable
+- cuando una respuesta detecta que la firma esta vencida o por vencer, genera una nueva y la re-persiste
+- `profile_photo_url` y `file_url` siguen existiendo en los payloads para mantener compatibilidad con frontend
 
-Esto implica:
+Variables requeridas:
 
-- en serverless los uploads son efimeros
-- `/tmp` no debe asumirse como almacenamiento persistente
-- si el producto necesita permanencia real, debe integrarse un storage externo
+- `AWS_REGION`
+- `AWS_S3_BUCKET`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SIGNED_URL_TTL_SECONDS`
 
 ## Deploy en Vercel
 
@@ -297,4 +299,4 @@ Lectura recomendada:
 - restringir `CORS_ORIGIN` a dominios confiables
 - monitorear tiempos de respuesta de endpoints agregados
 - agregar rate limiting y observabilidad antes de trafico alto
-- mover uploads a storage persistente si se despliega en serverless
+- rotar y custodiar las credenciales de AWS fuera del repo
