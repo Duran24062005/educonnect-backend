@@ -20,6 +20,8 @@ let Activity;
 let ActivitySubmission;
 let mongoServer;
 let uniqueIndex = 0;
+let storageSequence = 0;
+let mockStorageService;
 
 const nextId = (prefix) => `${prefix.slice(0, 4).toUpperCase()}-${String(uniqueIndex += 1).padStart(4, '0')}`;
 
@@ -38,9 +40,47 @@ const yesterday = () => {
 beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = 'test-secret-key';
+    process.env.AWS_REGION = 'us-east-1';
+    process.env.AWS_S3_BUCKET = 'educonnect-test-bucket';
+    process.env.AWS_SIGNED_URL_TTL_SECONDS = '900';
 
     mongoServer = await MongoMemoryServer.create();
     process.env.DATABASE_URL = mongoServer.getUri('educonnect_activities_test');
+
+    mockStorageService = {
+        uploads: [],
+        deletions: [],
+        async uploadProfilePhoto() {
+            throw new Error('Not implemented in activities.test');
+        },
+        async uploadActivitySubmission({ activityId, studentId, originalName }) {
+            const key = `activity-submissions/${activityId}/${studentId}/${Date.now()}-${originalName}`;
+            const signedUrl = `https://signed.example/${encodeURIComponent(key)}?v=${++storageSequence}`;
+            const result = {
+                provider: 'aws-s3',
+                bucket: process.env.AWS_S3_BUCKET,
+                key,
+                signedUrl,
+                signedUrlExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+            };
+            this.uploads.push(result);
+            return result;
+        },
+        async deleteObject(input) {
+            this.deletions.push(input);
+        },
+        async buildSignedUrl({ bucket, key }) {
+            return {
+                url: `https://signed.example/${encodeURIComponent(key)}?refresh=${++storageSequence}`,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+            };
+        },
+        isSignedUrlStale(expiresAt) {
+            if (!expiresAt) return true;
+            return new Date(expiresAt).getTime() <= (Date.now() + 60_000);
+        },
+    };
+    globalThis.__EDUCONNECT_STORAGE_SERVICE__ = mockStorageService;
 
     ({ default: app } = await import('../src/app.js'));
     ({ default: appConfig } = await import('../src/config/config.js'));
@@ -63,6 +103,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+    delete globalThis.__EDUCONNECT_STORAGE_SERVICE__;
     await appConfig.disconnectDatabase();
     await mongoServer.stop();
     await mongoose.connection.close();
@@ -246,6 +287,8 @@ describe('Activities API', () => {
     beforeEach(async () => {
         await clearDatabase();
         uniqueIndex = 0;
+        mockStorageService.uploads = [];
+        mockStorageService.deletions = [];
     });
 
     test('teacher can create an activity only for an assigned group and area', async () => {
@@ -483,5 +526,64 @@ describe('Activities API', () => {
         expect(linkSubmission.body.data.submission.submission_type).toBe('link');
         expect(linkSubmission.body.data.submission.link_url).toBe('https://example.com/entrega/123');
         expect(linkSubmission.body.data.submission.file_url).toBeNull();
+    });
+
+    test('stores activity submissions in S3, deletes previous object on resubmission and refreshes stale urls', async () => {
+        const fixture = await createFixture();
+        const createRes = await request(app)
+            .post('/api/activities/teacher/me')
+            .set('Authorization', `Bearer ${fixture.teacher.token}`)
+            .send(activityPayload(fixture))
+            .expect(201);
+
+        const activityId = createRes.body.data.activity._id;
+
+        const firstSubmission = await request(app)
+            .post(`/api/activities/student/me/${activityId}/submission`)
+            .set('Authorization', `Bearer ${fixture.student.token}`)
+            .attach('submission_file', Buffer.from('first work'), 'actividad.txt');
+
+        expect(firstSubmission.statusCode).toBe(200);
+        expect(firstSubmission.body.data.submission.file_url).toContain('https://signed.example/');
+        expect(mockStorageService.uploads).toHaveLength(1);
+
+        const storedSubmission = await ActivitySubmission.findOne({
+            activity_id: activityId,
+            student_id: fixture.student.profile._id,
+        });
+
+        const previousKey = storedSubmission.storage_key;
+
+        const resubmission = await request(app)
+            .post(`/api/activities/student/me/${activityId}/submission`)
+            .set('Authorization', `Bearer ${fixture.student.token}`)
+            .attach('submission_file', Buffer.from('second work'), 'actividad-v2.txt');
+
+        expect(resubmission.statusCode).toBe(200);
+        expect(mockStorageService.uploads).toHaveLength(2);
+        expect(mockStorageService.deletions).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ key: previousKey }),
+            ])
+        );
+
+        await ActivitySubmission.findByIdAndUpdate(storedSubmission._id, {
+            storage_signed_url: 'https://signed.example/expired-file',
+            storage_signed_url_expires_at: new Date(Date.now() - 5 * 60 * 1000),
+            file_url: 'https://signed.example/expired-file',
+        });
+
+        const detailRes = await request(app)
+            .get(`/api/activities/student/me/${activityId}`)
+            .set('Authorization', `Bearer ${fixture.student.token}`);
+
+        expect(detailRes.statusCode).toBe(200);
+        expect(detailRes.body.data.activity.submission.file_url).toContain('?refresh=');
+
+        const refreshed = await ActivitySubmission.findOne({
+            activity_id: activityId,
+            student_id: fixture.student.profile._id,
+        });
+        expect(refreshed.file_url).toContain('?refresh=');
     });
 });
