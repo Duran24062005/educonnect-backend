@@ -1,5 +1,4 @@
 // @ts-nocheck
-import fs from 'fs/promises';
 import path from 'path';
 import { activityRepository, activitySubmissionRepository } from '../repositories/ActivityRepository.js';
 import {
@@ -16,12 +15,10 @@ import {
     ACTIVITY_STATUS,
     ACTIVITY_SUBMISSION_STATUS,
     ACTIVITY_SUBMISSION_TYPE,
-    ACTIVITY_UPLOAD_SUBDIR,
 } from '../constants/activity.constants.js';
-import { ensureUploadDir } from '../utils/uploads.js';
 import NotificationService from './NotificationService.js';
-
-const uploadsDir = ensureUploadDir(ACTIVITY_UPLOAD_SUBDIR);
+import { getStorageService } from './storage/index.js';
+import MediaUrlService from './storage/mediaUrl.service.js';
 
 const round2 = (value) => Number((value || 0).toFixed(2));
 
@@ -211,20 +208,17 @@ const serializeSubmission = (submission) => {
     };
 };
 
-const removeStoredFile = async (fileName) => {
-    if (!fileName) return;
-
-    const absolutePath = path.resolve(uploadsDir, fileName);
-    try {
-        await fs.unlink(absolutePath);
-    } catch (error) {
-        if (error.code !== 'ENOENT') {
-            throw error;
-        }
-    }
-};
-
 class ActivityService {
+    async hydrateSubmission(submission) {
+        await MediaUrlService.refreshSubmission(submission);
+        return submission;
+    }
+
+    async hydrateSubmissions(submissions = []) {
+        await MediaUrlService.refreshSubmissions(submissions);
+        return submissions;
+    }
+
     async getTeacherProfile(userId) {
         const teacher = await teacherRepository.findByUserId(userId);
         if (!teacher) {
@@ -458,6 +452,7 @@ class ActivityService {
             enrollmentRepository.findByGroup(toIdString(activity.group_id), 'active'),
             activitySubmissionRepository.findByActivity(activity_id),
         ]);
+        await this.hydrateSubmissions(submissions);
 
         const submissionByStudentId = new Map(
             submissions.map((submission) => [toIdString(submission.student_id), submission])
@@ -543,6 +538,7 @@ class ActivityService {
             teacher_feedback: normalizeOptionalText(data.teacher_feedback),
             graded_at: new Date(),
         });
+        await this.hydrateSubmission(updated);
 
         return {
             activity: serializeActivity(activity, { rubric_locked: true }),
@@ -569,6 +565,7 @@ class ActivityService {
                 activities.map((activity) => activity._id)
             )
             : [];
+        await this.hydrateSubmissions(submissions);
 
         const submissionByActivityId = new Map(
             submissions.map((submission) => [toIdString(submission.activity_id), submission])
@@ -593,6 +590,7 @@ class ActivityService {
     async getStudentActivity(userId, activity_id) {
         const { student, activity } = await this.ensureStudentCanAccessActivity(userId, activity_id);
         const submission = await activitySubmissionRepository.findByActivityAndStudent(activity_id, student._id);
+        await this.hydrateSubmission(submission);
 
         return {
             activity: serializeActivity(activity, {
@@ -608,11 +606,9 @@ class ActivityService {
         const link_url = normalizeLinkUrl(rawLinkUrl);
 
         if (now < new Date(activity.open_at)) {
-            if (file) await removeStoredFile(file.filename);
             throw new AppError('La actividad aún no está disponible para entrega', 400);
         }
         if (now > new Date(activity.due_at)) {
-            if (file) await removeStoredFile(file.filename);
             throw new AppError('La fecha límite de entrega ya expiró', 400);
         }
 
@@ -620,7 +616,6 @@ class ActivityService {
         const hasLink = Boolean(link_url);
 
         if ((hasFile && hasLink) || (!hasFile && !hasLink)) {
-            if (file) await removeStoredFile(file.filename);
             throw new AppError('Debes enviar una entrega usando archivo o link, pero no ambos', 400);
         }
 
@@ -638,25 +633,42 @@ class ActivityService {
                 original_name: link_url,
                 mime_type: 'text/uri-list',
                 size_bytes: 0,
+                storage_provider: null,
+                storage_bucket: null,
+                storage_key: null,
+                storage_signed_url: null,
+                storage_signed_url_expires_at: null,
             };
         } else {
             const file_extension = getFileExtension(file.originalname);
             if (!activity.allowed_extensions.includes(file_extension)) {
-                await removeStoredFile(file.filename);
                 throw new AppError(
                     `Esta actividad solo acepta: ${activity.allowed_extensions.join(', ')}`,
                     400
                 );
             }
+
+            const uploaded = await getStorageService().uploadActivitySubmission({
+                activityId: activity_id,
+                studentId: toIdString(student._id),
+                buffer: file.buffer,
+                mimeType: file.mimetype,
+                originalName: file.originalname,
+            });
             deliveryPayload = {
                 submission_type: ACTIVITY_SUBMISSION_TYPE.FILE,
                 link_url: null,
-                file_url: `/uploads/${ACTIVITY_UPLOAD_SUBDIR}/${file.filename}`,
-                file_name: file.filename,
+                file_url: uploaded.signedUrl,
+                file_name: path.basename(uploaded.key),
                 file_extension,
                 original_name: file.originalname,
                 mime_type: file.mimetype,
                 size_bytes: file.size,
+                storage_provider: uploaded.provider,
+                storage_bucket: uploaded.bucket,
+                storage_key: uploaded.key,
+                storage_signed_url: uploaded.signedUrl,
+                storage_signed_url_expires_at: uploaded.signedUrlExpiresAt,
             };
         }
 
@@ -676,8 +688,13 @@ class ActivityService {
         let submission;
 
         if (existing) {
-            if (existing.submission_type === ACTIVITY_SUBMISSION_TYPE.FILE) {
-                await removeStoredFile(existing.file_name);
+            if (existing.submission_type === ACTIVITY_SUBMISSION_TYPE.FILE && existing.storage_bucket && existing.storage_key) {
+                await getStorageService().deleteObject({
+                    bucket: existing.storage_bucket,
+                    key: existing.storage_key,
+                }).catch((error) => {
+                    console.error('Failed to delete previous activity submission from S3', error);
+                });
             }
             submission = await activitySubmissionRepository.update(existing._id, payload);
         } else {
@@ -688,6 +705,7 @@ class ActivityService {
             });
             submission = await activitySubmissionRepository.findById(submission._id);
         }
+        await this.hydrateSubmission(submission);
 
         await NotificationService.notifyActivitySubmitted(activity, student._id, now);
 

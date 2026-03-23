@@ -1,21 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
 import AppError from '../utils/AppError.js';
-import { ensureUploadDir } from '../utils/uploads.js';
-
-const uploadDir = ensureUploadDir('profiles');
-
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const safeUserId = String(req.params.id || 'user').replace(/[^a-zA-Z0-9_-]/g, '');
-        const extension = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-        cb(null, `${safeUserId}-${Date.now()}${extension}`);
-    },
-});
 
 const fileFilter = (
     _req: Request,
@@ -30,7 +15,7 @@ const fileFilter = (
 };
 
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter,
 });

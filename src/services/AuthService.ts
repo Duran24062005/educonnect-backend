@@ -4,6 +4,7 @@ import UserRepository from '../repositories/UserRepository.js';
 import { teacherRepository, studentRepository } from '../repositories/PersonProfileRepository.js';
 import { AppError } from '../utils/error.js';
 import { generateToken } from '../utils/jwt.js';
+import MediaUrlService from './storage/mediaUrl.service.js';
 
 /**
  * AuthService
@@ -172,6 +173,7 @@ class AuthService {
         await UserRepository.updateLastLogin(user._id);
 
         const token = generateToken(user._id, person?.role || null);
+        await MediaUrlService.refreshUser(user);
 
         return {
             person: person ? (person.toObject ? person.toObject() : person) : null,
@@ -217,6 +219,7 @@ class AuthService {
     async getCurrentUser(userId) {
         const user = await UserRepository.findById(userId);
         if (!user) throw new AppError('Usuario no encontrado', 404);
+        await MediaUrlService.refreshUser(user);
         return {
             user: user.toJSON(),
             person: user.person_id || null,

@@ -66,7 +66,35 @@ const personSchema = new mongoose.Schema(
         profile_photo_url: {
             type: String,
             trim: true,
-            maxlength: [300, 'Máximo 300 caracteres'],
+            maxlength: [2000, 'Máximo 2000 caracteres'],
+            default: null,
+        },
+        storage_provider: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'Máximo 50 caracteres'],
+            default: null,
+        },
+        storage_bucket: {
+            type: String,
+            trim: true,
+            maxlength: [150, 'Máximo 150 caracteres'],
+            default: null,
+        },
+        storage_key: {
+            type: String,
+            trim: true,
+            maxlength: [1024, 'Máximo 1024 caracteres'],
+            default: null,
+        },
+        storage_signed_url: {
+            type: String,
+            trim: true,
+            maxlength: [2000, 'Máximo 2000 caracteres'],
+            default: null,
+        },
+        storage_signed_url_expires_at: {
+            type: Date,
             default: null,
         },
     },

@@ -23,12 +23,22 @@ interface CorsSection {
     origins: string[];
 }
 
+interface StorageSection {
+    awsRegion: string;
+    s3Bucket: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    signedUrlTtlSeconds: number;
+    signedUrlRefreshMarginSeconds: number;
+}
+
 class AppConfig {
     static instance: AppConfig | undefined;
     app!: AppSection;
     database!: DatabaseSection;
     jwt!: JwtSection;
     cors!: CorsSection;
+    storage!: StorageSection;
 
     constructor() {
         if (AppConfig.instance) return AppConfig.instance;
@@ -64,8 +74,26 @@ class AppConfig {
             origins: envCorsOrigins.length > 0 ? envCorsOrigins : defaultCorsOrigins,
         };
 
+        this.storage = {
+            awsRegion: process.env.AWS_REGION || 'us-east-1',
+            s3Bucket: process.env.AWS_S3_BUCKET || '',
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+            signedUrlTtlSeconds: Number(process.env.AWS_SIGNED_URL_TTL_SECONDS || 900),
+            signedUrlRefreshMarginSeconds: 60,
+        };
+
         if (this.app.nodeEnv === 'production' && !process.env.JWT_SECRET) {
             throw new Error('JWT_SECRET is required in production');
+        }
+
+        if (this.app.nodeEnv === 'production') {
+            if (!this.storage.s3Bucket) {
+                throw new Error('AWS_S3_BUCKET is required in production');
+            }
+            if (!this.storage.accessKeyId || !this.storage.secretAccessKey) {
+                throw new Error('AWS credentials are required in production');
+            }
         }
 
         AppConfig.instance = this;

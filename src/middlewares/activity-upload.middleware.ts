@@ -5,23 +5,7 @@ import AppError from '../utils/AppError.js';
 import {
     ACTIVITY_ALLOWED_EXTENSIONS,
     ACTIVITY_FILE_SIZE_LIMIT,
-    ACTIVITY_UPLOAD_SUBDIR,
 } from '../constants/activity.constants.js';
-import { ensureUploadDir } from '../utils/uploads.js';
-
-const uploadDir = ensureUploadDir(ACTIVITY_UPLOAD_SUBDIR);
-
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const safeUserId = String(req.userId || 'user').replace(/[^a-zA-Z0-9_-]/g, '');
-        const safeActivityId = String(req.params.activity_id || 'activity').replace(/[^a-zA-Z0-9_-]/g, '');
-        const extension = path.extname(file.originalname || '').toLowerCase() || '.bin';
-        cb(null, `${safeActivityId}-${safeUserId}-${Date.now()}${extension}`);
-    },
-});
 
 const fileFilter = (
     _req: Request,
@@ -41,7 +25,7 @@ const fileFilter = (
 };
 
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: ACTIVITY_FILE_SIZE_LIMIT },
     fileFilter,
 });

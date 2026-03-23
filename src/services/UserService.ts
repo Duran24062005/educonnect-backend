@@ -2,11 +2,8 @@
 import UserRepository from '../repositories/UserRepository.js';
 import PersonRepository from '../repositories/PersonRepository.js';
 import { AppError } from '../utils/error.js';
-import fs from 'fs/promises';
-import path from 'path';
-import { ensureUploadDir } from '../utils/uploads.js';
-
-const UPLOADS_PROFILE_DIR = ensureUploadDir('profiles');
+import { getStorageService } from './storage/index.js';
+import MediaUrlService from './storage/mediaUrl.service.js';
 
 /**
  * UserService
@@ -14,6 +11,16 @@ const UPLOADS_PROFILE_DIR = ensureUploadDir('profiles');
  * Responsabilidad: Lógica de negocio de gestión de usuarios
  */
 class UserService {
+    async hydrateUsers(users = []) {
+        await MediaUrlService.refreshUsers(users);
+        return users;
+    }
+
+    async hydrateUser(user) {
+        await MediaUrlService.refreshUser(user);
+        return user;
+    }
+
     /**
      * Subir foto de perfil
      * @param {string} userId - ID del usuario actual
@@ -28,7 +35,7 @@ class UserService {
             throw new AppError('No tienes permiso para actualizar este usuario', 403);
         }
 
-        if (!file || !file.filename) {
+        if (!file?.buffer || !file?.originalname) {
             throw new AppError('La imagen es requerida', 400);
         }
 
@@ -42,19 +49,30 @@ class UserService {
             throw new AppError('El usuario aún no tiene perfil personal', 400);
         }
 
-        await fs.mkdir(UPLOADS_PROFILE_DIR, { recursive: true });
+        const storage = getStorageService();
+        const uploaded = await storage.uploadProfilePhoto({
+            userId: targetUserId,
+            buffer: file.buffer,
+            mimeType: file.mimetype,
+            originalName: file.originalname,
+        });
 
-        const profilePhotoUrl = `/uploads/profiles/${file.filename}`;
-        if (person.profile_photo_url?.startsWith('/uploads/profiles/')) {
-            const oldFileName = person.profile_photo_url.replace('/uploads/profiles/', '');
-            if (oldFileName && oldFileName !== file.filename) {
-                const oldPath = path.join(UPLOADS_PROFILE_DIR, oldFileName);
-                await fs.unlink(oldPath).catch(() => null);
-            }
+        if (person.storage_bucket && person.storage_key) {
+            await storage.deleteObject({
+                bucket: person.storage_bucket,
+                key: person.storage_key,
+            }).catch((error) => {
+                console.error('Failed to delete previous profile photo from S3', error);
+            });
         }
 
         const updatedPerson = await PersonRepository.update(person._id, {
-            profile_photo_url: profilePhotoUrl,
+            profile_photo_url: uploaded.signedUrl,
+            storage_provider: uploaded.provider,
+            storage_bucket: uploaded.bucket,
+            storage_key: uploaded.key,
+            storage_signed_url: uploaded.signedUrl,
+            storage_signed_url_expires_at: uploaded.signedUrlExpiresAt,
         });
 
         return {
@@ -99,6 +117,7 @@ class UserService {
         if (filters.search) filter.search = String(filters.search).trim();
 
         const { users, total } = await UserRepository.findAll(filter, page, limit);
+        await this.hydrateUsers(users);
 
         return {
             users,
@@ -123,6 +142,7 @@ class UserService {
             throw new AppError('Usuario no encontrado', 404);
         }
 
+        await this.hydrateUser(user);
         return user.toJSON();
     }
 
@@ -197,6 +217,7 @@ class UserService {
         await PersonRepository.update(user.person_id._id, updateFields);
 
         const updatedUser = await UserRepository.findById(targetUserId);
+        await this.hydrateUser(updatedUser);
         return updatedUser.toJSON();
     }
 
@@ -206,6 +227,7 @@ class UserService {
      */
     async getPendingUsers() {
         const users = await UserRepository.findPending();
+        await this.hydrateUsers(users);
         return users.map(user => user.toJSON());
     }
 
@@ -231,6 +253,7 @@ class UserService {
         }
 
         const { users, total } = await UserRepository.findByRole(role, page, limit);
+        await this.hydrateUsers(users);
 
         return {
             users,
@@ -292,6 +315,7 @@ class UserService {
         });
 
         const approvedUser = await UserRepository.findById(userId);
+        await this.hydrateUser(approvedUser);
         return approvedUser.toJSON();
     }
 
@@ -349,6 +373,7 @@ class UserService {
         });
 
         const updatedUser = await UserRepository.findById(userId);
+        await this.hydrateUser(updatedUser);
         return updatedUser.toJSON();
     }
 

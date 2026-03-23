@@ -17,7 +17,6 @@ import evaluationsRouter from './routes/evaluations.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
 import notificationsRouter from './routes/notifications.routes.js';
-import { getUploadsRootDir } from './utils/uploads.js';
 
 const app = express();
 
@@ -58,7 +57,6 @@ app.get('/api-docs', (_req, res) => {
 });
 app.use('/api-docs', swaggerUi.serveFiles(swaggerSpec));
 app.get('/api-docs/', swaggerUi.setup(swaggerSpec));
-app.use('/uploads', express.static(getUploadsRootDir()));
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
