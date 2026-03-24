@@ -5,6 +5,7 @@ import { validateRequest } from '../middlewares/validateRequest.js';
 import {
     studentOverviewQuerySchema,
     studentAreasQuerySchema,
+    studentBulletinQuerySchema,
     studentAreaTrendQuerySchema,
     studentPeriodSummaryQuerySchema,
     teacherGroupsQuerySchema,
@@ -26,6 +27,7 @@ router.use(protect);
 
 router.get('/student/me/overview', authorize('student'), validateRequest(studentOverviewQuerySchema), AnalyticsController.studentOverview);
 router.get('/student/me/areas', authorize('student'), validateRequest(studentAreasQuerySchema), AnalyticsController.studentAreas);
+router.get('/student/me/bulletin', authorize('student'), validateRequest(studentBulletinQuerySchema), AnalyticsController.studentBulletin);
 router.get('/student/me/area-trend', authorize('student'), validateRequest(studentAreaTrendQuerySchema), AnalyticsController.studentAreaTrend);
 router.get('/student/me/period-summary', authorize('student'), validateRequest(studentPeriodSummaryQuerySchema), AnalyticsController.studentPeriodSummary);
 

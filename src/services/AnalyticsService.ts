@@ -4,6 +4,7 @@ import AppError from '../utils/AppError.js';
 import AnalyticsRepository from '../repositories/AnalyticsRepository.js';
 import UserService from './UserService.js';
 import SimpleMemoryCache from '../utils/simpleMemoryCache.js';
+import appConfig from '../config/config.js';
 
 const PASS_SCORE = 6;
 const SUMMARY_CACHE_TTL_MS = 30_000;
@@ -15,6 +16,26 @@ const round2 = (value) => Number((value || 0).toFixed(2));
 const computeAverage = (values) => {
     if (!values.length) return 0;
     return round2(values.reduce((sum, value) => sum + value, 0) / values.length);
+};
+
+const computeWeightedAverage = (items, scoresByItemId) => {
+    let weightedScore = 0;
+    let totalPercentage = 0;
+
+    for (const item of items) {
+        const itemId = toIdString(item._id);
+        const score = scoresByItemId.get(itemId);
+        if (score === undefined || score === null) continue;
+
+        weightedScore += (Number(score) * Number(item.percentage || 0)) / 100;
+        totalPercentage += Number(item.percentage || 0);
+    }
+
+    if (totalPercentage === 0) return 0;
+    const normalized = totalPercentage < 100
+        ? (weightedScore / totalPercentage) * 100
+        : weightedScore;
+    return round2(normalized);
 };
 
 const getPerformanceLevel = (score) => {
@@ -159,6 +180,131 @@ class AnalyticsService {
 
         return {
             areas: this.aggregateAreaAverages(results),
+        };
+    }
+
+    async getStudentBulletin(userId, schoolYearId, periodId) {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId);
+        const period = periods.find((item) => item._id.toString() === periodId.toString());
+        if (!period) {
+            throw new AppError('Periodo no encontrado para el año escolar seleccionado', 404);
+        }
+
+        const enrollment = await AnalyticsRepository.findEnrollmentByStudentAndYear(student._id, schoolYearId);
+        if (!enrollment) {
+            throw new AppError('Matrícula activa no encontrada para el estudiante en este año escolar', 404);
+        }
+
+        const [periodResults, gradeItems, studentGrades] = await Promise.all([
+            AnalyticsRepository.findPeriodAreaResults({
+                student_id: student._id,
+                period_id: period._id,
+            }),
+            AnalyticsRepository.findGradeItemsByPeriod(period._id),
+            AnalyticsRepository.findStudentGradesByStudent(student._id),
+        ]);
+
+        const studentPerson = student.user_id?.person_id;
+        const fullName = studentPerson
+            ? `${studentPerson.first_name || ''} ${studentPerson.last_name || ''}`.trim()
+            : 'Sin nombre';
+
+        const gradeItemsForPeriod = gradeItems.filter(
+            (item) => toIdString(item.period_id) === period._id.toString()
+        );
+        const gradeItemIds = new Set(gradeItemsForPeriod.map((item) => toIdString(item._id)));
+        const scoresByItemId = new Map(
+            studentGrades
+                .filter((row) => gradeItemIds.has(toIdString(row.grade_item_id?._id || row.grade_item_id)))
+                .map((row) => [toIdString(row.grade_item_id?._id || row.grade_item_id), Number(row.score)])
+        );
+
+        const itemsByArea = new Map();
+        for (const item of gradeItemsForPeriod) {
+            const areaId = toIdString(item.area_id);
+            if (!itemsByArea.has(areaId)) {
+                itemsByArea.set(areaId, []);
+            }
+            itemsByArea.get(areaId).push(item);
+        }
+
+        const resultByArea = new Map(
+            periodResults.map((row) => [toIdString(row.area_id), row])
+        );
+        const areaIds = new Set([
+            ...Array.from(itemsByArea.keys()),
+            ...Array.from(resultByArea.keys()),
+        ]);
+
+        const areas = Array.from(areaIds)
+            .map((areaId) => {
+                const items = (itemsByArea.get(areaId) || []).slice().sort((a, b) => {
+                    const nameA = String(a.name || '');
+                    const nameB = String(b.name || '');
+                    return nameA.localeCompare(nameB, 'es');
+                });
+                const result = resultByArea.get(areaId);
+                const areaName = result?.area_id?.name || items[0]?.area_id?.name || 'Área';
+                const evaluations = items
+                    .filter((item) => scoresByItemId.has(toIdString(item._id)))
+                    .map((item) => ({
+                        id: toIdString(item._id),
+                        name: item.name,
+                        score: round2(scoresByItemId.get(toIdString(item._id))),
+                        weight: Number(item.percentage || 0),
+                    }));
+
+                const computedAverage = computeWeightedAverage(items, scoresByItemId);
+                const periodAverage = round2(result?.final_score ?? computedAverage);
+
+                return {
+                    area_id: areaId,
+                    area_name: areaName,
+                    period_average: periodAverage,
+                    final_result_label: getPerformanceLevel(periodAverage),
+                    status: periodAverage >= PASS_SCORE ? 'passed' : 'failed',
+                    evaluations,
+                };
+            })
+            .sort((a, b) => a.area_name.localeCompare(b.area_name, 'es'));
+
+        const institutionName = process.env.INSTITUTION_NAME || appConfig.app.name.replace(/\s+Backend$/i, '').trim() || 'EduConnect';
+        const municipality = process.env.INSTITUTION_MUNICIPALITY || '';
+        const department = process.env.INSTITUTION_DEPARTMENT || '';
+
+        return {
+            institution: {
+                logo_url: process.env.INSTITUTION_LOGO_URL || null,
+                official_name: institutionName,
+                municipality,
+                department,
+                dane_code: process.env.INSTITUTION_DANE_CODE || null,
+                header_text: process.env.INSTITUTION_HEADER_TEXT || '',
+                legal_note: process.env.INSTITUTION_LEGAL_NOTE || null,
+            },
+            student: {
+                full_name: fullName,
+                document_label: studentPerson?.document_type || 'Documento',
+                document_number: studentPerson?.document_number || 'N/A',
+                code: student._id?.toString?.() || null,
+            },
+            enrollment: {
+                grade_name: enrollment.group_id?.grade_id?.name || 'Grado',
+                group_name: enrollment.group_id?.name || '',
+                school_year_label: String(schoolYear.year || ''),
+                school_shift: null,
+            },
+            period: {
+                id: period._id,
+                name: period.name,
+                start_date: period.start_date || null,
+                end_date: period.end_date || null,
+                issued_at: new Date().toISOString(),
+            },
+            teacher_comment: enrollment.observations || null,
+            director_name: null,
+            signatures: [],
+            areas,
         };
     }
 

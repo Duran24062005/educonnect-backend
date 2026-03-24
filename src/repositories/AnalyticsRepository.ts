@@ -10,10 +10,15 @@ import GroupTeacher from '../models/GroupTeacherModel.js';
 import Enrollment from '../models/EnrollmentModel.js';
 import PeriodAreaResult from '../models/PeriodAreaResultModel.js';
 import FinalResult from '../models/FinalResultModel.js';
+import GradeItem from '../models/GradeItemModel.js';
+import StudentGrade from '../models/StudentGradeModel.js';
 
 class AnalyticsRepository {
     async findStudentByUserId(userId) {
-        return Student.findOne({ user_id: userId });
+        return Student.findOne({ user_id: userId }).populate({
+            path: 'user_id',
+            populate: { path: 'person_id' },
+        });
     }
 
     async findTeacherByUserId(userId) {
@@ -89,7 +94,12 @@ class AnalyticsRepository {
     }
 
     async findEnrollmentByStudentAndYear(studentId, schoolYearId) {
-        return Enrollment.findOne({ student_id: studentId, school_year_id: schoolYearId, status: 'active' });
+        return Enrollment.findOne({ student_id: studentId, school_year_id: schoolYearId, status: 'active' })
+            .populate({
+                path: 'group_id',
+                populate: [{ path: 'grade_id' }, { path: 'school_year_id' }],
+            })
+            .populate('school_year_id');
     }
 
     async findStudentsByIds(studentIds) {
@@ -113,6 +123,17 @@ class AnalyticsRepository {
             period_id: periodId,
             student_id: { $in: studentIds },
         }).populate('period_id').populate('area_id');
+    }
+
+    async findGradeItemsByPeriod(periodId) {
+        return GradeItem.find({ period_id: periodId }).populate('area_id').populate('period_id').sort({ name: 1 });
+    }
+
+    async findStudentGradesByStudent(studentId) {
+        return StudentGrade.find({ student_id: studentId }).populate({
+            path: 'grade_item_id',
+            populate: [{ path: 'area_id' }, { path: 'period_id' }],
+        });
     }
 }
 

@@ -7,6 +7,11 @@ const schoolYearRequired = z.object({
 
 export const studentOverviewQuerySchema = { query: schoolYearRequired };
 export const studentAreasQuerySchema = { query: schoolYearRequired };
+export const studentBulletinQuerySchema = {
+    query: schoolYearRequired.extend({
+        period_id: objectIdSchema,
+    }),
+};
 export const studentAreaTrendQuerySchema = {
     query: schoolYearRequired.extend({
         area_id: objectIdSchema,

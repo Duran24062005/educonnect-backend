@@ -14,6 +14,15 @@ class AnalyticsController {
         res.status(200).json({ status: 'success', data });
     });
 
+    studentBulletin = asyncHandler(async (req, res) => {
+        const data = await AnalyticsService.getStudentBulletin(
+            req.userId,
+            getQueryString(req.query.school_year_id),
+            getQueryString(req.query.period_id)
+        );
+        res.status(200).json({ status: 'success', data });
+    });
+
     studentAreaTrend = asyncHandler(async (req, res) => {
         const data = await AnalyticsService.getStudentAreaTrend(
             req.userId,
