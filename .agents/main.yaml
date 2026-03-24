@@ -1,0 +1,13 @@
+version: "1.0"
+project:
+  name: "EduConnect Backend"
+  description: "Repository-specific instructions for backend implementation, planning, commits, and documentation."
+context:
+  files:
+    - "context/conventions.md"
+layers:
+  context: "context/"
+  skills: "skills/"
+  commands: "commands/"
+  agents: "agents/"
+  permissions: "permissions/"
