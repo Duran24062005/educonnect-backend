@@ -16,6 +16,8 @@ Importante:
 4. [authentication_flow.md](./authentication_flow.md)
 5. [database_docs.md](./database_docs.md)
 6. [documentation_guide.md](./documentation_guide.md)
+7. [000-doc-template.md](./000-doc-template.md)
+8. [commit-conventions.md](./commit-conventions.md)
 
 ## Documentos utiles por tema
 
@@ -32,6 +34,7 @@ Importante:
 - `src/docs/swagger.ts`: referencia viva de endpoints documentados
 - `api/index.ts`: entrada real usada por Vercel en despliegue serverless
 - `prds/`: contexto funcional relacionado con trabajo de este repositorio
+- `prds/000-prd-template.md`: plantilla base para nuevos PRDs
 
 ## Regla de mantenimiento
 
