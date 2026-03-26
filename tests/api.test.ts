@@ -18,6 +18,27 @@ const ADMIN = {
     document_number: 'ADM-9001',
 };
 
+const seedListedUser = async (index: number) => {
+    const user = await User.create({
+        email: `listed.user.${index}@educonnect.local`,
+        hash_password: `Password${index}!`,
+    });
+
+    const person = await Person.create({
+        user_id: user._id,
+        first_name: `Listed${index}`,
+        last_name: 'User',
+        role: 'Student',
+        status: 'active',
+        born_date: '2012-01-01',
+        document_type: 'CC',
+        document_number: `LIST-${index}`,
+    });
+
+    await User.findByIdAndUpdate(user._id, { person_id: person._id });
+    return user;
+};
+
 beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = 'test-secret-key';
@@ -171,6 +192,44 @@ describe('EduConnect API', () => {
         expect(listRes.statusCode).toBe(200);
         expect(Array.isArray(listRes.body.data.users)).toBe(true);
         expect(listRes.body.data.users.length).toBeGreaterThan(0);
+    });
+
+    test('respects page and limit when listing users for admin', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+
+        const adminToken = adminLogin.body.data.token;
+
+        await Promise.all([
+            seedListedUser(1),
+            seedListedUser(2),
+            seedListedUser(3),
+            seedListedUser(4),
+        ]);
+
+        const firstPageRes = await request(app)
+            .get('/api/users?page=1&limit=2')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        const secondPageRes = await request(app)
+            .get('/api/users?page=2&limit=2')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(firstPageRes.statusCode).toBe(200);
+        expect(secondPageRes.statusCode).toBe(200);
+
+        expect(firstPageRes.body.data.pagination.current_page).toBe(1);
+        expect(firstPageRes.body.data.pagination.limit).toBe(2);
+        expect(secondPageRes.body.data.pagination.current_page).toBe(2);
+        expect(secondPageRes.body.data.pagination.limit).toBe(2);
+
+        expect(Array.isArray(firstPageRes.body.data.users)).toBe(true);
+        expect(Array.isArray(secondPageRes.body.data.users)).toBe(true);
+        expect(firstPageRes.body.data.users).toHaveLength(2);
+        expect(secondPageRes.body.data.users).toHaveLength(2);
+        expect(secondPageRes.body.data.users[0]?._id).not.toBe(firstPageRes.body.data.users[0]?._id);
     });
 
     test('returns error for invalid object id in params', async () => {
