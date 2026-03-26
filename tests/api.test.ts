@@ -9,6 +9,7 @@ let Person;
 let mongoServer;
 let storageSequence = 0;
 let mockStorageService;
+let mockEmailService;
 
 const ADMIN = {
     email: 'admin.test@educonnect.local',
@@ -83,6 +84,15 @@ beforeAll(async () => {
         },
     };
     globalThis.__EDUCONNECT_STORAGE_SERVICE__ = mockStorageService;
+    mockEmailService = {
+        sentEmails: [],
+        async sendTemplateEmail(payload) {
+            const result = { sent: true, mocked: true, ...payload };
+            this.sentEmails.push(result);
+            return result;
+        },
+    };
+    globalThis.__EDUCONNECT_EMAIL_SERVICE__ = mockEmailService;
 
     ({ default: app } = await import('../src/app.js'));
     ({ default: appConfig } = await import('../src/config/config.js'));
@@ -94,6 +104,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
     delete globalThis.__EDUCONNECT_STORAGE_SERVICE__;
+    delete globalThis.__EDUCONNECT_EMAIL_SERVICE__;
     await appConfig.disconnectDatabase();
     await mongoServer.stop();
     await mongoose.connection.close();
@@ -103,6 +114,7 @@ describe('EduConnect API', () => {
     beforeEach(() => {
         mockStorageService.uploads = [];
         mockStorageService.deletions = [];
+        mockEmailService.sentEmails = [];
     });
 
     test('returns health status', async () => {
@@ -134,6 +146,8 @@ describe('EduConnect API', () => {
             });
 
         expect(completeProfileRes.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(1);
+        expect(mockEmailService.sentEmails[0].template_name).toBe('welcome_inactive_count_educonnect.html');
 
         const person = await Person.findOne({ document_number: ADMIN.document_number });
         await Person.findByIdAndUpdate(person._id, { role: 'Admin', status: 'active' });
@@ -184,6 +198,7 @@ describe('EduConnect API', () => {
             .send({ role: 'student' });
 
         expect(approveRes.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails.some((email) => email.template_name === 'welcome_active_count_educonnect.html')).toBe(true);
 
         const listRes = await request(app)
             .get('/api/users/role/student?page=1&limit=10')
@@ -366,5 +381,182 @@ describe('EduConnect API', () => {
         const refreshedPerson = await Person.findById(user.person_id._id);
         expect(refreshedPerson.profile_photo_url).toContain('?refresh=');
         expect(refreshedPerson.storage_key).toContain('profiles/');
+    });
+
+    test('sends inactive welcome email when profile is completed', async () => {
+        const registerRes = await request(app).post('/api/auth/register').send({
+            email: 'pending.welcome@educonnect.local',
+            password: 'Student123!',
+            password_confirm: 'Student123!',
+        });
+
+        const completeProfileRes = await request(app)
+            .post('/api/auth/complete-profile')
+            .set('Authorization', `Bearer ${registerRes.body.data.token}`)
+            .send({
+                first_name: 'Pending',
+                last_name: 'Welcome',
+                born_date: '2012-03-10',
+                document_type: 'CC',
+                document_number: 'PEND-4001',
+                requested_role: 'Student',
+            });
+
+        expect(completeProfileRes.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(1);
+        expect(mockEmailService.sentEmails[0]).toMatchObject({
+            template_name: 'welcome_inactive_count_educonnect.html',
+            recipient: 'pending.welcome@educonnect.local',
+        });
+    });
+
+    test('sends active welcome email when admin approves a pending user', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+
+        const registerRes = await request(app).post('/api/auth/register').send({
+            email: 'approve.welcome@educonnect.local',
+            password: 'Student123!',
+            password_confirm: 'Student123!',
+        });
+
+        await request(app)
+            .post('/api/auth/complete-profile')
+            .set('Authorization', `Bearer ${registerRes.body.data.token}`)
+            .send({
+                first_name: 'Approve',
+                last_name: 'Welcome',
+                born_date: '2012-03-10',
+                document_type: 'CC',
+                document_number: 'APRV-4001',
+                requested_role: 'Student',
+            });
+
+        mockEmailService.sentEmails = [];
+
+        const user = await User.findOne({ email: 'approve.welcome@educonnect.local' }).populate('person_id');
+        const approveRes = await request(app)
+            .post(`/api/users/${user._id}/approve`)
+            .set('Authorization', `Bearer ${adminLogin.body.data.token}`)
+            .send({ role: 'student' });
+
+        expect(approveRes.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(1);
+        expect(mockEmailService.sentEmails[0]).toMatchObject({
+            template_name: 'welcome_active_count_educonnect.html',
+            recipient: 'approve.welcome@educonnect.local',
+        });
+    });
+
+    test('sends active welcome email when status changes to active', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+        mockEmailService.sentEmails = [];
+
+        const user = await User.create({
+            email: 'status.active@educonnect.local',
+            hash_password: 'Password123!',
+        });
+
+        const person = await Person.create({
+            user_id: user._id,
+            first_name: 'Status',
+            last_name: 'Active',
+            role: 'Student',
+            status: 'inactive',
+            born_date: '2012-01-01',
+            document_type: 'CC',
+            document_number: 'STAT-ACT-01',
+        });
+
+        await User.findByIdAndUpdate(user._id, { person_id: person._id });
+
+        const response = await request(app)
+            .patch(`/api/users/${user._id}/status`)
+            .set('Authorization', `Bearer ${adminLogin.body.data.token}`)
+            .send({ status: 'active' });
+
+        expect(response.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(1);
+        expect(mockEmailService.sentEmails[0]).toMatchObject({
+            template_name: 'welcome_active_count_educonnect.html',
+            recipient: 'status.active@educonnect.local',
+        });
+    });
+
+    test('sends inactive welcome email when status changes to inactive', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+        mockEmailService.sentEmails = [];
+
+        const user = await User.create({
+            email: 'status.inactive@educonnect.local',
+            hash_password: 'Password123!',
+        });
+
+        const person = await Person.create({
+            user_id: user._id,
+            first_name: 'Status',
+            last_name: 'Inactive',
+            role: 'Student',
+            status: 'active',
+            born_date: '2012-01-01',
+            document_type: 'CC',
+            document_number: 'STAT-INA-01',
+        });
+
+        await User.findByIdAndUpdate(user._id, { person_id: person._id });
+
+        const response = await request(app)
+            .patch(`/api/users/${user._id}/status`)
+            .set('Authorization', `Bearer ${adminLogin.body.data.token}`)
+            .send({ status: 'inactive' });
+
+        expect(response.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(1);
+        expect(mockEmailService.sentEmails[0]).toMatchObject({
+            template_name: 'welcome_inactive_count_educonnect.html',
+            recipient: 'status.inactive@educonnect.local',
+        });
+    });
+
+    test('does not resend status email when status remains unchanged', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+        mockEmailService.sentEmails = [];
+
+        const user = await User.create({
+            email: 'status.same@educonnect.local',
+            hash_password: 'Password123!',
+        });
+
+        const person = await Person.create({
+            user_id: user._id,
+            first_name: 'Status',
+            last_name: 'Same',
+            role: 'Student',
+            status: 'inactive',
+            born_date: '2012-01-01',
+            document_type: 'CC',
+            document_number: 'STAT-SAME-01',
+        });
+
+        await User.findByIdAndUpdate(user._id, { person_id: person._id });
+
+        const response = await request(app)
+            .patch(`/api/users/${user._id}/status`)
+            .set('Authorization', `Bearer ${adminLogin.body.data.token}`)
+            .send({ status: 'inactive' });
+
+        expect(response.statusCode).toBe(200);
+        expect(mockEmailService.sentEmails).toHaveLength(0);
     });
 });

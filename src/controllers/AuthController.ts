@@ -1,6 +1,6 @@
 import { asyncHandler } from '../utils/error.js';
 import AuthService from '../services/AuthService.js';
-import { sendWelcomeEmail } from '../services/EmailService.js';
+import { sendInactiveWelcomeEmail, sendWelcomeEmail } from '../services/EmailService.js';
 import AppError from '../utils/AppError.js';
 
 /**
@@ -57,11 +57,9 @@ class AuthController {
         }
 
         // Enviar email de bienvenida ahora que tenemos nombre y email
-        const emailResult = await sendWelcomeEmail({
+        const emailResult = await sendInactiveWelcomeEmail({
             email: authenticatedUserEmail,
             firstName: result.person.first_name,
-            templateName: 'template_welcome.html',
-            emailToken: result.token,
         });
 
         res.status(200).json({
@@ -89,7 +87,7 @@ class AuthController {
                 emailData = await sendWelcomeEmail({
                     email: loginUserEmail,
                     firstName: result.person.first_name,
-                    templateName: 'educonnect_login.html',
+                    templateName: 'login_educonnect.html',
                 });
             }
 

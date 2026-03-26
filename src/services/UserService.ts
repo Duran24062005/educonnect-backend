@@ -4,6 +4,7 @@ import PersonRepository from '../repositories/PersonRepository.js';
 import { AppError } from '../utils/error.js';
 import { getStorageService } from './storage/index.js';
 import MediaUrlService from './storage/mediaUrl.service.js';
+import { sendActiveWelcomeEmail, sendInactiveWelcomeEmail } from './EmailService.js';
 
 /**
  * UserService
@@ -11,6 +12,25 @@ import MediaUrlService from './storage/mediaUrl.service.js';
  * Responsabilidad: Lógica de negocio de gestión de usuarios
  */
 class UserService {
+    async sendStatusTransitionEmail(user, previousStatus, newStatus) {
+        const email = typeof user?.email === 'string' ? user.email : null;
+        const firstName = typeof user?.person_id?.first_name === 'string' ? user.person_id.first_name : null;
+
+        if (!email || !firstName || previousStatus === newStatus) {
+            return null;
+        }
+
+        if (newStatus === 'active') {
+            return await sendActiveWelcomeEmail({ email, firstName });
+        }
+
+        if (newStatus === 'inactive' || newStatus === 'pending') {
+            return await sendInactiveWelcomeEmail({ email, firstName });
+        }
+
+        return null;
+    }
+
     async hydrateUsers(users = []) {
         await MediaUrlService.refreshUsers(users);
         return users;
@@ -294,6 +314,8 @@ class UserService {
             throw new AppError('El usuario no tiene perfil personal', 400);
         }
 
+        const previousStatus = person.status;
+
         if (person.status !== 'pending') {
             throw new AppError('El usuario no está pendiente de aprobación', 400);
         }
@@ -315,6 +337,7 @@ class UserService {
         });
 
         const approvedUser = await UserRepository.findById(userId);
+        await this.sendStatusTransitionEmail(approvedUser, previousStatus, 'active');
         await this.hydrateUser(approvedUser);
         return approvedUser.toJSON();
     }
@@ -365,6 +388,8 @@ class UserService {
             throw new AppError('El usuario no tiene perfil personal', 400);
         }
 
+        const previousStatus = person.status;
+
         // ============ ACTUALIZAR ============
 
         await PersonRepository.update(person._id, {
@@ -373,6 +398,7 @@ class UserService {
         });
 
         const updatedUser = await UserRepository.findById(userId);
+        await this.sendStatusTransitionEmail(updatedUser, previousStatus, newStatus);
         await this.hydrateUser(updatedUser);
         return updatedUser.toJSON();
     }
