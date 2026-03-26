@@ -14,6 +14,7 @@ type sendWelcomeEmailType = {
     firstName: string;
     templateName: string;
     emailToken?: string;
+    subject?: string;
 }
 
 type sendAccountStatusEmailType = {
@@ -81,7 +82,13 @@ const sendTemplateEmail = async ({
  * @param {string | null} emailToken - Token opcional para verificación
  * @returns {Promise<Object>} Respuesta de la API
  */
-export const sendWelcomeEmail = async ({email, firstName, templateName, emailToken = null}: sendWelcomeEmailType) => {
+export const sendWelcomeEmail = async ({
+    email,
+    firstName,
+    templateName,
+    emailToken = null,
+    subject = 'Bienvenido a EduConnect - Verifica tu email',
+}: sendWelcomeEmailType) => {
     try {
         const templateData: Record<string, unknown> = {
             nombre: firstName,
@@ -94,7 +101,7 @@ export const sendWelcomeEmail = async ({email, firstName, templateName, emailTok
 
         return await sendTemplateEmail({
             recipient: email,
-            subject: 'Bienvenido a EduConnect - Verifica tu email',
+            subject,
             templateName,
             templateData,
         });

@@ -88,6 +88,7 @@ class AuthController {
                     email: loginUserEmail,
                     firstName: result.person.first_name,
                     templateName: 'login_educonnect.html',
+                    subject: 'Nuevo inicio de sesión en EduConnect',
                 });
             }
 

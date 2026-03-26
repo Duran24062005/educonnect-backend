@@ -135,6 +135,123 @@ class AnalyticsService {
         });
     }
 
+    buildAreaMetrics(results, periods) {
+        const areaMap = new Map();
+        const sortedPeriods = [...periods].sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+
+        for (const row of results) {
+            const areaId = toIdString(row.area_id);
+            if (!areaMap.has(areaId)) {
+                areaMap.set(areaId, {
+                    area_id: areaId,
+                    area_name: row.area_id?.name || 'Área',
+                    values: [],
+                    periods: new Map(),
+                });
+            }
+
+            const entry = areaMap.get(areaId);
+            entry.values.push(Number(row.final_score || 0));
+            entry.periods.set(toIdString(row.period_id), Number(row.final_score || 0));
+        }
+
+        return Array.from(areaMap.values())
+            .map((item) => {
+                const finalAverage = computeAverage(item.values);
+                return {
+                    area_id: item.area_id,
+                    area_name: item.area_name,
+                    final_average: finalAverage,
+                    status: finalAverage >= PASS_SCORE ? 'passed' : 'failed',
+                    periods: sortedPeriods.map((period) => {
+                        const score = item.periods.get(period._id.toString()) || 0;
+                        return {
+                            period_id: period._id,
+                            period_name: period.name,
+                            average: round2(score),
+                            status: score >= PASS_SCORE ? 'passed' : 'failed',
+                        };
+                    }),
+                };
+            })
+            .sort((a, b) => a.area_name.localeCompare(b.area_name, 'es'));
+    }
+
+    async buildStudentYearAverages(studentId) {
+        const [enrollments, allSchoolYears] = await Promise.all([
+            AnalyticsRepository.findEnrollmentsByStudent(studentId),
+            AnalyticsRepository.findAllSchoolYears(),
+        ]);
+
+        const schoolYearIds = Array.from(new Set(
+            enrollments
+                .map((enrollment) => toIdString(enrollment.school_year_id))
+                .filter(Boolean)
+        ));
+
+        if (!schoolYearIds.length) {
+            return new Map();
+        }
+
+        const schoolYearById = new Map(
+            allSchoolYears.map((year) => [toIdString(year._id), year])
+        );
+        const periods = await AnalyticsRepository.findPeriodsBySchoolYears(schoolYearIds);
+        const periodIds = periods.map((period) => period._id);
+
+        if (!periodIds.length) {
+            return new Map();
+        }
+
+        const results = await AnalyticsRepository.findPeriodAreaResults({
+            student_id: studentId,
+            period_id: { $in: periodIds },
+        });
+
+        const periodToYear = new Map(
+            periods.map((period) => [toIdString(period._id), toIdString(period.school_year_id)])
+        );
+        const areaYearMap = new Map();
+
+        for (const row of results) {
+            const areaId = toIdString(row.area_id);
+            const schoolYearId = periodToYear.get(toIdString(row.period_id));
+            if (!areaId || !schoolYearId) continue;
+
+            if (!areaYearMap.has(areaId)) {
+                areaYearMap.set(areaId, {
+                    area_name: row.area_id?.name || 'Área',
+                    years: new Map(),
+                });
+            }
+
+            const areaEntry = areaYearMap.get(areaId);
+            if (!areaEntry.years.has(schoolYearId)) {
+                areaEntry.years.set(schoolYearId, []);
+            }
+            areaEntry.years.get(schoolYearId).push(Number(row.final_score || 0));
+        }
+
+        const result = new Map();
+        for (const [areaId, areaEntry] of areaYearMap.entries()) {
+            const yearAverages = Array.from(areaEntry.years.entries())
+                .map(([schoolYearId, values]) => {
+                    const schoolYear = schoolYearById.get(schoolYearId);
+                    return {
+                        school_year_id: schoolYearId,
+                        year: String(schoolYear?.year || ''),
+                        average: computeAverage(values),
+                    };
+                })
+                .filter((item) => item.year)
+                .sort((a, b) => Number(a.year) - Number(b.year));
+
+            result.set(areaId, yearAverages);
+        }
+
+        return result;
+    }
+
     async getStudentOverview(userId, schoolYearId) {
         const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId);
         const periodIds = periods.map((period) => period._id);
@@ -144,7 +261,7 @@ class AnalyticsService {
             period_id: { $in: periodIds },
         });
 
-        const areas = this.aggregateAreaAverages(results);
+        const areas = this.buildAreaMetrics(results, periods);
         const finalResult = await AnalyticsRepository.findFinalResult(student._id, schoolYearId);
         const generalAverage = areas.length > 0
             ? computeAverage(areas.map((area) => area.final_average))
@@ -152,6 +269,9 @@ class AnalyticsService {
 
         const passedAreas = areas.filter((area) => area.status === 'passed').length;
         const failedAreas = areas.filter((area) => area.status === 'failed').length;
+        const sortedAreas = [...areas].sort((a, b) => b.final_average - a.final_average);
+        const bestArea = sortedAreas[0]?.area_name || null;
+        const attentionArea = [...sortedAreas].reverse()[0]?.area_name || null;
 
         return {
             student_id: student._id,
@@ -166,6 +286,8 @@ class AnalyticsService {
                 failed_areas: failedAreas,
                 final_status: finalResult?.status || (generalAverage >= PASS_SCORE ? 'passed' : 'failed'),
             },
+            best_area: bestArea,
+            attention_area: attentionArea,
         };
     }
 
@@ -178,8 +300,16 @@ class AnalyticsService {
             period_id: { $in: periodIds },
         });
 
+        const [areas, historicalAverages] = await Promise.all([
+            Promise.resolve(this.buildAreaMetrics(results, periods)),
+            this.buildStudentYearAverages(student._id),
+        ]);
+
         return {
-            areas: this.aggregateAreaAverages(results),
+            areas: areas.map((area) => ({
+                ...area,
+                year_averages: historicalAverages.get(area.area_id) || [],
+            })),
         };
     }
 
@@ -374,6 +504,7 @@ class AnalyticsService {
                     general_average: average,
                     passed_areas: values.filter((value) => value >= PASS_SCORE).length,
                     failed_areas: values.filter((value) => value < PASS_SCORE).length,
+                    status: average >= PASS_SCORE ? 'passed' : 'failed',
                 };
             }),
         };

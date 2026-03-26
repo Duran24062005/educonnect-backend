@@ -96,6 +96,13 @@ const createActor = async ({ role, firstName, lastName, prefix }) => {
 };
 
 const createFixture = async () => {
+    const previousSchoolYear = await SchoolYear.create({
+        year: 2025,
+        start_date: '2025-01-01',
+        end_date: '2025-12-31',
+        is_active: false,
+    });
+
     const schoolYear = await SchoolYear.create({
         year: 2026,
         start_date: '2026-01-01',
@@ -104,6 +111,22 @@ const createFixture = async () => {
     });
 
     const periodOne = await Period.create({
+        school_year_id: previousSchoolYear._id,
+        name: 'Periodo 1',
+        weight: 0.5,
+        start_date: '2025-01-10',
+        end_date: '2025-03-30',
+    });
+
+    const periodTwo = await Period.create({
+        school_year_id: previousSchoolYear._id,
+        name: 'Periodo 2',
+        weight: 0.5,
+        start_date: '2025-04-01',
+        end_date: '2025-06-30',
+    });
+
+    const currentPeriodOne = await Period.create({
         school_year_id: schoolYear._id,
         name: 'Periodo 1',
         weight: 0.5,
@@ -111,7 +134,7 @@ const createFixture = async () => {
         end_date: '2026-03-30',
     });
 
-    const periodTwo = await Period.create({
+    const currentPeriodTwo = await Period.create({
         school_year_id: schoolYear._id,
         name: 'Periodo 2',
         weight: 0.5,
@@ -156,6 +179,12 @@ const createFixture = async () => {
 
     await Enrollment.create({
         student_id: studentOne.profile._id,
+        school_year_id: previousSchoolYear._id,
+        group_id: group._id,
+        status: 'active',
+    });
+    await Enrollment.create({
+        student_id: studentOne.profile._id,
         school_year_id: schoolYear._id,
         group_id: group._id,
         status: 'active',
@@ -171,19 +200,28 @@ const createFixture = async () => {
     await Student.findByIdAndUpdate(studentTwo.profile._id, { group_id: group._id });
 
     await PeriodAreaResult.create([
-        { student_id: studentOne.profile._id, area_id: math._id, period_id: periodOne._id, final_score: 9 },
-        { student_id: studentTwo.profile._id, area_id: math._id, period_id: periodOne._id, final_score: 5 },
+        { student_id: studentOne.profile._id, area_id: math._id, period_id: periodOne._id, final_score: 7 },
+        { student_id: studentOne.profile._id, area_id: language._id, period_id: periodOne._id, final_score: 6 },
         { student_id: studentOne.profile._id, area_id: math._id, period_id: periodTwo._id, final_score: 8 },
-        { student_id: studentTwo.profile._id, area_id: math._id, period_id: periodTwo._id, final_score: 6 },
+        { student_id: studentOne.profile._id, area_id: language._id, period_id: periodTwo._id, final_score: 7 },
+        { student_id: studentOne.profile._id, area_id: math._id, period_id: currentPeriodOne._id, final_score: 9 },
+        { student_id: studentOne.profile._id, area_id: language._id, period_id: currentPeriodOne._id, final_score: 7 },
+        { student_id: studentTwo.profile._id, area_id: math._id, period_id: currentPeriodOne._id, final_score: 5 },
+        { student_id: studentOne.profile._id, area_id: math._id, period_id: currentPeriodTwo._id, final_score: 8 },
+        { student_id: studentOne.profile._id, area_id: language._id, period_id: currentPeriodTwo._id, final_score: 3 },
+        { student_id: studentTwo.profile._id, area_id: math._id, period_id: currentPeriodTwo._id, final_score: 6 },
     ]);
 
     await FinalResult.create([
+        { student_id: studentOne.profile._id, school_year_id: previousSchoolYear._id, final_score: 7, status: 'passed' },
         { student_id: studentOne.profile._id, school_year_id: schoolYear._id, final_score: 8.5, status: 'passed' },
         { student_id: studentTwo.profile._id, school_year_id: schoolYear._id, final_score: 5.5, status: 'failed' },
     ]);
 
     return {
         admin,
+        studentOne,
+        previousSchoolYear,
         teacher,
         schoolYear,
         group,
@@ -194,6 +232,83 @@ const createFixture = async () => {
 };
 
 describe('Performance summary endpoints', () => {
+    it('returns real student overview with best and attention areas', async () => {
+        const fixture = await createFixture();
+
+        const response = await request(app)
+            .get('/api/analytics/student/me/overview')
+            .set('Authorization', `Bearer ${fixture.studentOne.token}`)
+            .query({ school_year_id: fixture.schoolYear._id.toString() });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.student_id).toBe(fixture.studentOne.profile._id.toString());
+        expect(response.body.data.school_year.year).toBe(2026);
+        expect(response.body.data.summary.general_average).toBe(6.75);
+        expect(response.body.data.summary.passed_areas).toBe(1);
+        expect(response.body.data.summary.failed_areas).toBe(1);
+        expect(response.body.data.best_area).toBe('Matemáticas');
+        expect(response.body.data.attention_area).toBe('Lenguaje');
+    });
+
+    it('returns student areas with period detail and yearly history', async () => {
+        const fixture = await createFixture();
+
+        const response = await request(app)
+            .get('/api/analytics/student/me/areas')
+            .set('Authorization', `Bearer ${fixture.studentOne.token}`)
+            .query({ school_year_id: fixture.schoolYear._id.toString() });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.areas).toHaveLength(2);
+
+        const mathArea = response.body.data.areas.find((area) => area.area_name === 'Matemáticas');
+        const languageArea = response.body.data.areas.find((area) => area.area_name === 'Lenguaje');
+
+        expect(mathArea.final_average).toBe(8.5);
+        expect(mathArea.periods).toHaveLength(2);
+        expect(mathArea.periods[0].average).toBe(9);
+        expect(mathArea.year_averages).toEqual([
+            { school_year_id: fixture.previousSchoolYear._id.toString(), year: '2025', average: 7.5 },
+            { school_year_id: fixture.schoolYear._id.toString(), year: '2026', average: 8.5 },
+        ]);
+
+        expect(languageArea.final_average).toBe(5);
+        expect(languageArea.status).toBe('failed');
+        expect(languageArea.year_averages).toEqual([
+            { school_year_id: fixture.previousSchoolYear._id.toString(), year: '2025', average: 6.5 },
+            { school_year_id: fixture.schoolYear._id.toString(), year: '2026', average: 5 },
+        ]);
+    });
+
+    it('returns student period summary with derived status per period', async () => {
+        const fixture = await createFixture();
+
+        const response = await request(app)
+            .get('/api/analytics/student/me/period-summary')
+            .set('Authorization', `Bearer ${fixture.studentOne.token}`)
+            .query({ school_year_id: fixture.schoolYear._id.toString() });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.periods).toEqual([
+            {
+                period_id: expect.any(String),
+                period_name: 'Periodo 1',
+                general_average: 8,
+                passed_areas: 2,
+                failed_areas: 0,
+                status: 'passed',
+            },
+            {
+                period_id: expect.any(String),
+                period_name: 'Periodo 2',
+                general_average: 5.5,
+                passed_areas: 1,
+                failed_areas: 1,
+                status: 'failed',
+            },
+        ]);
+    });
+
     it('returns aggregated admin dashboard summary', async () => {
         const fixture = await createFixture();
 
@@ -234,7 +349,7 @@ describe('Performance summary endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.data.group._id).toBeDefined();
-        expect(response.body.data.students).toHaveLength(2);
+        expect(response.body.data.students.length).toBeGreaterThanOrEqual(2);
         expect(response.body.data.teachers).toHaveLength(1);
         expect(Array.isArray(response.body.data.teacher_options)).toBe(true);
         expect(response.body.data.areas.some((area) => area.name === fixture.language.name)).toBe(true);

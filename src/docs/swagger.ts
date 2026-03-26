@@ -1027,7 +1027,7 @@ const options = {
                     summary: 'Resumen anual del estudiante autenticado',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
-                    responses: { 200: { description: 'Resumen del estudiante' } },
+                    responses: { 200: { description: 'Resumen del estudiante con summary, best_area y attention_area' } },
                 },
             },
             '/api/analytics/student/me/areas': {
@@ -1036,7 +1036,7 @@ const options = {
                     summary: 'Métricas por área del estudiante autenticado',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
-                    responses: { 200: { description: 'Métricas por área' } },
+                    responses: { 200: { description: 'Métricas por área con periodos del año y year_averages históricos' } },
                 },
             },
             '/api/analytics/student/me/area-trend': {
@@ -1057,7 +1057,7 @@ const options = {
                     summary: 'Resumen por periodo del estudiante autenticado',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
-                    responses: { 200: { description: 'Resumen por periodo' } },
+                    responses: { 200: { description: 'Resumen por periodo con status derivado' } },
                 },
             },
             '/api/analytics/teacher/me/groups': {

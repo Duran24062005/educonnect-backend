@@ -12,6 +12,7 @@ import PeriodAreaResult from '../models/PeriodAreaResultModel.js';
 import FinalResult from '../models/FinalResultModel.js';
 import GradeItem from '../models/GradeItemModel.js';
 import StudentGrade from '../models/StudentGradeModel.js';
+import { schoolYearRepository } from './AcademicRepository.js';
 
 class AnalyticsRepository {
     async findStudentByUserId(userId) {
@@ -33,6 +34,10 @@ class AnalyticsRepository {
         return Period.find({ school_year_id: schoolYearId }).sort({ start_date: 1 });
     }
 
+    async findPeriodsBySchoolYears(schoolYearIds) {
+        return Period.find({ school_year_id: { $in: schoolYearIds } }).sort({ start_date: 1 });
+    }
+
     async findAreaById(areaId) {
         return Area.findById(areaId);
     }
@@ -47,6 +52,10 @@ class AnalyticsRepository {
 
     async findFinalResultsByYear(schoolYearId) {
         return FinalResult.find({ school_year_id: schoolYearId });
+    }
+
+    async findAllSchoolYears() {
+        return schoolYearRepository.findAll();
     }
 
     async findTeacherAssignmentsByYear(teacherId, schoolYearId) {
@@ -100,6 +109,12 @@ class AnalyticsRepository {
                 populate: [{ path: 'grade_id' }, { path: 'school_year_id' }],
             })
             .populate('school_year_id');
+    }
+
+    async findEnrollmentsByStudent(studentId) {
+        return Enrollment.find({ student_id: studentId })
+            .populate('school_year_id')
+            .sort({ created_at: -1 });
     }
 
     async findStudentsByIds(studentIds) {

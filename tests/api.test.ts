@@ -159,6 +159,10 @@ describe('EduConnect API', () => {
 
         expect(loginRes.statusCode).toBe(200);
         expect(loginRes.body.data.token).toBeDefined();
+        expect(mockEmailService.sentEmails.some((email) =>
+            email.template_name === 'login_educonnect.html'
+            && email.subject === 'Nuevo inicio de sesión en EduConnect'
+        )).toBe(true);
     });
 
     test('create student and list students', async () => {
