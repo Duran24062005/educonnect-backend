@@ -232,6 +232,68 @@ describe('EduConnect API', () => {
         expect(secondPageRes.body.data.users[0]?._id).not.toBe(firstPageRes.body.data.users[0]?._id);
     });
 
+    test('filters users by role and status in admin list endpoint', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+
+        const adminToken = adminLogin.body.data.token;
+
+        const activeStudent = await User.create({
+            email: 'filter.student.active@educonnect.local',
+            hash_password: 'Password123!',
+        });
+
+        const activeStudentPerson = await Person.create({
+            user_id: activeStudent._id,
+            first_name: 'Filter',
+            last_name: 'Student',
+            role: 'Student',
+            status: 'active',
+            born_date: '2012-01-01',
+            document_type: 'CC',
+            document_number: 'FLT-STU-01',
+        });
+
+        await User.findByIdAndUpdate(activeStudent._id, { person_id: activeStudentPerson._id });
+
+        const blockedTeacher = await User.create({
+            email: 'filter.teacher.blocked@educonnect.local',
+            hash_password: 'Password123!',
+        });
+
+        const blockedTeacherPerson = await Person.create({
+            user_id: blockedTeacher._id,
+            first_name: 'Filter',
+            last_name: 'Teacher',
+            role: 'Teacher',
+            status: 'blocked',
+            born_date: '2012-01-01',
+            document_type: 'CC',
+            document_number: 'FLT-TCH-01',
+        });
+
+        await User.findByIdAndUpdate(blockedTeacher._id, { person_id: blockedTeacherPerson._id });
+
+        const byRoleRes = await request(app)
+            .get('/api/users?page=1&limit=10&role=student')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        const byStatusRes = await request(app)
+            .get('/api/users?page=1&limit=10&status=blocked')
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(byRoleRes.statusCode).toBe(200);
+        expect(byStatusRes.statusCode).toBe(200);
+
+        expect(byRoleRes.body.data.users.some((user) => user.email === 'filter.student.active@educonnect.local')).toBe(true);
+        expect(byRoleRes.body.data.users.every((user) => user.person_id?.role === 'Student')).toBe(true);
+
+        expect(byStatusRes.body.data.users.some((user) => user.email === 'filter.teacher.blocked@educonnect.local')).toBe(true);
+        expect(byStatusRes.body.data.users.every((user) => user.person_id?.status === 'blocked')).toBe(true);
+    });
+
     test('returns error for invalid object id in params', async () => {
         const adminLogin = await request(app).post('/api/auth/login').send({
             email: ADMIN.email,

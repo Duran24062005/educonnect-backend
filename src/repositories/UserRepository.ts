@@ -61,11 +61,11 @@ class UserRepository {
                 parent: 'Parent',
                 guardian: 'Parent',
             };
-            personMatch.role = roleMap[filter.role] || filter.role;
+            personMatch['person_id.role'] = roleMap[filter.role] || filter.role;
         }
 
         if (filter.status) {
-            personMatch.status = filter.status;
+            personMatch['person_id.status'] = filter.status;
         }
 
         const search = filter.search ? String(filter.search) : null;
