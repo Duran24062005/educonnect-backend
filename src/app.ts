@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 
 import appConfig from './config/config.js';
+import { globalLimiter } from './middlewares/rateLimit.middleware.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import { swaggerSpec } from './docs/swagger.js';
 
@@ -25,6 +27,13 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ extended: true, limit: '6mb' }));
+
+// Headers de seguridad (H6). La CSP se desactiva para no romper Swagger UI (/api-docs),
+// conservando X-Frame-Options, nosniff, HSTS y referrer-policy.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Límite global de solicitudes por IP (H5). Desactivado en test.
+app.use('/api', globalLimiter);
 
 app.use(
     cors({

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import AuthController from '../../controllers/AuthController.js';
 import { protect, protectIncomplete } from '../../middlewares/auth.middleware.js';
+import { loginLimiter, registerLimiter } from '../../middlewares/rateLimit.middleware.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import {
     registerSchema,
@@ -11,8 +12,8 @@ import {
 
 const router = Router();
 
-router.post('/register', validateRequest(registerSchema), AuthController.register);
-router.post('/login', validateRequest(loginSchema), AuthController.login);
+router.post('/register', registerLimiter, validateRequest(registerSchema), AuthController.register);
+router.post('/login', loginLimiter, validateRequest(loginSchema), AuthController.login);
 
 router.post(
     '/complete-profile',
