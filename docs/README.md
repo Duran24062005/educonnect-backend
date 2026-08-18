@@ -18,6 +18,7 @@ Importante:
 6. [documentation_guide.md](./documentation_guide.md)
 7. [000-doc-template.md](./000-doc-template.md)
 8. [commit-conventions.md](./commit-conventions.md)
+9. [ci-quality-gates.md](./ci-quality-gates.md)
 
 ## Documentos utiles por tema
 
@@ -25,6 +26,7 @@ Importante:
 - API y autenticacion: [api_docs.md](./api_docs.md), [auth_guide.md](./auth_guide.md), [authentication_flow.md](./authentication_flow.md)
 - Base de datos: [database_docs.md](./database_docs.md)
 - Resumenes historicos: [implmentation_summary.md](./implmentation_summary.md), [before_after_comparison.md](./before_after_comparison.md), [SystemArtifacts.md](./SystemArtifacts.md)
+- Calidad y CI: [ci-quality-gates.md](./ci-quality-gates.md)
 
 ## Fuente de verdad sugerida
 

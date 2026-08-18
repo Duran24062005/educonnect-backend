@@ -1,0 +1,105 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    branches: [main]
+    types: [submitted, dismissed]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-gate:
+    name: Review gate
+    if: ${{ github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require approval for latest commit
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            if (!pr) {
+              core.info('No pull request context found; skipping review gate.');
+              return;
+            }
+
+            if (pr.draft) {
+              core.setFailed('Draft pull requests must be marked ready for review before CI runs.');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const latestReviewByUser = new Map();
+
+            for (const review of reviews) {
+              if (!review.user?.login || review.commit_id !== pr.head.sha) {
+                continue;
+              }
+
+              latestReviewByUser.set(review.user.login, review.state);
+            }
+
+            const blockingReviewers = [...latestReviewByUser.entries()]
+              .filter(([, state]) => state === 'CHANGES_REQUESTED')
+              .map(([login]) => login);
+
+            if (blockingReviewers.length > 0) {
+              core.setFailed(`Changes are still requested by: ${blockingReviewers.join(', ')}`);
+              return;
+            }
+
+            const approvals = [...latestReviewByUser.entries()]
+              .filter(([login, state]) => state === 'APPROVED' && login !== pr.user.login)
+              .map(([login]) => login);
+
+            if (approvals.length < 1) {
+              core.setFailed(`At least one approval for latest commit ${pr.head.sha} is required before CI runs.`);
+              return;
+            }
+
+            core.info(`Review gate passed with approval from: ${approvals.join(', ')}`);
+
+  quality-gates:
+    name: Quality gates
+    needs: review-gate
+    if: ${{ always() && (github.event_name == 'push' || needs.review-gate.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Run backend quality gates
+        run: yarn quality
