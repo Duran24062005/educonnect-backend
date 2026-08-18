@@ -59,7 +59,7 @@ class UserController {
     getUserById = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
-        const user = await UserService.getUserById(id);
+        const user = await UserService.getUserById(id, req.userId, req.userRole);
 
         res.status(200).json({
             status: 'success',

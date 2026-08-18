@@ -6,7 +6,7 @@ import { getQueryString } from '../utils/request.js';
 class EvaluationController {
     // ---- GRADE ITEMS ----
     createGradeItem = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.createGradeItem(req.body);
+        const result = await EvaluationService.createGradeItem(req.userId, req.userRole, req.body);
         res.status(201).json({ status: 'success', data: result });
     });
 
@@ -18,41 +18,51 @@ class EvaluationController {
     });
 
     updateGradeItem = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.updateGradeItem(req.params.id, req.body);
+        const result = await EvaluationService.updateGradeItem(req.params.id, req.userId, req.userRole, req.body);
         res.status(200).json({ status: 'success', data: result });
     });
 
     deleteGradeItem = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.deleteGradeItem(req.params.id);
+        const result = await EvaluationService.deleteGradeItem(req.params.id, req.userId, req.userRole);
         res.status(200).json({ status: 'success', message: result.message });
     });
 
     // ---- SCORES ----
     registerScore = asyncHandler(async (req, res) => {
         const { student_id, grade_item_id, score } = req.body;
-        const result = await EvaluationService.registerScore(student_id, grade_item_id, score);
+        const result = await EvaluationService.registerScore(req.userId, req.userRole, student_id, grade_item_id, score);
         res.status(200).json({ status: 'success', message: 'Calificación registrada', data: result });
     });
 
     getScoresByStudent = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.getScoresByStudent(req.params.student_id);
+        const result = await EvaluationService.getScoresByStudent(req.params.student_id, req.userId, req.userRole);
         res.status(200).json({ status: 'success', data: result });
     });
 
     getScoresByGradeItem = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.getScoresByGradeItem(req.params.grade_item_id);
+        const result = await EvaluationService.getScoresByGradeItem(req.params.grade_item_id, req.userId, req.userRole);
         res.status(200).json({ status: 'success', data: result });
     });
 
     // ---- PERIOD RESULTS ----
     calculatePeriodResult = asyncHandler(async (req, res) => {
         const { student_id, area_id, period_id } = req.body;
-        const result = await EvaluationService.calculateAndSavePeriodResult(student_id, area_id, period_id);
+        const result = await EvaluationService.calculateAndSavePeriodResult(
+            req.userId,
+            req.userRole,
+            student_id,
+            area_id,
+            period_id
+        );
         res.status(200).json({ status: 'success', message: 'Resultado de periodo calculado', data: result });
     });
 
     getPeriodResultsByStudent = asyncHandler(async (req, res) => {
-        const result = await EvaluationService.getPeriodResultsByStudent(req.params.student_id);
+        const result = await EvaluationService.getPeriodResultsByStudent(
+            req.params.student_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 
@@ -71,7 +81,12 @@ class EvaluationController {
 
     getStudentFinalResult = asyncHandler(async (req, res) => {
         const { student_id, school_year_id } = req.params;
-        const result = await EvaluationService.getStudentFinalResult(student_id, school_year_id);
+        const result = await EvaluationService.getStudentFinalResult(
+            student_id,
+            school_year_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 

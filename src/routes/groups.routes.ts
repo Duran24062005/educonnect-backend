@@ -24,7 +24,7 @@ const router = Router();
 
 router.use(protect);
 
-router.get('/school-year/:school_year_id', validateRequest(groupsBySchoolYearSchema), GroupController.getGroupsBySchoolYear);
+router.get('/school-year/:school_year_id', authorize('admin'), validateRequest(groupsBySchoolYearSchema), GroupController.getGroupsBySchoolYear);
 router.post('/enrollments', authorize('admin'), validateRequest(enrollStudentSchema), GroupController.enrollStudent);
 router.post('/enrollments/transfer', authorize('admin'), validateRequest(transferEnrollmentSchema), GroupController.transferEnrollment);
 router.patch('/enrollments/:id/status', authorize('admin'), validateRequest(enrollmentStatusSchema), GroupController.changeEnrollmentStatus);
@@ -34,7 +34,7 @@ router.post('/teachers/assign', authorize('admin'), validateRequest(assignTeache
 router.get('/teachers/:teacher_id/groups', validateRequest(groupsByTeacherSchema), GroupController.getGroupsByTeacher);
 
 router.post('/grade-areas', authorize('admin'), validateRequest(assignAreaToGradeSchema), GroupController.assignAreaToGrade);
-router.get('/grade-areas/:grade_id', validateRequest(areasByGradeSchema), GroupController.getAreasByGrade);
+router.get('/grade-areas/:grade_id', authorize('admin'), validateRequest(areasByGradeSchema), GroupController.getAreasByGrade);
 
 router.post('/', authorize('admin'), validateRequest(createGroupSchema), GroupController.createGroup);
 router.get('/:group_id/detail-summary', authorize('admin'), validateRequest(groupDetailSummarySchema), GroupController.getGroupDetailSummary);

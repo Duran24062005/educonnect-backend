@@ -14,7 +14,7 @@ class GroupController {
     });
 
     getGroupById = asyncHandler(async (req, res) => {
-        const result = await GroupService.getGroupById(req.params.id);
+        const result = await GroupService.getGroupById(req.params.id, req.userId, req.userRole);
         res.status(200).json({ status: 'success', data: result });
     });
 
@@ -63,12 +63,20 @@ class GroupController {
     });
 
     getStudentsByGroup = asyncHandler(async (req, res) => {
-        const result = await GroupService.getStudentsByGroup(req.params.group_id);
+        const result = await GroupService.getStudentsByGroup(
+            req.params.group_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 
     getEnrollmentsByStudent = asyncHandler(async (req, res) => {
-        const result = await GroupService.getEnrollmentsByStudent(req.params.student_id);
+        const result = await GroupService.getEnrollmentsByStudent(
+            req.params.student_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 
@@ -80,12 +88,20 @@ class GroupController {
     });
 
     getTeachersByGroup = asyncHandler(async (req, res) => {
-        const result = await GroupService.getTeachersByGroup(req.params.group_id);
+        const result = await GroupService.getTeachersByGroup(
+            req.params.group_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 
     getGroupsByTeacher = asyncHandler(async (req, res) => {
-        const result = await GroupService.getGroupsByTeacher(req.params.teacher_id);
+        const result = await GroupService.getGroupsByTeacher(
+            req.params.teacher_id,
+            req.userId,
+            req.userRole
+        );
         res.status(200).json({ status: 'success', data: result });
     });
 

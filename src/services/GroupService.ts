@@ -10,6 +10,14 @@ import { schoolYearRepository, gradeRepository, areaRepository } from '../reposi
 import { enrollmentRepository } from '../repositories/EvaluationRepository.js';
 import UserRepository from '../repositories/UserRepository.js';
 import { AppError } from '../utils/error.js';
+import {
+    isAdmin,
+    resolveTeacherByUserId,
+    resolveStudentByUserId,
+    assertCanAccessGroup,
+} from './accessScope.service.js';
+
+const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
 /**
  * GroupService
@@ -58,7 +66,8 @@ class GroupService {
         return await Promise.all(groups.map((group) => this.withCapacityMetrics(group)));
     }
 
-    async getGroupById(id) {
+    async getGroupById(id, actorId, actorRole) {
+        await assertCanAccessGroup({ userId: actorId, role: actorRole, groupId: id });
         const group = await groupRepository.findById(id);
         if (!group) throw new AppError('Grupo no encontrado', 404);
         return await this.withCapacityMetrics(group);
@@ -75,9 +84,9 @@ class GroupService {
     }
 
     async getGroupDetailSummary(id) {
-        const group = await this.getGroupById(id);
-        const students = await this.getStudentsByGroup(id);
-        const teachers = await this.getTeachersByGroup(id);
+        const group = await this.getGroupById(id, null, 'admin');
+        const students = await this.getStudentsByGroup(id, null, 'admin');
+        const teachers = await this.getTeachersByGroup(id, null, 'admin');
 
         const currentGradeId = group?.grade_id?._id || group?.grade_id || null;
         const [gradeAreas, allAreas, teachersPage] = await Promise.all([
@@ -247,11 +256,22 @@ class GroupService {
         return updated;
     }
 
-    async getStudentsByGroup(group_id) {
+    async getStudentsByGroup(group_id, actorId, actorRole) {
+        await assertCanAccessGroup({ userId: actorId, role: actorRole, groupId: group_id });
         return await enrollmentRepository.findByGroup(group_id, 'active');
     }
 
-    async getEnrollmentsByStudent(student_id) {
+    async getEnrollmentsByStudent(student_id, actorId, actorRole) {
+        // El propio estudiante o un admin
+        if (!isAdmin(actorRole)) {
+            if (String(actorRole || '').toLowerCase() !== 'student') {
+                throw new AppError('No tienes permiso para ver estas matrículas', 403);
+            }
+            const student = await resolveStudentByUserId(actorId);
+            if (toIdString(student._id) !== toIdString(student_id)) {
+                throw new AppError('No tienes permiso para ver estas matrículas', 403);
+            }
+        }
         return await enrollmentRepository.findByStudent(student_id);
     }
 
@@ -286,11 +306,22 @@ class GroupService {
         return await groupTeacherRepository.create({ teacher_id, group_id, area_id });
     }
 
-    async getTeachersByGroup(group_id) {
+    async getTeachersByGroup(group_id, actorId, actorRole) {
+        await assertCanAccessGroup({ userId: actorId, role: actorRole, groupId: group_id });
         return await groupTeacherRepository.findByGroup(group_id);
     }
 
-    async getGroupsByTeacher(teacher_id) {
+    async getGroupsByTeacher(teacher_id, actorId, actorRole) {
+        // El propio docente o un admin
+        if (!isAdmin(actorRole)) {
+            if (String(actorRole || '').toLowerCase() !== 'teacher') {
+                throw new AppError('No tienes permiso para ver los grupos de este docente', 403);
+            }
+            const teacher = await resolveTeacherByUserId(actorId);
+            if (toIdString(teacher._id) !== toIdString(teacher_id)) {
+                throw new AppError('No tienes permiso para ver los grupos de este docente', 403);
+            }
+        }
         return await groupTeacherRepository.findByTeacher(teacher_id);
     }
 

@@ -152,11 +152,19 @@ class UserService {
 
     /**
      * Obtener usuario por ID
-     * @param {string} userId - ID del usuario
+     * @param {string} targetUserId - ID del usuario objetivo
+     * @param {string} actorId - ID del usuario que solicita
+     * @param {string} actorRole - Rol del usuario que solicita
      * @returns {Promise<Object>}
      */
-    async getUserById(userId) {
-        const user = await UserRepository.findById(userId);
+    async getUserById(targetUserId, actorId, actorRole) {
+        // Autorización (H1): solo el propio usuario o un admin
+        const isAdminActor = String(actorRole || '').toLowerCase() === 'admin';
+        if (targetUserId !== actorId && !isAdminActor) {
+            throw new AppError('No tienes permiso para ver este usuario', 403);
+        }
+
+        const user = await UserRepository.findById(targetUserId);
 
         if (!user) {
             throw new AppError('Usuario no encontrado', 404);

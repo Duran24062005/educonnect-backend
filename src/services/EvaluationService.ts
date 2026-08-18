@@ -7,8 +7,16 @@ import {
     enrollmentRepository,
 } from '../repositories/EvaluationRepository.js';
 import { periodRepository, areaRepository } from '../repositories/AcademicRepository.js';
-import { studentRepository } from '../repositories/PersonProfileRepository.js';
+import { studentRepository, groupTeacherRepository } from '../repositories/PersonProfileRepository.js';
 import { AppError } from '../utils/error.js';
+import {
+    isAdmin,
+    resolveTeacherByUserId,
+    assertCanAccessStudentData,
+    canTeacherAccessArea,
+} from './accessScope.service.js';
+
+const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
 /**
  * EvaluationService
@@ -19,11 +27,19 @@ class EvaluationService {
     // GRADE ITEMS (Ítems de evaluación)
     // ===========================
 
-    async createGradeItem(data) {
+    async createGradeItem(userId, role, data) {
         const { name, percentage, area_id, period_id } = data;
 
         if (!name || percentage === undefined || !area_id || !period_id) {
             throw new AppError('Nombre, porcentaje, área y periodo son requeridos', 400);
+        }
+
+        // Scope docente (H3): debe tener asignación que use el área
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            if (!(await canTeacherAccessArea(teacher._id, area_id))) {
+                throw new AppError('No tienes asignación para crear ítems en esta área', 403);
+            }
         }
 
         if (percentage < 0 || percentage > 100) {
@@ -52,9 +68,17 @@ class EvaluationService {
         return await gradeItemRepository.findByPeriodAndArea(period_id, area_id);
     }
 
-    async updateGradeItem(id, data) {
+    async updateGradeItem(id, userId, role, data) {
         const item = await gradeItemRepository.findById(id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+
+        // Scope docente (H3): solo si el área del ítem le está asignada
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            if (!(await canTeacherAccessArea(teacher._id, item.area_id))) {
+                throw new AppError('No tienes asignación para modificar ítems de esta área', 403);
+            }
+        }
 
         if (data.percentage !== undefined) {
             const currentTotal = await gradeItemRepository.sumPercentageByPeriodAndArea(
@@ -73,9 +97,18 @@ class EvaluationService {
         return await gradeItemRepository.update(id, data);
     }
 
-    async deleteGradeItem(id) {
+    async deleteGradeItem(id, userId, role) {
         const item = await gradeItemRepository.findById(id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+
+        // Scope docente (H3): solo si el área del ítem le está asignada
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            if (!(await canTeacherAccessArea(teacher._id, item.area_id))) {
+                throw new AppError('No tienes asignación para eliminar ítems de esta área', 403);
+            }
+        }
+
         await gradeItemRepository.delete(id);
         return { message: 'Ítem de evaluación eliminado' };
     }
@@ -84,7 +117,7 @@ class EvaluationService {
     // STUDENT GRADES (Calificaciones)
     // ===========================
 
-    async registerScore(student_id, grade_item_id, score) {
+    async registerScore(userId, role, student_id, grade_item_id, score) {
         if (score === undefined || score === null) {
             throw new AppError('La calificación es requerida', 400);
         }
@@ -99,14 +132,43 @@ class EvaluationService {
         const item = await gradeItemRepository.findById(grade_item_id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
 
+        // Scope docente (H3): debe estar asignado al grupo del estudiante en el área del ítem
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            const enrollment = await enrollmentRepository.findActiveByStudent(student_id);
+            if (!enrollment) {
+                throw new AppError('El estudiante no tiene una matrícula activa', 400);
+            }
+            const isAssigned = await groupTeacherRepository.exists(
+                teacher._id,
+                enrollment.group_id,
+                toIdString(item.area_id) || item.area_id
+            );
+            if (!isAssigned) {
+                throw new AppError('No tienes asignación para calificar a este estudiante en esta área', 403);
+            }
+        }
+
         return await studentGradeRepository.upsert(student_id, grade_item_id, score);
     }
 
-    async getScoresByStudent(student_id) {
+    async getScoresByStudent(student_id, userId, role) {
+        await assertCanAccessStudentData({ userId, role, studentId: student_id });
         return await studentGradeRepository.findByStudent(student_id);
     }
 
-    async getScoresByGradeItem(grade_item_id) {
+    async getScoresByGradeItem(grade_item_id, userId, role) {
+        const item = await gradeItemRepository.findById(grade_item_id);
+        if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+
+        // Scope docente (H3): solo si el área del ítem le está asignada
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            if (!(await canTeacherAccessArea(teacher._id, item.area_id))) {
+                throw new AppError('No tienes asignación para ver las calificaciones de este ítem', 403);
+            }
+        }
+
         return await studentGradeRepository.findByGradeItem(grade_item_id);
     }
 
@@ -118,7 +180,24 @@ class EvaluationService {
      * Calcular y guardar el resultado de un estudiante en un área por periodo
      * Se calcula automáticamente desde las calificaciones de los ítems
      */
-    async calculateAndSavePeriodResult(student_id, area_id, period_id) {
+    async calculateAndSavePeriodResult(userId, role, student_id, area_id, period_id) {
+        // Scope docente (H3): debe estar asignado al grupo del estudiante en el área
+        if (!isAdmin(role)) {
+            const teacher = await resolveTeacherByUserId(userId);
+            const enrollment = await enrollmentRepository.findActiveByStudent(student_id);
+            if (!enrollment) {
+                throw new AppError('El estudiante no tiene una matrícula activa', 400);
+            }
+            const isAssigned = await groupTeacherRepository.exists(
+                teacher._id,
+                enrollment.group_id,
+                area_id
+            );
+            if (!isAssigned) {
+                throw new AppError('No tienes asignación para calcular resultados de esta área', 403);
+            }
+        }
+
         const items = await gradeItemRepository.findByPeriodAndArea(period_id, area_id);
         if (items.length === 0) {
             throw new AppError('No hay ítems de evaluación para este periodo y área', 404);
@@ -147,7 +226,8 @@ class EvaluationService {
         return await periodAreaResultRepository.upsert(student_id, area_id, period_id, parseFloat(final_score.toFixed(2)));
     }
 
-    async getPeriodResultsByStudent(student_id) {
+    async getPeriodResultsByStudent(student_id, userId, role) {
+        await assertCanAccessStudentData({ userId, role, studentId: student_id });
         return await periodAreaResultRepository.findByStudent(student_id);
     }
 
@@ -203,7 +283,8 @@ class EvaluationService {
         return await finalResultRepository.findByYear(school_year_id, status);
     }
 
-    async getStudentFinalResult(student_id, school_year_id) {
+    async getStudentFinalResult(student_id, school_year_id, userId, role) {
+        await assertCanAccessStudentData({ userId, role, studentId: student_id });
         const result = await finalResultRepository.findByStudentAndYear(student_id, school_year_id);
         if (!result) throw new AppError('Resultado final no encontrado', 404);
         return result;
