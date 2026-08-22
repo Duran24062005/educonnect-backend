@@ -2,7 +2,7 @@
 
 ## Estado
 
-Fase demo y primera integracion persistente implementadas. El portal puede seleccionar el proveedor API mediante `VITE_CALENDAR_DATA_SOURCE=api` y consume el catalogo, consultas y mutaciones de `educonnect-backend`. La validacion con datos institucionales, tenant activo y operacion de staging permanece pendiente.
+Fase demo y primera integración persistente implementadas. El portal puede seleccionar el proveedor API mediante `VITE_CALENDAR_DATA_SOURCE=api` y consume el catálogo, consultas y mutaciones de `educonnect-backend`. `parent` ya puede consultar sesiones de los grupos de sus estudiantes vinculados; la validación con datos institucionales, tenant activo y operación de staging permanece pendiente.
 
 Este PRD conserva el contrato funcional que debe usarse al implementar la segunda fase.
 
@@ -35,7 +35,7 @@ La primera versión persistirá sesiones concretas. No se define todavía un mot
 
 ### Primera fase: demo funcional en `educonnect-portal`
 
-- Nueva ruta privada `/calendar` para los tres roles actuales.
+- Nueva ruta privada `/calendar` para `admin`, `teacher`, `student` y `parent`.
 - Datos demo tipados, representativos de varios grados, grupos, docentes, materias, aulas y actividades.
 - Vista semanal como vista operativa principal.
 - Vista agenda/lista para móvil y para lectura rápida.
@@ -64,7 +64,7 @@ La primera versión persistirá sesiones concretas. No se define todavía un mot
 - Asistencia, conexión a videollamada o control de presencia.
 - Sincronización con Google Calendar, Outlook u otros calendarios externos.
 - Calendario institucional de festivos, reuniones, eventos y días sin clase.
-- Portal de padres/acudientes.
+- Edición del calendario por padres/acudientes; su consulta restringida ya está implementada.
 - Notificaciones push, email, SMS o WhatsApp.
 - Edición masiva de una serie recurrente.
 - Reglas de sustitución de docentes o reserva avanzada de recursos.
@@ -105,7 +105,10 @@ Puede filtrar por grado como mínimo y, de forma complementaria, por grupo, mate
 
 ### Guardian/Parent
 
-No se incluye en esta fase. El rol existe en el dominio, pero no tiene portal funcional ni relación estudiante-acudiente implementada.
+- Solo consulta sesiones de los grupos donde tenga estudiantes vinculados y con matrícula activa.
+- Si tiene más de un estudiante vinculado, la respuesta agrega las sesiones visibles de todos sus grupos autorizados.
+- No puede crear, editar, cancelar ni reactivar sesiones.
+- La relación estudiante-acudiente se valida mediante `StudentGuardian` y el alcance académico mediante matrículas activas.
 
 ## Casos de uso principales
 

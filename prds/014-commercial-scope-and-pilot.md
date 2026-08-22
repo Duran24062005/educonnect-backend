@@ -2,7 +2,7 @@
 
 ## Estado
 
-- Estado: en ejecución, corte P0-3 implementado
+- Estado: en ejecución, corte P0-9 implementado
 - Tipo: alcance de producto y operación
 - Piloto: 90 días, una institución, máximo 800 estudiantes
 - Repositorios impactados: `educonnect-backend` y `educonnect-portal`
@@ -44,13 +44,39 @@ Se incorporó la barrera técnica de multi-tenancy:
 
 La barrera está opt-in hasta completar la migración en staging. El gate P0 permanece bloqueado mientras no exista evidencia de backup restaurado, migración ejecutada, flags activados y pruebas cross-tenant sobre datos reales de staging.
 
+### Seguimiento de implementación: cortes P0-4 a P0-6
+
+Se implementó la primera slice operativa de asistencia, una de las capacidades críticas del piloto:
+
+- `AttendanceSession` y `AttendanceRecord` cubren sesiones por grupo y estados por estudiante.
+- La sesión se inicializa con estudiantes de matrícula activa y exige que los registros pertenezcan al grupo.
+- Administración puede crear, consultar, cerrar y reabrir sesiones; docentes solo operan sus grupos asignados.
+- Se soportan estados pendiente, presente, ausente, tarde y justificada; las justificaciones requieren texto y quedan auditadas.
+- Estudiantes, docentes, administración y acudientes pueden consultar únicamente el resumen autorizado.
+- El portal incorpora `/attendance` para operación y muestra asistencia separada por estudiante en el dashboard familiar.
+- Se expuso el boletín básico por estudiante vinculado en `/family/bulletins`, reutilizando datos reales del año y periodo.
+- La consulta del boletín comprueba el vínculo autorizado antes de aceptar el `student_id`; el boletín oficial firmado continúa reservado para el PRD 025.
+- El calendario persistente admite consulta familiar en `/calendar`, limitado a los grupos con matrícula activa de los estudiantes autorizados.
+- El cierre de periodos bloquea mutaciones de calificaciones hasta una reapertura administrativa auditada.
+- El año lectivo admite escala mínima/máxima, umbral de aprobación y niveles de desempeño base; el dashboard y boletín usan esa política para decidir estados.
+- La importación CSV controlada permite previsualizar, validar por fila y confirmar estudiantes, acudientes, docentes, grados, áreas, grupos y matrículas.
+- Las cargas se registran en `ImportJob` y auditan la previsualización y confirmación; XLSX y exportaciones ampliadas quedan para el PRD 024, mientras que jobs, reintentos y escala quedan trazados en el PRD 031.
+- Los anuncios administrativos y docentes pueden llegar a acudientes autorizados, deduplicando un acudiente que tenga varios estudiantes.
+- Se añadieron catalogos tenant-owned de sedes y jornadas, con CRUD administrativo, desactivacion logica y referencias opcionales en matricula e importacion CSV.
+- Se añadió un reporte institucional de asistencia en JSON y CSV, filtrable por año, grupo y rango de fechas, con descarga administrativa desde el portal.
+- Se añadió exportación CSV del padrón de matrículas con grupo, grado, sede y jornada, disponible desde la administración de matrículas.
+- Se añadieron pruebas de API para crear, actualizar, cerrar y consultar dos estudiantes vinculados, además de pruebas frontend del panel familiar.
+
+Estos cortes no resuelven todavía el gate de staging, el expediente legal y consentimientos, aprobación institucional de excusas, notificaciones automáticas de asistencia, reportes institucionales adicionales, XLSX/jobs de importación ni sincronización externa del calendario.
+
 ## Referencias
 
-- [Roadmap comercial](./README.md)
-- [Auditoría de EduConnect](../Auditoria_Educonnect_ChatGPT.md)
+- [Roadmap comercial local](../../docs/task-to-make-educonnect-comercial/README.md)
+- [Registro canónico de PRDs](./README.md)
+- [Auditoría de EduConnect](../../docs/Auditoria_Educonnect_ChatGPT.md)
 - [PRD 013 - Calendario de clases](../../educonnect-backend/prds/013-calendar-class-schedule.md)
 
-Los PRDs 015 a 034 mencionados en este documento son dependencias planificadas. Sus contratos técnicos, modelos, migraciones y endpoints deberán definirse en sus respectivos PRDs antes de implementarse.
+Los PRDs 015 a 034 están documentados en el registro canónico. Cada uno declara si su alcance está implementado parcialmente o si sigue planificado; la existencia del documento no implica que la capacidad esté lista para producción.
 
 ## Objetivo
 
@@ -242,7 +268,7 @@ El piloto debe contar con un mecanismo controlado para cargar datos desde Excel 
 - Asignaturas.
 - Matrículas.
 
-El flujo debe incluir validación previa, reporte de errores por fila, confirmación antes de guardar y registro de la ejecución. El motor general de jobs, reintentos y exportaciones se desarrollará en el PRD 024.
+El flujo debe incluir validación previa, reporte de errores por fila, confirmación antes de guardar y registro de la ejecución. La importación funcional se documenta en el PRD 024; el motor general de jobs, reintentos y escala se documenta en el PRD 031.
 
 ### 11. Portal de acudiente
 
@@ -350,7 +376,7 @@ El PRD 014 no incluye:
 
 El PRD 014 no introduce endpoints, modelos, migraciones ni cambios de payload. Define criterios de producto y operación.
 
-Los contratos técnicos deberán quedar en los PRDs posteriores:
+Los contratos técnicos y el trabajo pendiente quedan trazados en los PRDs posteriores:
 
 - [PRD 015 - Producción, backups y observabilidad](../../educonnect-backend/prds/015-production-foundation.md)
 - [PRD 016 - Multi-tenancy e institución](../../educonnect-backend/prds/016-multi-tenancy-institutional-structure.md)
@@ -367,6 +393,11 @@ Los contratos técnicos deberán quedar en los PRDs posteriores:
 - [PRD 027 - Portal de acudiente](../../educonnect-backend/prds/027-guardian-portal.md)
 - [PRD 028 - Reportes institucionales](../../educonnect-backend/prds/028-institutional-reports.md)
 - [PRD 029 - Comunicaciones escolares](../../educonnect-backend/prds/029-school-communications.md)
+- [PRD 030 - Observador, convivencia y conducta](../../educonnect-backend/prds/030-student-observations-and-conduct.md)
+- [PRD 031 - Jobs asincronos y escala comercial](../../educonnect-backend/prds/031-async-jobs-and-commercial-scale.md)
+- [PRD 032 - Reportes e integraciones colombianas](../../educonnect-backend/prds/032-colombian-reporting-integrations.md)
+- [PRD 033 - Onboarding comercial y soporte](../../educonnect-backend/prds/033-commercial-onboarding-and-support.md)
+- [PRD 034 - Analitica de diferenciacion](../../educonnect-backend/prds/034-differentiation-analytics.md)
 
 ### Dependencias de producto
 
@@ -442,7 +473,7 @@ La disposición a pagar, renovación y referencias comerciales se evaluarán com
 - El flujo operativo cubre sandbox, gate P0, uso real, seguimiento semanal y cierre.
 - Las métricas tienen umbrales numéricos verificables.
 - El gate P0 bloquea explícitamente el uso de datos reales ante cualquier fallo crítico.
-- Las dependencias con los PRDs 013 y 015-029 están enlazadas o identificadas como planificadas.
+- Las dependencias con los PRDs 013 y 015-034 están enlazadas o identificadas con estado explícito.
 - El documento no crea ni promete endpoints, modelos o integraciones oficiales.
 - Las exclusiones impiden interpretar EduConnect como reemplazo de sistemas oficiales o como suite administrativa completa.
 - El roadmap comercial enlaza este PRD cuando el documento se incorpore formalmente al flujo de trabajo.

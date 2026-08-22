@@ -12,16 +12,16 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 
 ## Estructura del repositorio de PRDs
 
-- `prds/001-platform-spec.md` — Documento general (este archivo)
-- `prds/002-user-registration-roles.md` — PRD de registro y roles (detallado)
-- `prds/003-authentication-account-lifecycle.md` — Autenticación, login, perfil y contraseña
-- `prds/004-user-administration-approvals.md` — Administración, aprobación y estados de usuario
-- `prds/005-academic-structure-lifecycle.md` — Años escolares, periodos, grados, áreas, aulas y promoción
-- `prds/006-groups-enrollments-assignments.md` — Grupos, matrículas, traslados, docentes y aulas
-- `prds/007-evaluations-results-calculation.md` — Evaluaciones, notas y resultados académicos
-- `prds/008-analytics-role-based-dashboards.md` — Dashboards analíticos por rol
-- `prds/013-calendar-class-schedule.md` — Calendario de clases y sesiones académicas
-- `prds/014-commercial-scope-and-pilot.md` — Alcance comercial y piloto institucional de 90 días
+El inventario completo, con estado real y dependencias, está en [`prds/README.md`](./README.md). Los documentos principales se mantienen separados por dominio y no se deben inferir por continuidad numérica.
+
+Los PRDs comerciales son:
+
+- `014-commercial-scope-and-pilot.md` — Alcance comercial y piloto institucional de 90 días
+- `015-production-foundation.md` a `018-audit-consent-and-compliance.md` — Fundación operativa, tenant, seguridad y cumplimiento
+- `019-student-guardian-record.md` a `024-import-export-and-migration.md` — Núcleo escolar e importación
+- `025-official-bulletins.md` y `026-academic-certificates-and-documents.md` — Documentos académicos verificables
+- `027-guardian-portal.md` a `029-school-communications.md` — MVP comercial
+- `030-student-observations-and-conduct.md` a `034-differentiation-analytics.md` — Operación y diferenciación posteriores
 
 ## Convenciones
 
@@ -33,9 +33,10 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 - 2026-02-03: Creado documento y añadido PRD de registro (002)
 - 2026-03-10: Añadidos PRDs 003-008 para documentar autenticación, usuarios, estructura académica, grupos, evaluaciones y analítica
 - 2026-08-22: Añadido PRD 014 para definir el alcance comercial y las condiciones del piloto institucional
+- 2026-08-22: Creado el registro canónico y documentados los PRDs comerciales 015-034 con estado explícito
 
 ## Enlaces rápidos
 
-- PRDs: `prds/`
+- PRDs: [`prds/README.md`](./README.md)
 - Documentación técnica: `docs/`
 - Cambios del sistema: `docs/SystemArtifacts.md`

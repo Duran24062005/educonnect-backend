@@ -6,18 +6,28 @@ Este documento describe el estado real observado en los dos repositorios de EduC
 
 ## Resumen ejecutivo
 
-EduConnect tiene una base funcional para autenticacion, usuarios, estructura academica, grupos, evaluaciones, actividades, analitica, notificaciones y calendario de clases. El primer corte de preparacion comercial implementa fundamentos P0 para sesiones revocables, instituciones, auditoria, aislamiento por tenant y operaciones de backup.
+EduConnect tiene una base funcional para autenticacion, usuarios, estructura academica, grupos, evaluaciones, actividades, analitica, notificaciones, asistencia y calendario de clases. Los cortes de preparacion comercial tambien incluyen portal familiar, importacion CSV y politica SIEE inicial.
 
-El producto aun no esta listo para datos reales de un colegio. El aislamiento por institucion esta implementado como una capacidad opt-in y el gate P0 sigue bloqueado hasta demostrarlo en un entorno de staging con migracion, backup restaurado y pruebas operativas. Tampoco estan completos el expediente de acudientes, matricula institucional completa, asistencia, boletines oficiales ni las comunicaciones comerciales.
+El producto aun no esta listo para datos reales de un colegio. El aislamiento por institucion esta implementado como una capacidad opt-in y el gate P0 sigue bloqueado hasta demostrarlo en un entorno de staging con migracion, backup restaurado y pruebas operativas. La interfaz y API de sedes/jornadas ya estan implementadas, pero falta configurarlas con los datos reales y validar sus reglas operativas. Tampoco estan completos el expediente legal de acudientes, boletines oficiales ni los reportes y documentos institucionales.
 
 ## Repositorios y estado de trabajo
 
 | Repositorio | Estado actual | Observacion |
 | --- | --- | --- |
 | `educonnect-backend` | Implementacion P0 en curso | Contiene los cambios de seguridad, tenant, auditoria, instituciones y operacion descritos abajo. |
-| `educonnect-portal` | Calendario demo en desarrollo local | Tiene cambios locales de UI, navegacion, API demo y pruebas del calendario. Todavia no forman parte de un commit de este corte ni representan integracion productiva con el backend. |
+| `educonnect-portal` | Portal conectado en desarrollo local | Tiene cambios locales de UI, navegacion, APIs de asistencia, familia, importaciones y calendario. Todavia no forman parte de un commit de este corte ni representan integracion productiva con el backend. |
 
-La carpeta raiz `docs/task-to-make-educonnect-comercial` es un roadmap local ignorado por Git. La copia operativa de los PRDs comerciales se mantiene tambien en `educonnect-backend/prds/` cuando define contratos, datos o reglas de backend.
+La carpeta raiz `docs/task-to-make-educonnect-comercial` es un roadmap local ignorado por Git y queda solo como referencia de priorizacion. La fuente versionada y canonica de los PRDs es [`prds/README.md`](../prds/README.md); alli se distingue el trabajo parcial del trabajo planificado.
+
+## Estado documental del roadmap
+
+Los huecos numericos entre los PRDs no representan documentos ocultos. Todos los PRDs comerciales `015-034` tienen ahora un archivo en `prds/` con alcance, dependencias, estado real y criterios de aceptacion.
+
+- `015` y `017-024`: ejecucion parcial o slices implementadas, con pendientes operativos o de dominio explicitos.
+- `025-026` y `030-034`: planificados; documentan el trabajo futuro sin presentarlo como funcionalidad disponible.
+- `027-029`: slices comerciales parcialmente implementadas y enlazadas con sus dependencias.
+
+La copia local del roadmap no debe editarse como fuente de estado. Cuando exista una diferencia, prevalecen `prds/README.md`, el PRD correspondiente y este documento.
 
 ## Capacidades implementadas en el corte P0
 
@@ -61,20 +71,25 @@ La carpeta raiz `docs/task-to-make-educonnect-comercial` es un roadmap local ign
 - Grupos, enrolamientos y asignaciones docentes.
 - Evaluaciones, resultados, actividades, entregas y analitica.
 - Notificaciones in-app y anuncios dirigidos.
-- Calendario visual en el portal conectado a API persistente, con catálogo real, consultas por rol, filtros administrativos, conflictos de horario y cancelación/reactivación; falta operar el módulo con datos institucionales en staging.
+- Corte inicial del portal de acudiente: relaciones autorizadas y dashboard con datos de varios estudiantes.
+- Primera slice de asistencia: sesiones por grupo, estados, justificaciones, cierre y resumen para acudientes.
+- Reporte institucional de asistencia en JSON y CSV, filtrable por año, grupo y rango de fechas desde el portal administrativo.
+- Exportación CSV del padrón de matrículas con grupo, grado, sede y jornada desde la administración.
+- Boletin basico para acudientes: consulta autorizada por estudiante, ano y periodo; el documento oficial firmado sigue pendiente.
+- Calendario visual en el portal conectado a API persistente, con catálogo real, consultas por rol, alcance familiar para acudientes, filtros administrativos, conflictos de horario y cancelación/reactivación; falta operar el módulo con datos institucionales en staging.
 
 ### Pendiente para el piloto comercial
 
-- Configuracion institucional completa con sedes, jornadas y datos del colegio.
-- Expediente de estudiantes, acudientes y relaciones autorizadas.
-- Matricula por ano, sede, jornada, grado y grupo.
+- Configuracion institucional completa con datos reales de colegio y reglas de compatibilidad entre sede, jornada, grupo, aula y docente; el CRUD base de sedes y jornadas ya esta disponible en /institution/structure.
+- Expediente completo de estudiantes y acudientes, custodia, consentimientos y documentos base.
+- Matricula por ano, sede, jornada, grado y grupo; sede y jornada ya son referencias opcionales en el flujo administrativo y en la importacion CSV.
 - Catalogo academico formal y carga docente.
-- SIEE configurable, historial de notas, cierre y reapertura de periodos.
-- Asistencia diaria, justificaciones e historial.
-- Boletin oficial versionado y documentos verificables.
-- Portal de acudientes restringido a estudiantes vinculados.
-- Importacion controlada desde Excel/CSV, validacion por fila y trazabilidad del proceso.
-- Reportes y comunicaciones institucionales listos para operacion repetible.
+- SIEE inicial configurable por año lectivo con escala, umbral y niveles base; quedan pendientes recuperación, versionado y edición posterior de la política. El cierre y reapertura controlada de periodos ya tiene una slice auditada.
+- Asistencia diaria, justificaciones e historial; la primera slice operativa y el reporte CSV ya están disponibles para grupos, acudientes y administración. Siguen pendientes notificaciones automáticas y reportes adicionales.
+- Boletin oficial versionado y documentos verificables; el boletin basico HTML ya esta disponible para estudiantes y acudientes.
+- Portal de acudientes ampliado con asistencia, boletines, calendario y comunicaciones; documentos y solicitudes siguen pendientes.
+- Importacion CSV controlada para estudiantes, acudientes, docentes, grados, areas, grupos y matriculas; XLSX, jobs y exportaciones siguen pendientes.
+- Reportes institucionales adicionales y comunicaciones con operación repetible completa.
 
 ## Gate P0
 
@@ -93,10 +108,11 @@ El uso de datos reales debe permanecer bloqueado si cualquiera de estos controle
 
 En `educonnect-backend` se validaron los siguientes comandos:
 
-- `yarn test`: 7 suites y 45 pruebas aprobadas.
+- `yarn test`: 14 suites y 65 pruebas aprobadas, incluyendo asistencia, reporte CSV, boletin, portal de acudiente, calendario familiar, importacion controlada, SIEE, comunicaciones, estructura institucional y cierre de periodos.
 - `yarn typecheck`: aprobado.
 - `yarn build`: aprobado.
 - `git diff --check`: aprobado.
+- `educonnect-portal`: `yarn test` con 10 archivos y 23 pruebas aprobadas; `yarn typecheck` y `yarn build:ci` aprobados. La validación visual local requiere una sesión autenticada o `VITE_CALENDAR_DATA_SOURCE=demo`.
 - `bash -n scripts/backup-mongodb.sh scripts/restore-mongodb.sh`: aprobado.
 - Ayuda de `yarn backup:mongodb`, `yarn restore:mongodb` y `yarn migrate:tenant`: disponible.
 
@@ -109,12 +125,12 @@ Estas validaciones comprueban el corte de codigo, pero no sustituyen la prueba d
 3. Ejecutar backup, restaurarlo en una base aislada y registrar evidencia de integridad.
 4. Activar los flags tenant en staging y ejecutar pruebas de aislamiento, permisos y revocacion.
 5. Completar los PRDs 017 y 018 para permisos contextuales, auditoria atomica, consentimiento y proteccion de menores.
-6. Implementar los PRDs 019-023 y validar el PRD 013 con datos institucionales en staging.
-7. Implementar los PRDs 024-029 para migracion, boletines, documentos, portal de acudientes, reportes y comunicaciones.
+6. Levantar datos reales y reglas operativas de sedes/jornadas, y definir expediente/documentos, recuperaciones SIEE, boletin oficial y reportes institucionales.
+7. Extender importaciones a XLSX, jobs, reintentos y exportaciones; validar el flujo con datos institucionales en staging.
 8. Ejecutar el flujo completo del piloto con datos sinteticos y aprobar el gate P0.
 9. Habilitar datos reales solo despues de la aprobacion formal del gate.
 
-El alcance comercial, los criterios de salida y las dependencias se encuentran en [`prds/014-commercial-scope-and-pilot.md`](../prds/014-commercial-scope-and-pilot.md). El orden completo del roadmap se conserva, cuando esta disponible, en la carpeta local ignorada `docs/task-to-make-educonnect-comercial` del workspace compartido; este repositorio no depende de ella para ejecutar el backend.
+El alcance comercial, los criterios de salida y las dependencias se encuentran en [`prds/014-commercial-scope-and-pilot.md`](../prds/014-commercial-scope-and-pilot.md). El inventario y estado de todos los PRDs están en [`prds/README.md`](../prds/README.md). El roadmap local ignorado puede consultarse como contexto, pero este repositorio no depende de él para ejecutar el backend.
 
 ## Runbooks relacionados
 
