@@ -647,61 +647,22 @@ Este equilibrio evita joins innecesarios donde no aportan valor, pero conserva r
 
 ## Datos de prueba y seeds
 
-### Script `yarn seed`
+### Seed integral
 
-Archivo: `scripts/seed.js`
+El unico seed de datos es `scripts/seed-demo.ts`.
 
-Objetivo:
+- `yarn seed:demo`: reconcilia el dataset demo de forma idempotente.
+- `yarn seed:reset`: ejecuta `dropDatabase()` y vuelve a crear el dataset desde cero.
 
-- crear areas base
-- crear 3 docentes demo
-- crear 4 estudiantes demo
-- crear usuarios y perfiles personales asociados
+El dataset cubre todos los modelos persistentes, genera dos estudiantes para el mismo acudiente y deja relaciones validas para los modulos academico, familiar, calendario, asistencia, actividades, notificaciones, auditoria e importaciones. El detalle de entidades, variables y credenciales esta en [`../docs/seeding.md`](../docs/seeding.md).
 
-Datos base:
-
-- **Docentes:** 3
-- **Estudiantes:** 4
-- **Areas:** 4
-- **Password por defecto:** `EduConnect123!`
-
-### Script `yarn seed:analytics`
-
-Archivo: `scripts/seed-analytics-data.js`
-
-Objetivo:
-
-- poblar un ano escolar demo
-- crear periodos, grados, areas y grupos
-- asignar docentes a grupos y areas
-- matricular estudiantes
-- generar resultados por area/periodo
-- generar resultados finales
-
-Datos generados por defecto:
-
-- **Ano escolar:** 1
-- **Periodos:** 4
-- **Grados:** 3
-- **Areas:** 5
-- **Grupos:** 6
-- **Docentes:** 5
-- **Estudiantes:** 48
-- **Resultados por area/periodo:** 960
-- **Resultados finales:** 48
-- **Password por defecto:** `EduConnect123!`
-
-Opciones CLI:
-
-- `--year=YYYY`
-- `--group-size=N`
-- `--activate`
+El modo reset exige `SEED_RESET_CONFIRM=EDUCONNECT-RESET`, se bloquea en produccion y elimina tambien colecciones que no esten representadas por un modelo del seed.
 
 ### Observaciones sobre el seed
 
-- El seed usa `upsert`, por lo que es idempotente en varios escenarios.
-- El dataset analitico esta pensado para dashboards y no reemplaza datos reales de operacion.
-- La coleccion `notifications` no se puebla con estos scripts.
+- El modo incremental usa claves estables por namespace y no elimina datos.
+- El modo reset es destructivo y solo debe apuntar a una base local o de pruebas.
+- Los scripts de backup, restore y migracion no son seeds y se mantienen como operaciones independientes.
 
 ---
 
@@ -745,7 +706,7 @@ En estos casos, gran parte del valor viene de:
 
 - las referencias entre colecciones
 - los indices de estado y contexto
-- el dataset demo generado por `seed:analytics`
+- el dataset demo generado por `seed:demo`
 
 ### Estado actual frente al repo de referencia
 
@@ -874,5 +835,5 @@ Para acercarse al nivel esperado en la documentacion de referencia, seria recome
 - Guia interna de base de datos: `../docs/database_docs.md`
 - Conexion y configuracion: `../src/config/config.js`
 - Modelos de Mongoose: `../src/models/`
-- Seeds de desarrollo: `../scripts/seed.js`, `../scripts/seed-analytics-data.js`
+- Seed de desarrollo: `../scripts/seed-demo.ts`
 - Reglas de negocio clave: `../src/services/AcademicService.js`, `../src/services/GroupService.js`, `../src/services/EvaluationService.js`, `../src/services/ActivityService.js`, `../src/services/NotificationService.js`

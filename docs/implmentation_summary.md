@@ -12,7 +12,7 @@ Elevar EduConnect backend a un baseline de producción sin romper funcionalidad 
 - Autorización por roles mediante middleware dedicado.
 - Documentación OpenAPI en `/api-docs`.
 - Configuración centralizada con `DATABASE_URL` + variables estándar.
-- Script de seed en `scripts/seed.js`.
+- Script integral de seed en `scripts/seed-demo.ts`, con modo incremental y reset explicito.
 - Suite base de pruebas de integración con Jest/Supertest.
 - Ajustes de modelos/índices para consultas académicas.
 
@@ -33,5 +33,4 @@ Suite de integración ejecutada exitosamente en entorno local del agente:
 - `src/validators/*`
 - `src/docs/swagger.js`
 - `tests/api.test.js`
-- `scripts/seed.js`
-
+- `scripts/seed-demo.ts`

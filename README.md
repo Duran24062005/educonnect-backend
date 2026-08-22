@@ -224,11 +224,12 @@ docker compose up --build
 
 Scripts disponibles:
 
-- `yarn seed`: datos base de ejemplo
-- `yarn seed:analytics`: dataset enfocado en dashboards y endpoints agregados
-- `yarn seed:test-users`: datos de prueba orientados a autenticacion/usuarios
+- `yarn seed:demo`: dataset integral idempotente para probar todos los dominios y entidades
+- `yarn seed:reset`: limpia toda la base y vuelve a ejecutar el seed integral; exige confirmacion explicita
 
-Todos los seeds viven en `educonnect-backend/scripts/`.
+El detalle del seed integral, sus credenciales y variables se encuentra en [`docs/seeding.md`](./docs/seeding.md).
+
+El unico seed de datos es `scripts/seed-demo.ts`. Los scripts de backup, restore y migracion son operaciones independientes.
 
 Usalos solo en entornos de desarrollo o pruebas controladas.
 
