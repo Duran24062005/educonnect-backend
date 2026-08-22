@@ -18,6 +18,7 @@ let GroupTeacher;
 let Enrollment;
 let Activity;
 let Notification;
+let StudentGuardian;
 let mongoServer;
 let uniqueIndex = 0;
 
@@ -58,6 +59,7 @@ beforeAll(async () => {
     ({ default: Enrollment } = await import('../src/models/EnrollmentModel.js'));
     ({ default: Activity } = await import('../src/models/ActivityModel.js'));
     ({ default: Notification } = await import('../src/models/NotificationModel.js'));
+    ({ default: StudentGuardian } = await import('../src/models/StudentGuardianModel.js'));
 
     await appConfig.connectDatabase();
 });
@@ -278,6 +280,31 @@ describe('Notifications API', () => {
         expect(teacherNotifications).toHaveLength(1);
         expect(teacherNotifications[0].metadata.student_name).toContain('Laura');
         expect(otherTeacherNotifications).toHaveLength(0);
+    });
+
+    test('teacher announcements reach authorized guardians without duplicating a multi-student guardian', async () => {
+        const fixture = await createFixture();
+        const guardian = await createActor({
+            role: 'Parent',
+            emailPrefix: 'guardian',
+            firstName: 'Maria',
+            lastName: 'Acudiente',
+        });
+        await StudentGuardian.create([
+            { student_id: fixture.student.profile._id, guardian_id: guardian.user._id, relationship: 'mother' },
+            { student_id: fixture.secondStudent.profile._id, guardian_id: guardian.user._id, relationship: 'mother' },
+        ]);
+
+        const response = await request(app)
+            .post('/api/notifications/teacher/announcements')
+            .set('Authorization', `Bearer ${fixture.teacher.token}`)
+            .send({ title: 'Reunión', message: 'Reunión de seguimiento', scope: 'all_my_students' });
+
+        expect(response.statusCode).toBe(201);
+        expect(response.body.data.created_count).toBe(2);
+        const guardianNotifications = await Notification.find({ recipient_user_id: guardian.user._id });
+        expect(guardianNotifications).toHaveLength(1);
+        expect(guardianNotifications[0].audience_role).toBe('parent');
     });
 
     test('admin can create announcements by role and users can mark notifications as read', async () => {
