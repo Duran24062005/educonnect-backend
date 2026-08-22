@@ -20,6 +20,10 @@ dist/
 .env
 .env.production
 
+# backups may contain personal and academic data
+/backups/
+*.dump
+
 # logs
 logs/
 *.log

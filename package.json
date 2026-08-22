@@ -61,6 +61,9 @@
         "seed": "tsx scripts/seed.ts",
         "seed:analytics": "tsx scripts/seed-analytics-data.ts",
         "seed:test-users": "tsx scripts/seed-test-users.ts",
+        "backup:mongodb": "bash scripts/backup-mongodb.sh",
+        "restore:mongodb": "bash scripts/restore-mongodb.sh",
+        "migrate:tenant": "tsx scripts/migrate-tenant.ts",
         "test": "NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand"
     }
 }
