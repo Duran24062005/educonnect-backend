@@ -4,6 +4,8 @@ import { notificationRepository } from '../repositories/NotificationRepository.j
 import userRepository from '../repositories/UserRepository.js';
 import { teacherRepository, groupRepository, groupTeacherRepository, studentRepository } from '../repositories/PersonProfileRepository.js';
 import { enrollmentRepository } from '../repositories/EvaluationRepository.js';
+import StudentGuardian from '../models/StudentGuardianModel.js';
+import User from '../models/UserModel.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -51,7 +53,7 @@ class NotificationService {
 
         if (normalized === 'teacher_student') return ['teacher', 'student'];
         if (normalized === 'teacher_admin') return ['teacher', 'admin'];
-        if (normalized === 'all') return ['admin', 'teacher', 'student'];
+        if (normalized === 'all') return ['admin', 'teacher', 'student', 'parent'];
         return [normalized];
     }
 
@@ -244,16 +246,22 @@ class NotificationService {
             };
         }
 
-        const recipients = enrollments
+        const studentRecipients = enrollments
             .map((row) => row.student_id?.user_id)
             .filter(Boolean);
 
-        const items = this.buildBulkNotifications(recipients, (recipientUserId) => ({
+        const studentIds = enrollments.map((row) => row.student_id?._id || row.student_id).filter(Boolean);
+        const guardianLinks = await StudentGuardian.find({ student_id: { $in: studentIds }, is_authorized: true }).select('guardian_id');
+        const guardianIds = [...new Set(guardianLinks.map((link) => toIdString(link.guardian_id)).filter(Boolean))];
+        const guardianRecipients = guardianIds.length ? await User.find({ _id: { $in: guardianIds } }).populate('person_id') : [];
+        const recipients = [...studentRecipients, ...guardianRecipients];
+
+        const items = this.buildBulkNotifications(recipients, (recipientUserId, recipient) => ({
             recipient_user_id: recipientUserId,
             type: 'teacher_announcement',
             title: String(data.title || '').trim(),
             message: String(data.message || '').trim(),
-            audience_role: 'student',
+            audience_role: normalizeRole(recipient?.person_id?.role) === 'parent' ? 'parent' : 'student',
             created_by_user_id: sender._id,
             created_by_role: 'teacher',
             source_type: 'announcement',

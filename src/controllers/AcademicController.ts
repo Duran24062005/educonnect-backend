@@ -53,6 +53,17 @@ class AcademicController {
         res.status(200).json({ status: 'success', message: result.message });
     });
 
+    updatePeriodStatus = asyncHandler(async (req, res) => {
+        const result = await AcademicService.updatePeriodStatus(req.params.id, req.body.status, {
+            actorUserId: req.userId,
+            actorRole: req.userRole,
+            institutionId: req.institutionId,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+        res.status(200).json({ status: 'success', data: result });
+    });
+
     // ---- GRADES ----
     createGrade = asyncHandler(async (req, res) => {
         const result = await AcademicService.createGrade(req.body);

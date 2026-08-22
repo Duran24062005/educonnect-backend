@@ -26,6 +26,20 @@ const schoolYearSchema = new mongoose.Schema(
             required: true,
             default: false,
         },
+        grading_policy: {
+            min_score: { type: Number, default: 0, min: 0, max: 100 },
+            max_score: { type: Number, default: 10, min: 0, max: 100 },
+            passing_score: { type: Number, default: 6, min: 0, max: 100 },
+            performance_levels: {
+                type: [{
+                    code: { type: String, required: true, trim: true },
+                    label: { type: String, required: true, trim: true },
+                    min_score: { type: Number, required: true, min: 0, max: 100 },
+                    max_score: { type: Number, required: true, min: 0, max: 100 },
+                }],
+                default: undefined,
+            },
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

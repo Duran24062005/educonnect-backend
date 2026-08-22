@@ -1,5 +1,7 @@
 import { asyncHandler } from '../utils/error.js';
 import GroupService from '../services/GroupService.js';
+import { serializeCsv } from '../utils/csv.js';
+import { getQueryString } from '../utils/request.js';
 
 class GroupController {
     // ---- GRUPOS ----
@@ -35,18 +37,18 @@ class GroupController {
 
     // ---- INSCRIPCIONES ----
     enrollStudent = asyncHandler(async (req, res) => {
-        const { student_id, group_id, school_year_id } = req.body;
+        const { student_id, group_id, school_year_id, campus_id, shift_id } = req.body;
         const result = await GroupService.enrollStudent(student_id, group_id, school_year_id, {
             actorUserId: req.userId,
             actorRole: req.userRole,
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
-        });
+        }, { campus_id, shift_id });
         res.status(201).json({ status: 'success', message: 'Estudiante inscrito exitosamente', data: result });
     });
 
     transferEnrollment = asyncHandler(async (req, res) => {
-        const { student_id, school_year_id, to_group_id, reason, observations } = req.body;
+        const { student_id, school_year_id, to_group_id, reason, observations, campus_id, shift_id } = req.body;
         const result = await GroupService.transferEnrollment(
             student_id,
             school_year_id,
@@ -58,7 +60,8 @@ class GroupController {
                 actorRole: req.userRole,
                 ipAddress: req.ip,
                 userAgent: req.get('user-agent'),
-            }
+            },
+            { campus_id, shift_id }
         );
         res.status(201).json({
             status: 'success',
@@ -94,6 +97,21 @@ class GroupController {
             req.userRole
         );
         res.status(200).json({ status: 'success', data: result });
+    });
+
+    downloadEnrollmentReport = asyncHandler(async (req, res) => {
+        const rows = await GroupService.getEnrollmentReport(
+            getQueryString(req.query.school_year_id),
+            getQueryString(req.query.group_id) || '',
+            req.userRole
+        );
+        const csv = serializeCsv(
+            ['school_year', 'group', 'grade', 'student', 'email', 'campus', 'shift', 'status'],
+            rows
+        );
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="enrollment-report.csv"');
+        res.status(200).send(String.fromCharCode(0xFEFF) + csv);
     });
 
     // ---- ASIGNACIÓN DE PROFESORES ----

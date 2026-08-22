@@ -22,6 +22,16 @@ const enrollmentSchema = new mongoose.Schema(
             ref: 'Group',
             required: [true, 'El grupo es requerido'],
         },
+        campus_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Campus',
+            default: null,
+        },
+        shift_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'SchoolShift',
+            default: null,
+        },
         status: {
             type: String,
             enum: ['active', 'transferred', 'retired'],

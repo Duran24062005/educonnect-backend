@@ -17,6 +17,8 @@ import {
     assertCanAccessGroup,
 } from './accessScope.service.js';
 import AuditLogService from './AuditLogService.js';
+import Campus from '../models/CampusModel.js';
+import SchoolShift from '../models/SchoolShiftModel.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -133,7 +135,7 @@ class GroupService {
     // INSCRIPCIONES
     // ===========================
 
-    async enrollStudent(student_id, group_id, school_year_id, auditContext = {}) {
+    async enrollStudent(student_id, group_id, school_year_id, auditContext = {}, structure = {}) {
         if (!student_id || !group_id || !school_year_id) {
             throw new AppError('Estudiante, grupo y año escolar son requeridos', 400);
         }
@@ -159,11 +161,14 @@ class GroupService {
             throw new AppError('El grupo ha alcanzado su capacidad máxima', 400);
         }
 
+        const structureRefs = await this.resolveEnrollmentStructure(structure);
+
         const enrollment = await enrollmentRepository.create({
             student_id,
             school_year_id,
             group_id,
             status: 'active',
+            ...structureRefs,
         });
 
         // Actualizar group_id en el perfil del estudiante
@@ -191,7 +196,7 @@ class GroupService {
         return enrollment;
     }
 
-    async transferEnrollment(student_id, school_year_id, to_group_id, reason = null, observations = null, auditContext = {}) {
+    async transferEnrollment(student_id, school_year_id, to_group_id, reason = null, observations = null, auditContext = {}, structure = {}) {
         if (!student_id || !school_year_id || !to_group_id) {
             throw new AppError('Estudiante, año escolar y grupo destino son requeridos', 400);
         }
@@ -220,6 +225,8 @@ class GroupService {
             throw new AppError('El grupo destino ha alcanzado su capacidad máxima', 400);
         }
 
+        const structureRefs = await this.resolveEnrollmentStructure(structure);
+
         await enrollmentRepository.update(activeEnrollment._id, {
             status: 'transferred',
             closed_at: new Date(),
@@ -235,6 +242,7 @@ class GroupService {
             previous_enrollment_id: activeEnrollment._id,
             transfer_reason: reason || null,
             observations: observations || null,
+            ...structureRefs,
         });
 
         await studentRepository.update(student_id, { group_id: to_group_id });
@@ -261,6 +269,21 @@ class GroupService {
         });
 
         return newEnrollment;
+    }
+
+    async resolveEnrollmentStructure({ campus_id = null, shift_id = null } = {}) {
+        const refs = {};
+        if (campus_id) {
+            const campus = await Campus.findOne({ _id: campus_id, status: 'active' });
+            if (!campus) throw new AppError('Sede no encontrada o inactiva', 404);
+            refs.campus_id = campus._id;
+        }
+        if (shift_id) {
+            const shift = await SchoolShift.findOne({ _id: shift_id, status: 'active' });
+            if (!shift) throw new AppError('Jornada no encontrada o inactiva', 404);
+            refs.shift_id = shift._id;
+        }
+        return refs;
     }
 
     async changeEnrollmentStatus(enrollment_id, status, auditContext = {}) {
@@ -331,6 +354,33 @@ class GroupService {
             }
         }
         return await enrollmentRepository.findByStudent(student_id);
+    }
+
+    async getEnrollmentReport(school_year_id, group_id = '', actorRole = 'admin') {
+        if (!isAdmin(actorRole)) {
+            throw new AppError('Solo administración puede descargar el reporte de matrículas', 403);
+        }
+
+        const enrollments = await enrollmentRepository.findBySchoolYear(school_year_id, 'active');
+        const filtered = group_id
+            ? enrollments.filter((enrollment) => toIdString(enrollment.group_id) === toIdString(group_id))
+            : enrollments;
+
+        return filtered.map((enrollment) => {
+            const student = enrollment.student_id;
+            const person = student?.user_id?.person_id;
+            const fullName = ((person?.first_name || '') + ' ' + (person?.last_name || '')).trim();
+            return {
+                school_year: enrollment.school_year_id?.year || '',
+                group: enrollment.group_id?.name || '',
+                grade: enrollment.group_id?.grade_id?.name || '',
+                student: fullName || student?.user_id?.email || '',
+                email: student?.user_id?.email || '',
+                campus: enrollment.campus_id?.name || '',
+                shift: enrollment.shift_id?.name || '',
+                status: enrollment.status || '',
+            };
+        });
     }
 
     // ===========================

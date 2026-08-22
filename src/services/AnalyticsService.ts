@@ -5,8 +5,14 @@ import AnalyticsRepository from '../repositories/AnalyticsRepository.js';
 import UserService from './UserService.js';
 import SimpleMemoryCache from '../utils/simpleMemoryCache.js';
 import appConfig from '../config/config.js';
+import { assertCanAccessStudentData } from './accessScope.service.js';
+import {
+    countPerformanceLevels,
+    createPerformanceLevels,
+    getPerformanceLevel,
+    normalizeGradingPolicy,
+} from '../utils/grading-policy.js';
 
-const PASS_SCORE = 6;
 const SUMMARY_CACHE_TTL_MS = 30_000;
 const summaryCache = new SimpleMemoryCache();
 
@@ -38,30 +44,6 @@ const computeWeightedAverage = (items, scoresByItemId) => {
     return round2(normalized);
 };
 
-const getPerformanceLevel = (score) => {
-    const value = Number(score || 0);
-    if (value >= 9) return 'SUPERIOR';
-    if (value >= 8) return 'ALTO';
-    if (value >= 6) return 'BÁSICO';
-    return 'BAJO';
-};
-
-const createPerformanceLevels = () => ({
-    SUPERIOR: 0,
-    ALTO: 0,
-    BÁSICO: 0,
-    BAJO: 0,
-});
-
-const countPerformanceLevels = (items, getScore) => {
-    const levels = createPerformanceLevels();
-    for (const item of items) {
-        const level = getPerformanceLevel(getScore(item));
-        levels[level] += 1;
-    }
-    return levels;
-};
-
 const buildStudentProfileMap = (students) => {
     const map = new Map();
 
@@ -86,10 +68,16 @@ class AnalyticsService {
         return schoolYear;
     }
 
-    async getStudentContext(userId, schoolYearId) {
-        const student = await AnalyticsRepository.findStudentByUserId(userId);
+    async getStudentContext(userId, schoolYearId, studentId = null, actorRole = 'student') {
+        const student = studentId
+            ? await AnalyticsRepository.findStudentById(studentId)
+            : await AnalyticsRepository.findStudentByUserId(userId);
         if (!student) {
             throw new AppError('Perfil de estudiante no encontrado', 404);
+        }
+
+        if (studentId) {
+            await assertCanAccessStudentData({ userId, role: actorRole, studentId: student._id });
         }
 
         const schoolYear = await this.ensureSchoolYear(schoolYearId);
@@ -109,7 +97,8 @@ class AnalyticsService {
         return { teacher };
     }
 
-    aggregateAreaAverages(results) {
+    aggregateAreaAverages(results, gradingPolicy = {}) {
+        const policy = normalizeGradingPolicy(gradingPolicy);
         const areaMap = new Map();
 
         for (const row of results) {
@@ -130,12 +119,12 @@ class AnalyticsService {
                 area_id: item.area_id,
                 area_name: item.area_name,
                 final_average: finalAverage,
-                status: finalAverage >= PASS_SCORE ? 'passed' : 'failed',
+                status: finalAverage >= policy.passing_score ? 'passed' : 'failed',
             };
         });
     }
 
-    buildAreaMetrics(results, periods) {
+    buildAreaMetrics(results, periods, gradingPolicy = {}) {
         const areaMap = new Map();
         const sortedPeriods = [...periods].sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
 
@@ -162,14 +151,14 @@ class AnalyticsService {
                     area_id: item.area_id,
                     area_name: item.area_name,
                     final_average: finalAverage,
-                    status: finalAverage >= PASS_SCORE ? 'passed' : 'failed',
+                    status: finalAverage >= normalizeGradingPolicy(gradingPolicy).passing_score ? 'passed' : 'failed',
                     periods: sortedPeriods.map((period) => {
                         const score = item.periods.get(period._id.toString()) || 0;
                         return {
                             period_id: period._id,
                             period_name: period.name,
                             average: round2(score),
-                            status: score >= PASS_SCORE ? 'passed' : 'failed',
+                            status: score >= normalizeGradingPolicy(gradingPolicy).passing_score ? 'passed' : 'failed',
                         };
                     }),
                 };
@@ -252,8 +241,9 @@ class AnalyticsService {
         return result;
     }
 
-    async getStudentOverview(userId, schoolYearId) {
-        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId);
+    async getStudentOverview(userId, schoolYearId, studentId = null, actorRole = 'student') {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId, studentId, actorRole);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const periodIds = periods.map((period) => period._id);
 
         const results = await AnalyticsRepository.findPeriodAreaResults({
@@ -261,7 +251,7 @@ class AnalyticsService {
             period_id: { $in: periodIds },
         });
 
-        const areas = this.buildAreaMetrics(results, periods);
+        const areas = this.buildAreaMetrics(results, periods, gradingPolicy);
         const finalResult = await AnalyticsRepository.findFinalResult(student._id, schoolYearId);
         const generalAverage = areas.length > 0
             ? computeAverage(areas.map((area) => area.final_average))
@@ -284,15 +274,16 @@ class AnalyticsService {
                 general_average: generalAverage,
                 passed_areas: passedAreas,
                 failed_areas: failedAreas,
-                final_status: finalResult?.status || (generalAverage >= PASS_SCORE ? 'passed' : 'failed'),
+                final_status: finalResult?.status || (generalAverage >= gradingPolicy.passing_score ? 'passed' : 'failed'),
             },
             best_area: bestArea,
             attention_area: attentionArea,
         };
     }
 
-    async getStudentAreas(userId, schoolYearId) {
-        const { student, periods } = await this.getStudentContext(userId, schoolYearId);
+    async getStudentAreas(userId, schoolYearId, studentId = null, actorRole = 'student') {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId, studentId, actorRole);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const periodIds = periods.map((period) => period._id);
 
         const results = await AnalyticsRepository.findPeriodAreaResults({
@@ -301,7 +292,7 @@ class AnalyticsService {
         });
 
         const [areas, historicalAverages] = await Promise.all([
-            Promise.resolve(this.buildAreaMetrics(results, periods)),
+            Promise.resolve(this.buildAreaMetrics(results, periods, gradingPolicy)),
             this.buildStudentYearAverages(student._id),
         ]);
 
@@ -313,8 +304,9 @@ class AnalyticsService {
         };
     }
 
-    async getStudentBulletin(userId, schoolYearId, periodId) {
-        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId);
+    async getStudentBulletin(userId, schoolYearId, periodId, studentId = null, actorRole = 'student') {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId, studentId, actorRole);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const period = periods.find((item) => item._id.toString() === periodId.toString());
         if (!period) {
             throw new AppError('Periodo no encontrado para el año escolar seleccionado', 404);
@@ -391,8 +383,8 @@ class AnalyticsService {
                     area_id: areaId,
                     area_name: areaName,
                     period_average: periodAverage,
-                    final_result_label: getPerformanceLevel(periodAverage),
-                    status: periodAverage >= PASS_SCORE ? 'passed' : 'failed',
+                    final_result_label: getPerformanceLevel(periodAverage, gradingPolicy),
+                    status: periodAverage >= gradingPolicy.passing_score ? 'passed' : 'failed',
                     evaluations,
                 };
             })
@@ -438,8 +430,9 @@ class AnalyticsService {
         };
     }
 
-    async getStudentAreaTrend(userId, schoolYearId, areaId) {
-        const { student, periods } = await this.getStudentContext(userId, schoolYearId);
+    async getStudentAreaTrend(userId, schoolYearId, areaId, studentId = null, actorRole = 'student') {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId, studentId, actorRole);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const periodIds = periods.map((period) => period._id);
         const area = await AnalyticsRepository.findAreaById(areaId);
         if (!area) {
@@ -466,14 +459,15 @@ class AnalyticsService {
                     period_id: period._id,
                     period_name: period.name,
                     average: round2(score),
-                    status: score >= PASS_SCORE ? 'passed' : 'failed',
+                    status: score >= gradingPolicy.passing_score ? 'passed' : 'failed',
                 };
             }),
         };
     }
 
-    async getStudentPeriodSummary(userId, schoolYearId) {
-        const { student, periods } = await this.getStudentContext(userId, schoolYearId);
+    async getStudentPeriodSummary(userId, schoolYearId, studentId = null, actorRole = 'student') {
+        const { student, schoolYear, periods } = await this.getStudentContext(userId, schoolYearId, studentId, actorRole);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const periodIds = periods.map((period) => period._id);
 
         const results = await AnalyticsRepository.findPeriodAreaResults({
@@ -502,11 +496,25 @@ class AnalyticsService {
                     period_id: period._id,
                     period_name: period.name,
                     general_average: average,
-                    passed_areas: values.filter((value) => value >= PASS_SCORE).length,
-                    failed_areas: values.filter((value) => value < PASS_SCORE).length,
-                    status: average >= PASS_SCORE ? 'passed' : 'failed',
+                    passed_areas: values.filter((value) => value >= gradingPolicy.passing_score).length,
+                    failed_areas: values.filter((value) => value < gradingPolicy.passing_score).length,
+                    status: average >= gradingPolicy.passing_score ? 'passed' : 'failed',
                 };
             }),
+        };
+    }
+
+    async getStudentDashboard(userId, role, schoolYearId, studentId) {
+        const [overview, areas, periodSummary] = await Promise.all([
+            this.getStudentOverview(userId, schoolYearId, studentId, role),
+            this.getStudentAreas(userId, schoolYearId, studentId, role),
+            this.getStudentPeriodSummary(userId, schoolYearId, studentId, role),
+        ]);
+
+        return {
+            overview,
+            areas: areas.areas,
+            periods: periodSummary.periods,
         };
     }
 
@@ -527,7 +535,8 @@ class AnalyticsService {
         };
     }
 
-    buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap) {
+    buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap, gradingPolicy = {}) {
+        const policy = normalizeGradingPolicy(gradingPolicy);
         const resultsByAssignment = new Map();
 
         for (const assignment of assignments) {
@@ -585,20 +594,20 @@ class AnalyticsService {
                     student_name: studentProfile.full_name || 'Sin nombre',
                     student_email: studentProfile.email || null,
                     average,
-                    status: average >= PASS_SCORE ? 'passed' : 'failed',
-                    performance_level: getPerformanceLevel(average),
+                    status: average >= policy.passing_score ? 'passed' : 'failed',
+                    performance_level: getPerformanceLevel(average, policy),
                 };
             });
 
             const periodsSummary = periods.map((period) => {
                 const values = Array.from(periodValuesByStudent.get(period._id.toString())?.values() || []);
-                const passed = values.filter((value) => value >= PASS_SCORE).length;
+                const passed = values.filter((value) => value >= policy.passing_score).length;
                 return {
                     period_name: period.name,
                     average: computeAverage(values),
                     passed,
                     failed: values.length - passed,
-                    performance_levels: countPerformanceLevels(values, (value) => value),
+                    performance_levels: countPerformanceLevels(values, (value) => value, policy),
                 };
             });
 
@@ -616,7 +625,7 @@ class AnalyticsService {
                 passed,
                 failed: students.length - passed,
                 approval_rate: students.length ? round2((passed / students.length) * 100) : 0,
-                performance_levels: countPerformanceLevels(students, (student) => student.average),
+                performance_levels: countPerformanceLevels(students, (student) => student.average, policy),
                 periods: periodsSummary,
                 students,
             };
@@ -627,6 +636,8 @@ class AnalyticsService {
         const cacheKey = `teacher-dashboard:${userId}:${schoolYearId}`;
         return summaryCache.getOrSet(cacheKey, async () => {
             const { teacher } = await this.getTeacherContext(userId, schoolYearId);
+            const schoolYear = await this.ensureSchoolYear(schoolYearId);
+            const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
             const assignments = await AnalyticsRepository.findTeacherAssignmentsByYear(teacher._id, schoolYearId);
             const periods = await AnalyticsRepository.findPeriodsBySchoolYear(schoolYearId);
 
@@ -641,7 +652,7 @@ class AnalyticsService {
                         passed: 0,
                         failed: 0,
                         approval_rate: 0,
-                        performance_levels: createPerformanceLevels(),
+                        performance_levels: createPerformanceLevels(gradingPolicy),
                     },
                     groups: [],
                     period_trend: [],
@@ -673,7 +684,7 @@ class AnalyticsService {
                 : [];
             const studentDocs = studentIds.length ? await AnalyticsRepository.findStudentsByIds(studentIds) : [];
             const studentProfileMap = buildStudentProfileMap(studentDocs);
-            const groups = this.buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap);
+            const groups = this.buildTeacherSummaryRows(assignments, enrollmentsByGroup, periods, results, studentProfileMap, gradingPolicy);
             const uniqueStudentsMap = new Map();
 
             for (const group of groups) {
@@ -705,8 +716,8 @@ class AnalyticsService {
 
                     const bestAverage = Math.max(existing.average, student.average);
                     existing.average = round2(bestAverage);
-                    existing.status = bestAverage >= PASS_SCORE ? 'passed' : 'failed';
-                    existing.performance_level = getPerformanceLevel(bestAverage);
+                    existing.status = bestAverage >= gradingPolicy.passing_score ? 'passed' : 'failed';
+                    existing.performance_level = getPerformanceLevel(bestAverage, gradingPolicy);
                 }
             }
 
@@ -753,7 +764,7 @@ class AnalyticsService {
                 }));
 
             const attentionStudents = [...uniqueStudents]
-                .filter((student) => student.average < PASS_SCORE)
+                .filter((student) => student.average < gradingPolicy.passing_score)
                 .sort((a, b) => a.average - b.average)
                 .slice(0, 5)
                 .map((student) => ({
@@ -789,7 +800,7 @@ class AnalyticsService {
                     passed,
                     failed: uniqueStudents.length - passed,
                     approval_rate: uniqueStudents.length ? round2((passed / uniqueStudents.length) * 100) : 0,
-                    performance_levels: countPerformanceLevels(uniqueStudents, (student) => student.average),
+                    performance_levels: countPerformanceLevels(uniqueStudents, (student) => student.average, gradingPolicy),
                 },
                 groups,
                 period_trend: periodTrend,
@@ -802,6 +813,8 @@ class AnalyticsService {
 
     async getTeacherGroupPerformance(userId, schoolYearId, groupId, areaId, periodId = null) {
         const { teacher } = await this.getTeacherContext(userId, schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         const isAllowed = await AnalyticsRepository.teacherHasAssignment(teacher._id, groupId, areaId, schoolYearId);
         if (!isAllowed) {
@@ -854,7 +867,7 @@ class AnalyticsService {
                 student_name: studentProfile.full_name || 'Sin nombre',
                 student_email: studentProfile.email,
                 average: avg,
-                status: avg >= PASS_SCORE ? 'passed' : 'failed',
+                status: avg >= gradingPolicy.passing_score ? 'passed' : 'failed',
             };
         });
 
@@ -876,6 +889,8 @@ class AnalyticsService {
 
     async getTeacherGroupTrend(userId, schoolYearId, groupId, areaId) {
         const { teacher } = await this.getTeacherContext(userId, schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         const isAllowed = await AnalyticsRepository.teacherHasAssignment(teacher._id, groupId, areaId, schoolYearId);
         if (!isAllowed) {
@@ -902,7 +917,7 @@ class AnalyticsService {
             }
 
             const values = Array.from(valuesByStudent.values());
-            const passed = values.filter((value) => value >= PASS_SCORE).length;
+            const passed = values.filter((value) => value >= gradingPolicy.passing_score).length;
 
             periodRows.push({
                 period_id: period._id,
@@ -975,7 +990,8 @@ class AnalyticsService {
     }
 
     async getAdminInstitutionOverview(schoolYearId, periodId = null) {
-        await this.ensureSchoolYear(schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         const activeEnrollments = await AnalyticsRepository.findActiveEnrollmentsBySchoolYear(schoolYearId);
         const studentIds = [...new Set(activeEnrollments.map((row) => row.student_id.toString()))];
@@ -1013,7 +1029,7 @@ class AnalyticsService {
         }
 
         const studentAverages = Array.from(valuesByStudent.values()).map((values) => computeAverage(values));
-        const passed = studentAverages.filter((value) => value >= PASS_SCORE).length;
+        const passed = studentAverages.filter((value) => value >= gradingPolicy.passing_score).length;
 
         return {
             summary: {
@@ -1027,7 +1043,8 @@ class AnalyticsService {
     }
 
     async getAdminInstitutionTrend(schoolYearId) {
-        await this.ensureSchoolYear(schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
         const periods = await AnalyticsRepository.findPeriodsBySchoolYear(schoolYearId);
         const activeEnrollments = await AnalyticsRepository.findActiveEnrollmentsBySchoolYear(schoolYearId);
         const studentIds = [...new Set(activeEnrollments.map((row) => row.student_id.toString()))];
@@ -1050,7 +1067,7 @@ class AnalyticsService {
             }
 
             const studentAverages = Array.from(valuesByStudent.values()).map((values) => computeAverage(values));
-            const passed = studentAverages.filter((value) => value >= PASS_SCORE).length;
+            const passed = studentAverages.filter((value) => value >= gradingPolicy.passing_score).length;
 
             periodRows.push({
                 period_name: period.name,
@@ -1064,7 +1081,8 @@ class AnalyticsService {
     }
 
     async getAdminByGrade(schoolYearId, periodId = null) {
-        await this.ensureSchoolYear(schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         const groups = await AnalyticsRepository.findGroupsBySchoolYear(schoolYearId);
         const gradeMap = new Map();
@@ -1109,7 +1127,7 @@ class AnalyticsService {
                 values = Array.from(valuesByStudent.values()).map((scores) => computeAverage(scores));
             }
 
-            const passed = values.filter((value) => value >= PASS_SCORE).length;
+            const passed = values.filter((value) => value >= gradingPolicy.passing_score).length;
             grades.push({
                 grade_id: item.grade_id,
                 grade_name: item.grade_name,
@@ -1123,7 +1141,8 @@ class AnalyticsService {
     }
 
     async getAdminByArea(schoolYearId, gradeId = null, periodId = null) {
-        await this.ensureSchoolYear(schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         let studentIds = [];
 
@@ -1180,7 +1199,7 @@ class AnalyticsService {
 
         const areas = Array.from(areaAgg.values()).map((item) => {
             const avg = computeAverage(item.values);
-            const passed = item.values.filter((value) => value >= PASS_SCORE).length;
+            const passed = item.values.filter((value) => value >= gradingPolicy.passing_score).length;
             return {
                 area_id: item.area_id,
                 area_name: item.area_name,
@@ -1194,7 +1213,8 @@ class AnalyticsService {
     }
 
     async getAdminGradeDetail(schoolYearId, gradeId, periodId = null) {
-        await this.ensureSchoolYear(schoolYearId);
+        const schoolYear = await this.ensureSchoolYear(schoolYearId);
+        const gradingPolicy = normalizeGradingPolicy(schoolYear.grading_policy);
 
         const groups = await AnalyticsRepository.findGroupsBySchoolYear(schoolYearId);
         const gradeGroups = groups.filter((group) => toIdString(group.grade_id) === gradeId.toString());
@@ -1235,7 +1255,7 @@ class AnalyticsService {
                 values = Array.from(byStudent.values()).map((scores) => computeAverage(scores));
             }
 
-            const passed = values.filter((value) => value >= PASS_SCORE).length;
+            const passed = values.filter((value) => value >= gradingPolicy.passing_score).length;
             groupMetrics.push({
                 group_id: group._id,
                 group_name: group.name,

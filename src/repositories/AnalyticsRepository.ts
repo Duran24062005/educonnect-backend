@@ -22,6 +22,13 @@ class AnalyticsRepository {
         });
     }
 
+    async findStudentById(studentId) {
+        return Student.findById(studentId).populate({
+            path: 'user_id',
+            populate: { path: 'person_id' },
+        });
+    }
+
     async findTeacherByUserId(userId) {
         return Teacher.findOne({ user_id: userId });
     }

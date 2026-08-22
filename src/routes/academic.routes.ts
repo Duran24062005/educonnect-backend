@@ -10,6 +10,7 @@ import {
     promoteStudentsSchema,
     periodsBySchoolYearSchema,
     createPeriodSchema,
+    periodStatusSchema,
     createGradeSchema,
     updateGradeSchema,
     createAreaSchema,
@@ -33,6 +34,7 @@ router.post('/promotions', authorize('admin'), validateRequest(promoteStudentsSc
 router.get('/school-years/:school_year_id/periods', validateRequest(periodsBySchoolYearSchema), AcademicController.getPeriodsBySchoolYear);
 router.post('/periods', authorize('admin'), validateRequest(createPeriodSchema), AcademicController.createPeriod);
 router.delete('/periods/:id', authorize('admin'), validateRequest(resourceIdSchema), AcademicController.deletePeriod);
+router.patch('/periods/:id/status', authorize('admin'), validateRequest(periodStatusSchema), AcademicController.updatePeriodStatus);
 
 router.get('/grades', AcademicController.getAllGrades);
 router.post('/grades', authorize('admin'), validateRequest(createGradeSchema), AcademicController.createGrade);

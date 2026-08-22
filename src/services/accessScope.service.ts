@@ -4,6 +4,7 @@ import {
     studentRepository,
     groupTeacherRepository,
 } from '../repositories/PersonProfileRepository.js';
+import GuardianRepository from '../repositories/GuardianRepository.js';
 import { enrollmentRepository } from '../repositories/EvaluationRepository.js';
 import AppError from '../utils/AppError.js';
 
@@ -51,7 +52,8 @@ export const canTeacherAccessArea = async (teacherId, areaId) => {
 
 /**
  * Verifica que el solicitante pueda acceder a los datos académicos de un estudiante.
- * Permite: admin, el propio estudiante, o un docente con asignación en el grupo del estudiante.
+ * Permite: admin, el propio estudiante, un acudiente vinculado o un docente con asignación
+ * en el grupo del estudiante.
  */
 export const assertCanAccessStudentData = async ({ userId, role, studentId }) => {
     if (isAdmin(role)) return;
@@ -68,6 +70,12 @@ export const assertCanAccessStudentData = async ({ userId, role, studentId }) =>
         const teacher = await resolveTeacherByUserId(userId);
         const enrollment = await enrollmentRepository.findActiveByStudent(studentId);
         if (enrollment && await canTeacherAccessGroup(teacher._id, enrollment.group_id)) return;
+        throw new AppError('No tienes permiso para acceder a los datos de este estudiante', 403);
+    }
+
+    if (normalizedRole === 'parent') {
+        const link = await GuardianRepository.findAuthorizedLink(userId, studentId);
+        if (link) return;
         throw new AppError('No tienes permiso para acceder a los datos de este estudiante', 403);
     }
 

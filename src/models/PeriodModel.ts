@@ -33,6 +33,20 @@ const periodSchema = new mongoose.Schema(
             type: Date,
             required: [true, 'La fecha de fin es requerida'],
         },
+        status: {
+            type: String,
+            enum: ['open', 'closed'],
+            default: 'open',
+        },
+        closed_at: {
+            type: Date,
+            default: null,
+        },
+        closed_by_user_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -42,6 +56,7 @@ const periodSchema = new mongoose.Schema(
 // Índices
 periodSchema.index({ school_year_id: 1 });
 periodSchema.index({ school_year_id: 1, start_date: 1 });
+periodSchema.index({ school_year_id: 1, status: 1 });
 
 tenantPlugin(periodSchema);
 

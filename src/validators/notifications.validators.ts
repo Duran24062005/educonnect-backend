@@ -32,7 +32,7 @@ export const createAdminAnnouncementSchema = {
         .object({
             title: nonEmptyString.max(180),
             message: nonEmptyString.max(2000),
-            target_role: z.enum(['admin', 'teacher', 'student', 'teacher_student', 'teacher_admin', 'all']),
+            target_role: z.enum(['admin', 'teacher', 'student', 'parent', 'teacher_student', 'teacher_admin', 'all']),
         })
         .passthrough(),
 };

@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { idParamSchema, objectIdSchema, schoolYearParamSchema } from './common.validators.js';
 
+const gradingPolicySchema = z.object({
+    min_score: z.coerce.number().min(0).max(100),
+    max_score: z.coerce.number().min(0).max(100),
+    passing_score: z.coerce.number().min(0).max(100),
+    performance_levels: z.array(z.object({
+        code: z.string().trim().min(1),
+        label: z.string().trim().min(1),
+        min_score: z.coerce.number().min(0).max(100),
+        max_score: z.coerce.number().min(0).max(100),
+    })).max(10).optional(),
+}).passthrough();
+
 export const createSchoolYearSchema = {
     body: z
         .object({
@@ -8,6 +20,7 @@ export const createSchoolYearSchema = {
             start_date: z.string().date(),
             end_date: z.string().date(),
             is_active: z.boolean().optional(),
+            grading_policy: gradingPolicySchema.optional(),
         })
         .passthrough(),
 };
@@ -36,6 +49,11 @@ export const createPeriodSchema = {
             end_date: z.string().date(),
         })
         .passthrough(),
+};
+
+export const periodStatusSchema = {
+    params: idParamSchema,
+    body: z.object({ status: z.enum(['open', 'closed']) }).passthrough(),
 };
 
 export const createGradeSchema = {

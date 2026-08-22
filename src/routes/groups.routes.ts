@@ -14,6 +14,7 @@ import {
     enrollmentStatusSchema,
     studentsByGroupSchema,
     enrollmentsByStudentSchema,
+    enrollmentReportQuerySchema,
     assignTeacherSchema,
     teachersByGroupSchema,
     groupsByTeacherSchema,
@@ -31,6 +32,7 @@ router.post('/enrollments', authorize('admin'), validateRequest(enrollStudentSch
 router.post('/enrollments/transfer', authorize('admin'), validateRequest(transferEnrollmentSchema), GroupController.transferEnrollment);
 router.patch('/enrollments/:id/status', authorize('admin'), validateRequest(enrollmentStatusSchema), GroupController.changeEnrollmentStatus);
 router.get('/enrollments/student/:student_id', validateRequest(enrollmentsByStudentSchema), GroupController.getEnrollmentsByStudent);
+router.get('/reports/enrollments.csv', authorize('admin'), validateRequest(enrollmentReportQuerySchema), GroupController.downloadEnrollmentReport);
 
 router.post('/teachers/assign', authorize('admin'), validateRequest(assignTeacherSchema), GroupController.assignTeacher);
 router.get('/teachers/:teacher_id/groups', validateRequest(groupsByTeacherSchema), GroupController.getGroupsByTeacher);

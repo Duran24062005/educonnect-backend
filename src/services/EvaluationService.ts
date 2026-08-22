@@ -7,6 +7,8 @@ import {
     enrollmentRepository,
 } from '../repositories/EvaluationRepository.js';
 import { periodRepository, areaRepository } from '../repositories/AcademicRepository.js';
+import SchoolYear from '../models/SchoolYearModel.js';
+import { assertValidGradingPolicy } from '../utils/grading-policy.js';
 import { studentRepository, groupTeacherRepository } from '../repositories/PersonProfileRepository.js';
 import { AppError } from '../utils/error.js';
 import AuditLogService from './AuditLogService.js';
@@ -24,6 +26,15 @@ const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() ||
  * Lógica de negocio para evaluaciones y calificaciones
  */
 class EvaluationService {
+    async assertPeriodOpen(periodId) {
+        const period = await periodRepository.findById(periodId);
+        if (!period) throw new AppError('Periodo no encontrado', 404);
+        if (period.status === 'closed') {
+            throw new AppError('El periodo está cerrado y no admite cambios de calificaciones', 409);
+        }
+        return period;
+    }
+
     // ===========================
     // GRADE ITEMS (Ítems de evaluación)
     // ===========================
@@ -49,6 +60,7 @@ class EvaluationService {
 
         const period = await periodRepository.findById(period_id);
         if (!period) throw new AppError('Periodo no encontrado', 404);
+        if (period.status === 'closed') throw new AppError('El periodo está cerrado y no admite nuevos ítems', 409);
 
         const area = await areaRepository.findById(area_id);
         if (!area) throw new AppError('Área no encontrada', 404);
@@ -72,6 +84,7 @@ class EvaluationService {
     async updateGradeItem(id, userId, role, data) {
         const item = await gradeItemRepository.findById(id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+        await this.assertPeriodOpen(item.period_id?._id || item.period_id);
 
         // Scope docente (H3): solo si el área del ítem le está asignada
         if (!isAdmin(role)) {
@@ -101,6 +114,7 @@ class EvaluationService {
     async deleteGradeItem(id, userId, role) {
         const item = await gradeItemRepository.findById(id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+        await this.assertPeriodOpen(item.period_id?._id || item.period_id);
 
         // Scope docente (H3): solo si el área del ítem le está asignada
         if (!isAdmin(role)) {
@@ -123,15 +137,17 @@ class EvaluationService {
             throw new AppError('La calificación es requerida', 400);
         }
 
-        if (score < 0 || score > 10) {
-            throw new AppError('La calificación debe estar entre 0 y 10', 400);
-        }
-
         const student = await studentRepository.findById(student_id);
         if (!student) throw new AppError('Estudiante no encontrado', 404);
 
         const item = await gradeItemRepository.findById(grade_item_id);
         if (!item) throw new AppError('Ítem de evaluación no encontrado', 404);
+        const period = await this.assertPeriodOpen(item.period_id?._id || item.period_id);
+        const schoolYear = await SchoolYear.findById(period.school_year_id);
+        const gradingPolicy = assertValidGradingPolicy(schoolYear?.grading_policy);
+        if (score < gradingPolicy.min_score || score > gradingPolicy.max_score) {
+            throw new AppError(`La calificación debe estar entre ${gradingPolicy.min_score} y ${gradingPolicy.max_score}`, 400);
+        }
 
         // Scope docente (H3): debe estar asignado al grupo del estudiante en el área del ítem
         if (!isAdmin(role)) {
@@ -261,6 +277,9 @@ class EvaluationService {
      */
     async calculateAndSaveFinalResult(student_id, school_year_id) {
         const { periodRepository: pr } = await import('../repositories/AcademicRepository.js');
+        const schoolYear = await SchoolYear.findById(school_year_id);
+        if (!schoolYear) throw new AppError('Año escolar no encontrado', 404);
+        const gradingPolicy = assertValidGradingPolicy(schoolYear.grading_policy);
         const periods = await pr.findBySchoolYear(school_year_id);
 
         if (periods.length === 0) {
@@ -294,7 +313,7 @@ class EvaluationService {
 
         const final_score = parseFloat((weightedTotal / totalWeight).toFixed(2));
         // En Colombia, aprobado >= 3.0 en escala de 5, adaptamos: >= 6 en escala de 10
-        const status = final_score >= 6 ? 'passed' : 'failed';
+        const status = final_score >= gradingPolicy.passing_score ? 'passed' : 'failed';
 
         return await finalResultRepository.upsert(student_id, school_year_id, final_score, status);
     }

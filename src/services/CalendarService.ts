@@ -15,6 +15,7 @@ import Teacher from '../models/TeacherModel.js';
 import AppError from '../utils/AppError.js';
 import AuditLogService from './AuditLogService.js';
 import { resolveStudentByUserId, resolveTeacherByUserId } from './accessScope.service.js';
+import GuardianRepository from '../repositories/GuardianRepository.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -296,6 +297,22 @@ class CalendarService {
             filter.school_year_id = enrollment.school_year_id;
         }
 
+        if (normalizedRole === 'parent') {
+            const links = await GuardianRepository.findAuthorizedStudentsByGuardianId(userId);
+            const studentIds = links.map((link) => link.student_id?._id || link.student_id).filter(Boolean);
+            const enrollments = await Enrollment.find({
+                student_id: { $in: studentIds },
+                status: 'active',
+                ...(query.school_year_id ? { school_year_id: query.school_year_id } : {}),
+            }).select('group_id school_year_id');
+            if (!enrollments.length) return null;
+            const groupIds = enrollments.map((item) => item.group_id);
+            filter.group_id = filter.group_id
+                ? groupIds.some((id) => toIdString(id) === toIdString(filter.group_id)) ? filter.group_id : { $in: [] }
+                : { $in: groupIds };
+            filter.school_year_id = query.school_year_id || { $in: enrollments.map((item) => item.school_year_id) };
+        }
+
         if (normalizedRole === 'teacher') {
             const teacher = await resolveTeacherByUserId(userId);
             const assignments = await GroupTeacher.find({ teacher_id: teacher._id }).select('group_id area_id');
@@ -463,6 +480,19 @@ class CalendarService {
                 ...(selectedYearId ? { school_year_id: selectedYearId } : {}),
             }).populate({ path: 'group_id', populate: [{ path: 'grade_id' }, { path: 'school_year_id' }] });
             groups = enrollment?.group_id ? [enrollment.group_id] : [];
+            teachers = [];
+        }
+
+        if (normalizedRole === 'parent') {
+            const links = await GuardianRepository.findAuthorizedStudentsByGuardianId(userId);
+            const studentIds = links.map((link) => link.student_id?._id || link.student_id).filter(Boolean);
+            const enrollments = await Enrollment.find({
+                student_id: { $in: studentIds },
+                status: 'active',
+                ...(selectedYearId ? { school_year_id: selectedYearId } : {}),
+            }).select('group_id');
+            const groupIds = new Set(enrollments.map((item) => toIdString(item.group_id)));
+            groups = groups.filter((group) => groupIds.has(toIdString(group)));
             teachers = [];
         }
 

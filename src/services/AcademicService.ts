@@ -11,6 +11,8 @@ import { enrollmentRepository, finalResultRepository } from '../repositories/Eva
 import UserRepository from '../repositories/UserRepository.js';
 import PersonRepository from '../repositories/PersonRepository.js';
 import { AppError } from '../utils/error.js';
+import AuditLogService from './AuditLogService.js';
+import { assertValidGradingPolicy } from '../utils/grading-policy.js';
 
 /**
  * AcademicService
@@ -44,7 +46,7 @@ class AcademicService {
     // ===========================
 
     async createSchoolYear(data) {
-        const { year, start_date, end_date, is_active = false } = data;
+        const { year, start_date, end_date, is_active = false, grading_policy } = data;
 
         if (!year || !start_date || !end_date) {
             throw new AppError('Año, fecha de inicio y fin son requeridos', 400);
@@ -62,7 +64,13 @@ class AcademicService {
             throw new AppError(`Ya existe un año escolar para ${year}`, 400);
         }
 
-        return await schoolYearRepository.create({ year, start_date, end_date, is_active });
+        return await schoolYearRepository.create({
+            year,
+            start_date,
+            end_date,
+            is_active,
+            grading_policy: assertValidGradingPolicy(grading_policy),
+        });
     }
 
     async getAllSchoolYears() {
@@ -328,8 +336,35 @@ class AcademicService {
     async deletePeriod(id) {
         const p = await periodRepository.findById(id);
         if (!p) throw new AppError('Periodo no encontrado', 404);
+        if (p.status === 'closed') throw new AppError('No se puede eliminar un periodo cerrado', 409);
         await periodRepository.delete(id);
         return { message: 'Periodo eliminado' };
+    }
+
+    async updatePeriodStatus(id, status, auditContext = {}) {
+        const period = await periodRepository.findById(id);
+        if (!period) throw new AppError('Periodo no encontrado', 404);
+        if (period.status === status) return period;
+
+        const updated = await periodRepository.update(id, {
+            status,
+            closed_at: status === 'closed' ? new Date() : null,
+            closed_by_user_id: status === 'closed' ? auditContext.actorUserId : null,
+        });
+
+        await AuditLogService.record({
+            actorUserId: auditContext.actorUserId,
+            actorRole: auditContext.actorRole,
+            action: `period.${status}`,
+            entityType: 'Period',
+            entityId: id,
+            before: period,
+            after: updated,
+            institutionId: auditContext.institutionId,
+            ipAddress: auditContext.ipAddress,
+            userAgent: auditContext.userAgent,
+        });
+        return updated;
     }
 
     // ===========================

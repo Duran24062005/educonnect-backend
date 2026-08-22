@@ -21,7 +21,7 @@ const finalResultSchema = new mongoose.Schema(
             type: Number,
             required: [true, 'La nota final es requerida'],
             min: [0, 'Mínimo 0'],
-            max: [10, 'Máximo 10'],
+            max: [100, 'Máximo 100; la escala institucional se valida por año escolar'],
         },
         status: {
             type: String,

@@ -25,7 +25,9 @@ class EnrollmentRepository {
         return await Enrollment.findById(id)
             .populate(this.enrollmentStudentPopulate())
             .populate('school_year_id')
-            .populate('group_id');
+            .populate('group_id')
+            .populate('campus_id')
+            .populate('shift_id');
     }
 
     async findByStudentAndYear(student_id, school_year_id) {
@@ -40,14 +42,18 @@ class EnrollmentRepository {
         return await Enrollment.find({ group_id, status })
             .populate(this.enrollmentStudentPopulate())
             .populate('school_year_id')
-            .populate('group_id');
+            .populate('group_id')
+            .populate('campus_id')
+            .populate('shift_id');
     }
 
     async findByGroups(group_ids = [], status = 'active') {
         return await Enrollment.find({ group_id: { $in: group_ids }, status })
             .populate(this.enrollmentStudentPopulate())
             .populate('school_year_id')
-            .populate('group_id');
+            .populate('group_id')
+            .populate('campus_id')
+            .populate('shift_id');
     }
 
     async findBySchoolYear(school_year_id, status = null) {
@@ -57,13 +63,17 @@ class EnrollmentRepository {
         return await Enrollment.find(filter)
             .populate(this.enrollmentStudentPopulate())
             .populate('group_id')
-            .populate('school_year_id');
+            .populate('school_year_id')
+            .populate('campus_id')
+            .populate('shift_id');
     }
 
     async findByStudent(student_id) {
         return await Enrollment.find({ student_id })
             .populate('school_year_id')
             .populate('group_id')
+            .populate('campus_id')
+            .populate('shift_id')
             .sort({ created_at: -1 });
     }
 

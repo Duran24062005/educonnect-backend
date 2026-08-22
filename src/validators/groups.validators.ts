@@ -41,6 +41,8 @@ export const enrollStudentSchema = {
             student_id: objectIdSchema,
             group_id: objectIdSchema,
             school_year_id: objectIdSchema,
+            campus_id: objectIdSchema.optional(),
+            shift_id: objectIdSchema.optional(),
         })
         .passthrough(),
 };
@@ -53,6 +55,8 @@ export const transferEnrollmentSchema = {
             to_group_id: objectIdSchema,
             reason: z.string().trim().optional(),
             observations: z.string().trim().optional(),
+            campus_id: objectIdSchema.optional(),
+            shift_id: objectIdSchema.optional(),
         })
         .passthrough(),
 };
@@ -68,6 +72,13 @@ export const enrollmentStatusSchema = {
 
 export const studentsByGroupSchema = { params: groupParamSchema };
 export const enrollmentsByStudentSchema = { params: studentParamSchema };
+
+export const enrollmentReportQuerySchema = {
+    query: z.object({
+        school_year_id: objectIdSchema,
+        group_id: objectIdSchema.optional(),
+    }).passthrough(),
+};
 
 export const assignTeacherSchema = {
     body: z

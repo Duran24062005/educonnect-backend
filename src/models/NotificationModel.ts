@@ -29,7 +29,7 @@ const notificationSchema = new mongoose.Schema(
         },
         audience_role: {
             type: String,
-            enum: ['admin', 'teacher', 'student'],
+            enum: ['admin', 'teacher', 'student', 'parent'],
             required: true,
             index: true,
         },

@@ -14,6 +14,16 @@ class StudentController {
             data: result,
         });
     });
+
+    replaceGuardians = asyncHandler(async (req, res) => {
+        const result = await StudentService.replaceGuardians(String(req.params.id), req.body.guardians || []);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Acudientes actualizados exitosamente',
+            data: result,
+        });
+    });
 }
 
 export default new StudentController();

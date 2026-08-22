@@ -20,12 +20,14 @@ const options = {
             { name: 'Institutions', description: 'Bootstrap institucional y contexto del piloto' },
             { name: 'Audit', description: 'Trazabilidad de operaciones sensibles del piloto' },
             { name: 'Calendar', description: 'Sesiones de clase, catálogo y agenda por rol' },
+            { name: 'Attendance', description: 'Sesiones, registros y resúmenes de asistencia' },
             { name: 'Students', description: 'Operaciones específicas de estudiantes' },
             { name: 'Academic', description: 'Años escolares, periodos, grados, áreas y aulas' },
             { name: 'Groups', description: 'Grupos, matrículas y asignaciones' },
             { name: 'Evaluations', description: 'Ítems, notas y resultados' },
             { name: 'Analytics', description: 'Métricas por scope (student, teacher, admin)' },
             { name: 'Notifications', description: 'Notificaciones in-app y anuncios dirigidos' },
+            { name: 'Imports', description: 'Previsualización y confirmación de cargas CSV del piloto' },
         ],
         components: {
             securitySchemes: {
@@ -103,7 +105,7 @@ const options = {
                     properties: {
                         title: { type: 'string' },
                         message: { type: 'string' },
-                        target_role: { type: 'string', enum: ['admin', 'teacher', 'student', 'teacher_student', 'teacher_admin', 'all'] },
+                                        target_role: { type: 'string', enum: ['admin', 'teacher', 'student', 'parent', 'teacher_student', 'teacher_admin', 'all'] },
                     },
                 },
                 TeacherAnnouncementBody: {
@@ -323,6 +325,93 @@ const options = {
                         403: { $ref: '#/components/responses/Forbidden' },
                         409: { description: 'El usuario ya pertenece a otra institución' },
                     },
+                },
+            },
+            '/api/institutions/current/campuses': {
+                get: {
+                    tags: ['Institutions'],
+                    summary: 'Listar sedes de la institución actual',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Sedes institucionales' }, 409: { description: 'Falta contexto institucional' } },
+                },
+                post: {
+                    tags: ['Institutions'],
+                    summary: 'Crear sede (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['name', 'code'],
+                            properties: {
+                                name: { type: 'string' },
+                                code: { type: 'string' },
+                                address: { type: 'string', nullable: true },
+                                status: { type: 'string', enum: ['active', 'inactive'] },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Sede creada' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/institutions/current/campuses/{id}': {
+                patch: {
+                    tags: ['Institutions'],
+                    summary: 'Actualizar sede (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Sede actualizada' }, 404: { description: 'Sede no encontrada' } },
+                },
+                delete: {
+                    tags: ['Institutions'],
+                    summary: 'Desactivar sede (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Sede desactivada' }, 404: { description: 'Sede no encontrada' } },
+                },
+            },
+            '/api/institutions/current/shifts': {
+                get: {
+                    tags: ['Institutions'],
+                    summary: 'Listar jornadas de la institución actual',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Jornadas institucionales' }, 409: { description: 'Falta contexto institucional' } },
+                },
+                post: {
+                    tags: ['Institutions'],
+                    summary: 'Crear jornada (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['name', 'code', 'start_time', 'end_time'],
+                            properties: {
+                                name: { type: 'string' },
+                                code: { type: 'string' },
+                                start_time: { type: 'string', example: '07:00' },
+                                end_time: { type: 'string', example: '12:00' },
+                                status: { type: 'string', enum: ['active', 'inactive'] },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Jornada creada' }, 400: { $ref: '#/components/responses/ValidationError' } },
+                },
+            },
+            '/api/institutions/current/shifts/{id}': {
+                patch: {
+                    tags: ['Institutions'],
+                    summary: 'Actualizar jornada (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Jornada actualizada' }, 404: { description: 'Jornada no encontrada' } },
+                },
+                delete: {
+                    tags: ['Institutions'],
+                    summary: 'Desactivar jornada (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Jornada desactivada' }, 404: { description: 'Jornada no encontrada' } },
                 },
             },
             '/api/audit-logs': {
@@ -666,6 +755,55 @@ const options = {
                     responses: { 200: { description: 'Aula asignada' }, 403: { $ref: '#/components/responses/Forbidden' } },
                 },
             },
+            '/api/students/{id}/guardians': {
+                patch: {
+                    tags: ['Students'],
+                    summary: 'Reemplazar acudientes de un estudiante (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['guardians'],
+                            properties: {
+                                guardians: {
+                                    type: 'array',
+                                    maxItems: 10,
+                                    items: {
+                                        type: 'object',
+                                        required: ['guardian_id'],
+                                        properties: {
+                                            guardian_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+                                            relationship: { type: 'string', enum: ['mother', 'father', 'guardian', 'other'] },
+                                            is_authorized: { type: 'boolean' },
+                                        },
+                                    },
+                                },
+                            },
+                        }),
+                    },
+                    responses: { 200: { description: 'Acudientes actualizados' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+
+            '/api/guardians/me/students': {
+                get: {
+                    tags: ['Guardians'],
+                    summary: 'Listar estudiantes vinculados al acudiente autenticado',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Estudiantes autorizados' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/guardians/me/dashboard': {
+                get: {
+                    tags: ['Guardians'],
+                    summary: 'Consultar el dashboard académico de los estudiantes vinculados',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: { 200: { description: 'Resumen agrupado por estudiante' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
 
             '/api/academic/school-years': {
                 get: { tags: ['Academic'], summary: 'Listar años escolares', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Años escolares' } } },
@@ -683,6 +821,14 @@ const options = {
                                 start_date: { type: 'string', format: 'date' },
                                 end_date: { type: 'string', format: 'date' },
                                 is_active: { type: 'boolean' },
+                                grading_policy: {
+                                    type: 'object',
+                                    properties: {
+                                        min_score: { type: 'number', minimum: 0, maximum: 100, default: 0 },
+                                        max_score: { type: 'number', minimum: 0, maximum: 100, default: 10 },
+                                        passing_score: { type: 'number', minimum: 0, maximum: 100, default: 6 },
+                                    },
+                                },
                             },
                         }),
                     },
@@ -1360,6 +1506,189 @@ const options = {
                         { name: 'period_id', in: 'query', required: false, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
                     ],
                     responses: { 200: { description: 'Detalle del grado' } },
+                },
+            },
+            '/api/imports': {
+                get: {
+                    tags: ['Imports'],
+                    summary: 'Listar cargas CSV del administrador autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } }],
+                    responses: { 200: { description: 'Historial de cargas' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/imports/preview': {
+                post: {
+                    tags: ['Imports'],
+                    summary: 'Previsualizar y validar un CSV sin guardar datos académicos',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'multipart/form-data': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['entity', 'file'],
+                                    properties: {
+                                        entity: { type: 'string', enum: ['students', 'guardians', 'teachers', 'grades', 'areas', 'groups', 'enrollments'] },
+                                        file: { type: 'string', format: 'binary' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: { 201: { description: 'Previsualización creada' }, 400: { $ref: '#/components/responses/ValidationError' } },
+                },
+            },
+            '/api/imports/{id}': {
+                get: {
+                    tags: ['Imports'],
+                    summary: 'Consultar una previsualización o resultado de carga',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Detalle de carga' }, 404: { description: 'Carga no encontrada' } },
+                },
+            },
+            '/api/imports/{id}/confirm': {
+                post: {
+                    tags: ['Imports'],
+                    summary: 'Confirmar una carga sin errores',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Carga confirmada' }, 400: { $ref: '#/components/responses/ValidationError' }, 409: { description: 'Carga ya procesada' } },
+                },
+            },
+
+            '/api/attendance/sessions': {
+                post: {
+                    tags: ['Attendance'],
+                    summary: 'Crear una sesión de asistencia para un grupo',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_year_id', 'group_id', 'date'], properties: { school_year_id: { type: 'string' }, group_id: { type: 'string' }, period_id: { type: 'string' }, area_id: { type: 'string' }, date: { type: 'string', format: 'date' }, topic: { type: 'string' } } }) },
+                    responses: { 201: { description: 'Sesión creada' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Listar sesiones de asistencia por año y grupo',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'group_id', in: 'query', required: false, schema: { type: 'string' } },
+                        { name: 'from', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                    ],
+                    responses: { 200: { description: 'Sesiones visibles para el actor' } },
+                },
+            },
+            '/api/attendance/reports': {
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Consultar reporte institucional de asistencia (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'group_id', in: 'query', required: false, schema: { type: 'string' } },
+                        { name: 'from', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                    ],
+                    responses: { 200: { description: 'Resumen y filas de asistencia institucional' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/attendance/reports.csv': {
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Descargar reporte CSV de asistencia (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'group_id', in: 'query', required: false, schema: { type: 'string' } },
+                        { name: 'from', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+                    ],
+                    responses: { 200: { description: 'Archivo CSV descargable' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/groups/reports/enrollments.csv': {
+                get: {
+                    tags: ['Groups'],
+                    summary: 'Descargar padrón CSV de matrículas (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'group_id', in: 'query', required: false, schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Archivo CSV de matrículas' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/attendance/sessions/{id}': {
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Obtener una sesión con sus registros',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Sesión de asistencia' } },
+                },
+            },
+            '/api/attendance/sessions/{id}/records': {
+                patch: {
+                    tags: ['Attendance'],
+                    summary: 'Actualizar estados de estudiantes en una sesión',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Registros actualizados' }, 409: { description: 'Sesión cerrada' } },
+                },
+            },
+            '/api/attendance/sessions/{id}/status': {
+                patch: {
+                    tags: ['Attendance'],
+                    summary: 'Cerrar o reabrir una sesión de asistencia',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Estado actualizado' } },
+                },
+            },
+            '/api/attendance/students/{student_id}/summary': {
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Consultar resumen de asistencia de un estudiante',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { $ref: '#/components/parameters/StudentIdParam' },
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Resumen autorizado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/guardians/me/attendance': {
+                get: {
+                    tags: ['Attendance'],
+                    summary: 'Consultar asistencia de todos los estudiantes vinculados',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Resumen de asistencia familiar' } },
+                },
+            },
+            '/api/guardians/me/bulletin': {
+                get: {
+                    tags: ['Students'],
+                    summary: 'Consultar boletín básico de un estudiante vinculado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'period_id', in: 'query', required: true, schema: { type: 'string' } },
+                        { name: 'student_id', in: 'query', required: true, schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Boletín académico básico autorizado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/academic/periods/{id}/status': {
+                patch: {
+                    tags: ['Academic'],
+                    summary: 'Cerrar o reabrir un periodo académico',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['open', 'closed'] } } }) },
+                    responses: { 200: { description: 'Estado del periodo actualizado' }, 409: { description: 'Operación no permitida' } },
                 },
             },
         },

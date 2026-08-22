@@ -16,9 +16,9 @@ const router = Router();
 router.use(protect);
 router.use(requireInstitutionContext);
 
-router.get('/catalog', authorize('admin', 'teacher', 'student'), validateRequest(calendarCatalogQuerySchema), CalendarController.getCatalog);
+router.get('/catalog', authorize('admin', 'teacher', 'student', 'parent'), validateRequest(calendarCatalogQuerySchema), CalendarController.getCatalog);
 router.get('/', authorize('admin'), validateRequest(calendarQuerySchema), CalendarController.getCalendar);
-router.get('/me', authorize('teacher', 'student'), validateRequest(calendarQuerySchema), CalendarController.getMyCalendar);
+router.get('/me', authorize('teacher', 'student', 'parent'), validateRequest(calendarQuerySchema), CalendarController.getMyCalendar);
 router.post('/sessions', authorize('admin', 'teacher'), validateRequest(createCalendarSessionSchema), CalendarController.createSession);
 router.patch(
     '/sessions/:id',

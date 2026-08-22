@@ -4,6 +4,7 @@ import Institution from '../src/models/InstitutionModel.js';
 import User from '../src/models/UserModel.js';
 import Person from '../src/models/PersonModel.js';
 import Student from '../src/models/StudentModel.js';
+import StudentGuardian from '../src/models/StudentGuardianModel.js';
 import Teacher from '../src/models/TeacherModel.js';
 import SchoolYear from '../src/models/SchoolYearModel.js';
 import Period from '../src/models/PeriodModel.js';
@@ -24,6 +25,11 @@ import Notification from '../src/models/NotificationModel.js';
 import Session from '../src/models/SessionModel.js';
 import AuditLog from '../src/models/AuditLogModel.js';
 import ClassSession from '../src/models/ClassSessionModel.js';
+import AttendanceSession from '../src/models/AttendanceSessionModel.js';
+import AttendanceRecord from '../src/models/AttendanceRecordModel.js';
+import ImportJob from '../src/models/ImportJobModel.js';
+import Campus from '../src/models/CampusModel.js';
+import SchoolShift from '../src/models/SchoolShiftModel.js';
 
 const help = process.argv.includes('--help') || process.argv.includes('-h');
 if (help) {
@@ -51,6 +57,7 @@ const models = [
     User,
     Person,
     Student,
+    StudentGuardian,
     Teacher,
     SchoolYear,
     Period,
@@ -71,6 +78,11 @@ const models = [
     Session,
     AuditLog,
     ClassSession,
+    AttendanceSession,
+    AttendanceRecord,
+    ImportJob,
+    Campus,
+    SchoolShift,
 ] as unknown as TenantModel[];
 
 const run = async () => {

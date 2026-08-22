@@ -2,6 +2,7 @@
 import { studentRepository } from '../repositories/PersonProfileRepository.js';
 import { aulaRepository } from '../repositories/AcademicRepository.js';
 import { AppError } from '../utils/error.js';
+import GuardianService from './GuardianService.js';
 
 class StudentService {
     async assignAula(studentId: string, aulaId: string) {
@@ -31,6 +32,10 @@ class StudentService {
         }
 
         return await studentRepository.update(studentId, { aula_id: aulaId });
+    }
+
+    async replaceGuardians(studentId: string, guardians: Array<Record<string, unknown>>) {
+        return GuardianService.replaceStudentGuardians(studentId, guardians);
     }
 }
 
