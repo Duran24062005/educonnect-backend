@@ -79,7 +79,12 @@ app.get('/health/ready', (_req, res) => {
     });
 });
 
-const swaggerUiHandler = swaggerUi.setup(swaggerSpec);
+const swaggerHtml = swaggerUi
+    .generateHTML(swaggerSpec)
+    .replace(/(href|src)="\.\/([^" ]+)"/g, '$1="/api-docs/$2"');
+const swaggerUiHandler = (_req: express.Request, res: express.Response) => {
+    res.type('html').send(swaggerHtml);
+};
 app.get(['/api-docs', '/api-docs/'], swaggerUiHandler);
 app.use('/api-docs', swaggerUi.serve);
 

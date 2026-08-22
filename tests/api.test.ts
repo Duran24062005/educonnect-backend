@@ -129,6 +129,19 @@ describe('EduConnect API', () => {
         expect(response.statusCode).toBe(200);
         expect(response.headers['content-type']).toMatch(/html/);
         expect(response.text).toContain('swagger-ui');
+        expect(response.text).toContain('/api-docs/swagger-ui-bundle.js');
+    });
+
+    test.each([
+        ['/api-docs/swagger-ui-bundle.js', /javascript/],
+        ['/api-docs/swagger-ui-standalone-preset.js', /javascript/],
+        ['/api-docs/swagger-ui-init.js', /javascript/],
+        ['/api-docs/swagger-ui.css', /css/],
+    ])('serves Swagger asset %s with its MIME type', async (path, contentType) => {
+        const response = await request(app).get(path);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['content-type']).toMatch(contentType);
     });
 
     test('returns readiness status when MongoDB is connected', async () => {
