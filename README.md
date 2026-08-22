@@ -94,6 +94,7 @@ Rutas base publicadas:
 
 - `GET /`: metadata minima de la API
 - `GET /health`: healthcheck simple
+- `GET /health/ready`: readiness check que confirma conexión con MongoDB
 - `GET /api-docs`: Swagger UI
 
 Routers montados:
@@ -107,6 +108,8 @@ Routers montados:
 - `/api/analytics`
 - `/api/activities`
 - `/api/notifications`
+- `/api/institutions`
+- `/api/audit-logs`
 
 ## Endpoints agregados orientados a performance
 
@@ -158,6 +161,10 @@ Variables principales:
 - `CORS_ORIGIN`: lista separada por comas de origins permitidos
 - `FRONTEND_URL`: fallback usado para CORS y links de email
 - `EMAIL_API_BASE_URL`: servicio o endpoint que recibe solicitudes de envio de email
+- `TENANT_DATA_ISOLATION`: activa filtros y asignación automática de `institution_id`; requiere migrar datos legacy antes de producción
+- `REQUIRE_INSTITUTION_CONTEXT`: bloquea rutas protegidas si el usuario no pertenece a una institución
+
+La migración de registros legacy se ejecuta con `yarn migrate:tenant` siguiendo [`docs/tenant-migration.md`](./docs/tenant-migration.md). No actives los flags de tenant en producción sin backup restaurado y pruebas de aislamiento.
 
 Notas importantes:
 

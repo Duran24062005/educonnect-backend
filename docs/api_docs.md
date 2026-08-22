@@ -14,6 +14,7 @@ Generada desde `src/docs/swagger.js`.
 
 - `GET /` Información general API.
 - `GET /health` Health check.
+- `GET /health/ready` Readiness check que confirma conexión con MongoDB.
 
 ### Autenticación
 
@@ -24,6 +25,16 @@ Generada desde `src/docs/swagger.js`.
 - `GET /api/auth/me` (protegido)
 - `POST /api/auth/logout` (protegido)
 - `POST /api/auth/change-password` (protegido)
+
+### Instituciones y piloto
+
+- `POST /api/institutions` (Admin, crea el sandbox institucional)
+- `GET /api/institutions/current` (protegido)
+- `PATCH /api/institutions/current/users/:user_id` (Admin)
+
+### Auditoría
+
+- `GET /api/audit-logs` (Admin con institución asignada)
 
 ### Usuarios
 
@@ -37,6 +48,8 @@ Generada desde `src/docs/swagger.js`.
 - `POST /api/users/:id/approve` (Admin)
 - `PATCH /api/users/:id/status` (Admin)
 - `DELETE /api/users/:id` (Admin)
+- `GET /api/users/:id/sessions` (Admin)
+- `DELETE /api/users/:id/sessions/:jti` (Admin)
 
 ### Académico
 

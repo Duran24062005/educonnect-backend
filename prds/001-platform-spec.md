@@ -20,6 +20,8 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 - `prds/006-groups-enrollments-assignments.md` — Grupos, matrículas, traslados, docentes y aulas
 - `prds/007-evaluations-results-calculation.md` — Evaluaciones, notas y resultados académicos
 - `prds/008-analytics-role-based-dashboards.md` — Dashboards analíticos por rol
+- `prds/013-calendar-class-schedule.md` — Calendario de clases y sesiones académicas
+- `prds/014-commercial-scope-and-pilot.md` — Alcance comercial y piloto institucional de 90 días
 
 ## Convenciones
 
@@ -30,6 +32,7 @@ Este archivo sirve como referencia central. Cada funcionalidad tendrá su propio
 
 - 2026-02-03: Creado documento y añadido PRD de registro (002)
 - 2026-03-10: Añadidos PRDs 003-008 para documentar autenticación, usuarios, estructura académica, grupos, evaluaciones y analítica
+- 2026-08-22: Añadido PRD 014 para definir el alcance comercial y las condiciones del piloto institucional
 
 ## Enlaces rápidos
 

@@ -19,6 +19,7 @@ Importante:
 7. [000-doc-template.md](./000-doc-template.md)
 8. [commit-conventions.md](./commit-conventions.md)
 9. [ci-quality-gates.md](./ci-quality-gates.md)
+10. [project-status.md](./project-status.md)
 
 ## Documentos utiles por tema
 
@@ -27,6 +28,7 @@ Importante:
 - Base de datos: [database_docs.md](./database_docs.md)
 - Resumenes historicos: [implmentation_summary.md](./implmentation_summary.md), [before_after_comparison.md](./before_after_comparison.md), [SystemArtifacts.md](./SystemArtifacts.md)
 - Calidad y CI: [ci-quality-gates.md](./ci-quality-gates.md)
+- Estado comercial y P0: [project-status.md](./project-status.md)
 
 ## Fuente de verdad sugerida
 

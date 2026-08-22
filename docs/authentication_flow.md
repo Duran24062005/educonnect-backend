@@ -34,8 +34,9 @@
     │  └─ status: "pending"
     │     role: "student" (default)
     │
+    ├─ Crear sesión persistida con jti y expiración
     ├─ Generar JWT Token
-    │  {sub: userId, role: "student", iat: ...}
+    │  {sub: userId, role: "student", jti: ..., iat: ...}
     │
     └─ Retornar token + usuario
         ▼
@@ -79,8 +80,9 @@
     │
     ├─ Actualizar last_login
     │
+    ├─ Crear sesión persistida con jti, expiración y metadatos de petición
     ├─ Generar JWT Token
-    │  {sub: userId, role: role, iat: ...}
+    │  {sub: userId, role: role, jti: ..., iat: ...}
     │
     └─ Retornar token + usuario
         ▼
@@ -122,7 +124,11 @@
     │  └─ ❌ Si inválido/expirado → Error 401
     │
     ├─ Obtener claims del token
-    │  {sub: userId, role: role}
+    │  {sub: userId, role: role, jti: sessionId}
+    │
+    ├─ Verificar sesión activa en MongoDB
+    │  revoked_at == null y expires_at > ahora
+    │  └─ ❌ Si fue revocada → Error 401
     │
     ├─ Buscar usuario en BD
     │  User.findById(userId)
@@ -135,6 +141,8 @@
     │  req.user = usuario
     │  req.userId = userId
     │  req.userRole = role
+    │  req.sessionId = sessionId
+    │  req.institutionId = institutionId (si existe)
     │
     ▼
 [Controlador/Handler]
