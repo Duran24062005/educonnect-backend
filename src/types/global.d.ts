@@ -7,6 +7,8 @@ declare global {
             userId?: string;
             userRole?: string;
             personId?: Types.ObjectId;
+            sessionId?: string;
+            institutionId?: string;
         }
     }
 }

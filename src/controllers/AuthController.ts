@@ -48,7 +48,10 @@ class AuthController {
             requested_role: req.body.requested_role || 'Student',
         };
 
-        const result = await AuthService.completeProfile(req.userId, profileData);
+        const result = await AuthService.completeProfile(req.userId, profileData, req.sessionId, {
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         const authenticatedUserEmail = typeof req.user?.email === 'string' ? req.user.email : null;
 
@@ -128,9 +131,15 @@ class AuthController {
      * POST /api/auth/logout
      */
     logout = asyncHandler(async (req, res) => {
+        const result = await AuthService.logout(req.userId, req.sessionId, {
+            institutionId: req.institutionId,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
         res.status(200).json({
             status: 'success',
-            message: 'Logout exitoso. Por favor elimina el token en el cliente.',
+            message: result.message,
         });
     });
 

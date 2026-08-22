@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * FinalResult Model
@@ -35,7 +36,10 @@ const finalResultSchema = new mongoose.Schema(
 
 // Índices
 // Un resultado final único por estudiante y año escolar
-finalResultSchema.index({ student_id: 1, school_year_id: 1 }, { unique: true });
+finalResultSchema.index({ student_id: 1, school_year_id: 1 });
 finalResultSchema.index({ school_year_id: 1, status: 1 });
+
+tenantPlugin(finalResultSchema);
+finalResultSchema.index({ institution_id: 1, student_id: 1, school_year_id: 1 }, { unique: true });
 
 export default mongoose.model('FinalResult', finalResultSchema);

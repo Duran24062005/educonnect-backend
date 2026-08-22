@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Area Model
@@ -26,5 +27,7 @@ const areaSchema = new mongoose.Schema(
 );
 
 areaSchema.index({ name: 1 });
+
+tenantPlugin(areaSchema);
 
 export default mongoose.model('Area', areaSchema);

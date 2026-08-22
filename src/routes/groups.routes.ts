@@ -2,6 +2,7 @@ import { Router } from 'express';
 import GroupController from '../controllers/GroupController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     createGroupSchema,
     updateGroupSchema,
@@ -23,6 +24,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/school-year/:school_year_id', authorize('admin'), validateRequest(groupsBySchoolYearSchema), GroupController.getGroupsBySchoolYear);
 router.post('/enrollments', authorize('admin'), validateRequest(enrollStudentSchema), GroupController.enrollStudent);

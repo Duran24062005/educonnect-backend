@@ -2,6 +2,7 @@ import { Router } from 'express';
 import UserController from '../controllers/UserController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { uploadProfilePhoto } from '../middlewares/upload.middleware.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
 import {
     listUsersSchema,
@@ -11,11 +12,13 @@ import {
     uploadProfilePhotoSchema,
     approveUserSchema,
     changeUserStatusSchema,
+    userSessionParamSchema,
 } from '../validators/users.validators.js';
 
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/', authorize('admin'), validateRequest(listUsersSchema), UserController.getAllUsers);
 router.get('/role/:role', authorize('admin'), validateRequest(usersByRoleSchema), UserController.getUsersByRole);
@@ -24,6 +27,8 @@ router.get('/admin/stats', authorize('admin'), UserController.getStatistics);
 router.post('/:id/approve', authorize('admin'), validateRequest(approveUserSchema), UserController.approveUser);
 router.delete('/:id', authorize('admin'), validateRequest(userIdParamSchema), UserController.rejectUser);
 router.patch('/:id/status', authorize('admin'), validateRequest(changeUserStatusSchema), UserController.changeUserStatus);
+router.get('/:id/sessions', authorize('admin'), validateRequest(userIdParamSchema), UserController.listUserSessions);
+router.delete('/:id/sessions/:jti', authorize('admin'), validateRequest(userSessionParamSchema), UserController.revokeUserSession);
 
 router.patch(
     '/:id/profile-photo',

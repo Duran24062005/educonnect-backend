@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import validator from 'validator';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * User Model
@@ -16,6 +17,12 @@ const userSchema = new mongoose.Schema(
             default: null,
             // Sin unique: true aquí porque null no debe ser único
         },
+        institution_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Institution',
+            default: null,
+            index: true,
+        },
         email: {
             type: String,
             required: [true, 'El email es requerido'],
@@ -30,6 +37,10 @@ const userSchema = new mongoose.Schema(
             required: [true, 'La contraseña es requerida'],
             minlength: [8, 'Mínimo 8 caracteres'],
             select: false,
+        },
+        last_login: {
+            type: Date,
+            default: null,
         },
     },
     {
@@ -65,5 +76,7 @@ userSchema.index(
     { person_id: 1 },
     { unique: true, partialFilterExpression: { person_id: { $ne: null } } }
 );
+
+tenantPlugin(userSchema);
 
 export default mongoose.model('User', userSchema);

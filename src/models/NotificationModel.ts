@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 const notificationSchema = new mongoose.Schema(
     {
@@ -68,5 +69,7 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ recipient_user_id: 1, created_at: -1 });
 notificationSchema.index({ recipient_user_id: 1, read_at: 1, created_at: -1 });
+
+tenantPlugin(notificationSchema);
 
 export default mongoose.model('Notification', notificationSchema);

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Person Model
@@ -106,5 +107,7 @@ const personSchema = new mongoose.Schema(
 // Índices
 personSchema.index({ role: 1 });
 personSchema.index({ status: 1 });
+
+tenantPlugin(personSchema);
 
 export default mongoose.model('Person', personSchema);

@@ -30,7 +30,17 @@ class EvaluationController {
     // ---- SCORES ----
     registerScore = asyncHandler(async (req, res) => {
         const { student_id, grade_item_id, score } = req.body;
-        const result = await EvaluationService.registerScore(req.userId, req.userRole, student_id, grade_item_id, score);
+        const result = await EvaluationService.registerScore(
+            req.userId,
+            req.userRole,
+            student_id,
+            grade_item_id,
+            score,
+            {
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+            }
+        );
         res.status(200).json({ status: 'success', message: 'Calificación registrada', data: result });
     });
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Enrollment Model
@@ -61,8 +62,14 @@ enrollmentSchema.index({ school_year_id: 1 });
 // Solo una matrícula activa por estudiante y año escolar.
 enrollmentSchema.index(
     { student_id: 1, school_year_id: 1 },
-    { unique: true, partialFilterExpression: { status: 'active' } }
+    { partialFilterExpression: { status: 'active' } }
 );
 enrollmentSchema.index({ group_id: 1, status: 1 });
+
+tenantPlugin(enrollmentSchema);
+enrollmentSchema.index(
+    { institution_id: 1, student_id: 1, school_year_id: 1 },
+    { unique: true, partialFilterExpression: { status: 'active' } }
+);
 
 export default mongoose.model('Enrollment', enrollmentSchema);

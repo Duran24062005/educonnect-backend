@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Group Model
@@ -38,6 +39,9 @@ const groupSchema = new mongoose.Schema(
 groupSchema.index({ school_year_id: 1 });
 groupSchema.index({ grade_id: 1 });
 groupSchema.index({ school_year_id: 1, grade_id: 1 });
-groupSchema.index({ school_year_id: 1, grade_id: 1, name: 1 }, { unique: true });
+groupSchema.index({ school_year_id: 1, grade_id: 1, name: 1 });
+
+tenantPlugin(groupSchema);
+groupSchema.index({ institution_id: 1, school_year_id: 1, grade_id: 1, name: 1 }, { unique: true });
 
 export default mongoose.model('Group', groupSchema);

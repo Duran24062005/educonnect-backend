@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { ACTIVITY_ALLOWED_EXTENSIONS, ACTIVITY_STATUS } from '../constants/activity.constants.js';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 const rubricCriterionSchema = new mongoose.Schema(
     {
@@ -115,5 +116,7 @@ const activitySchema = new mongoose.Schema(
 activitySchema.index({ teacher_id: 1, created_at: -1 });
 activitySchema.index({ group_id: 1, area_id: 1, period_id: 1 });
 activitySchema.index({ school_year_id: 1, group_id: 1, due_at: 1 });
+
+tenantPlugin(activitySchema);
 
 export default mongoose.model('Activity', activitySchema);

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import NotificationController from '../controllers/NotificationController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     notificationsQuerySchema,
     notificationIdParamSchema,
@@ -12,6 +13,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/me', validateRequest(notificationsQuerySchema), NotificationController.getMyNotifications);
 router.get('/me/unread-count', NotificationController.getMyUnreadCount);

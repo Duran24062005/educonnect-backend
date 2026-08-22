@@ -5,6 +5,7 @@ import { AppError } from '../utils/error.js';
 import { getStorageService } from './storage/index.js';
 import MediaUrlService from './storage/mediaUrl.service.js';
 import { sendActiveWelcomeEmail, sendInactiveWelcomeEmail } from './EmailService.js';
+import AuditLogService from './AuditLogService.js';
 
 /**
  * UserService
@@ -345,6 +346,17 @@ class UserService {
         });
 
         const approvedUser = await UserRepository.findById(userId);
+        const approvingUser = await UserRepository.findById(adminId);
+        await AuditLogService.record({
+            actorUserId: adminId,
+            actorRole: 'admin',
+            action: 'user.approved',
+            entityType: 'Person',
+            entityId: person._id,
+            before: { status: previousStatus, role: person.role },
+            after: { status: 'active', role: roleMap[normalizedRole] },
+            institutionId: approvingUser?.institution_id,
+        });
         await this.sendStatusTransitionEmail(approvedUser, previousStatus, 'active');
         await this.hydrateUser(approvedUser);
         return approvedUser.toJSON();
@@ -403,6 +415,18 @@ class UserService {
         await PersonRepository.update(person._id, {
             status: newStatus,
             updated_by: adminId,
+        });
+
+        const changingUser = await UserRepository.findById(adminId);
+        await AuditLogService.record({
+            actorUserId: adminId,
+            actorRole: 'admin',
+            action: 'user.status_changed',
+            entityType: 'Person',
+            entityId: person._id,
+            before: { status: previousStatus },
+            after: { status: newStatus },
+            institutionId: changingUser?.institution_id,
         });
 
         const updatedUser = await UserRepository.findById(userId);

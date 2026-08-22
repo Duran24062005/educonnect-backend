@@ -16,6 +16,7 @@ import {
     resolveStudentByUserId,
     assertCanAccessGroup,
 } from './accessScope.service.js';
+import AuditLogService from './AuditLogService.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -132,7 +133,7 @@ class GroupService {
     // INSCRIPCIONES
     // ===========================
 
-    async enrollStudent(student_id, group_id, school_year_id) {
+    async enrollStudent(student_id, group_id, school_year_id, auditContext = {}) {
         if (!student_id || !group_id || !school_year_id) {
             throw new AppError('Estudiante, grupo y año escolar son requeridos', 400);
         }
@@ -168,10 +169,29 @@ class GroupService {
         // Actualizar group_id en el perfil del estudiante
         await studentRepository.update(student_id, { group_id });
 
+        await AuditLogService.record({
+            actorUserId: auditContext.actorUserId,
+            actorRole: auditContext.actorRole,
+            action: 'enrollment.created',
+            entityType: 'Enrollment',
+            entityId: enrollment._id,
+            before: null,
+            after: enrollment,
+            institutionId: auditContext.institutionId,
+            ipAddress: auditContext.ipAddress,
+            userAgent: auditContext.userAgent,
+            metadata: {
+                student_id,
+                group_id,
+                school_year_id,
+                ...(auditContext.metadata || {}),
+            },
+        });
+
         return enrollment;
     }
 
-    async transferEnrollment(student_id, school_year_id, to_group_id, reason = null, observations = null) {
+    async transferEnrollment(student_id, school_year_id, to_group_id, reason = null, observations = null, auditContext = {}) {
         if (!student_id || !school_year_id || !to_group_id) {
             throw new AppError('Estudiante, año escolar y grupo destino son requeridos', 400);
         }
@@ -219,10 +239,31 @@ class GroupService {
 
         await studentRepository.update(student_id, { group_id: to_group_id });
 
+        await AuditLogService.record({
+            actorUserId: auditContext.actorUserId,
+            actorRole: auditContext.actorRole,
+            action: 'enrollment.transferred',
+            entityType: 'Enrollment',
+            entityId: newEnrollment._id,
+            before: activeEnrollment,
+            after: newEnrollment,
+            institutionId: auditContext.institutionId,
+            ipAddress: auditContext.ipAddress,
+            userAgent: auditContext.userAgent,
+            metadata: {
+                student_id,
+                from_group_id: activeEnrollment.group_id,
+                to_group_id,
+                school_year_id,
+                reason,
+                ...(auditContext.metadata || {}),
+            },
+        });
+
         return newEnrollment;
     }
 
-    async changeEnrollmentStatus(enrollment_id, status) {
+    async changeEnrollmentStatus(enrollment_id, status, auditContext = {}) {
         const validStatuses = ['active', 'transferred', 'retired'];
         if (!validStatuses.includes(status)) {
             throw new AppError('Estado inválido. Usa: active, transferred, retired', 400);
@@ -236,6 +277,23 @@ class GroupService {
         const updated = await enrollmentRepository.update(enrollment_id, {
             status,
             closed_at: status === 'active' ? null : new Date(),
+        });
+
+        await AuditLogService.record({
+            actorUserId: auditContext.actorUserId,
+            actorRole: auditContext.actorRole,
+            action: `enrollment.${status}`,
+            entityType: 'Enrollment',
+            entityId: enrollment_id,
+            before: enrollment,
+            after: updated,
+            institutionId: auditContext.institutionId,
+            ipAddress: auditContext.ipAddress,
+            userAgent: auditContext.userAgent,
+            metadata: {
+                student_id: enrollment.student_id?._id || enrollment.student_id,
+                ...(auditContext.metadata || {}),
+            },
         });
 
         if (status === 'active') {
@@ -279,7 +337,7 @@ class GroupService {
     // ASIGNACIÓN DE PROFESORES
     // ===========================
 
-    async assignTeacherToGroup(teacher_id, group_id, area_id) {
+    async assignTeacherToGroup(teacher_id, group_id, area_id, auditContext = {}) {
         if (!teacher_id || !group_id || !area_id) {
             throw new AppError('Profesor, grupo y área son requeridos', 400);
         }
@@ -303,7 +361,28 @@ class GroupService {
             throw new AppError('Este profesor ya está asignado a este grupo en esta área', 400);
         }
 
-        return await groupTeacherRepository.create({ teacher_id, group_id, area_id });
+        const assignment = await groupTeacherRepository.create({ teacher_id, group_id, area_id });
+
+        await AuditLogService.record({
+            actorUserId: auditContext.actorUserId,
+            actorRole: auditContext.actorRole,
+            action: 'academic_assignment.created',
+            entityType: 'GroupTeacher',
+            entityId: assignment._id,
+            before: null,
+            after: assignment,
+            institutionId: auditContext.institutionId,
+            ipAddress: auditContext.ipAddress,
+            userAgent: auditContext.userAgent,
+            metadata: {
+                teacher_id,
+                group_id,
+                area_id,
+                ...(auditContext.metadata || {}),
+            },
+        });
+
+        return assignment;
     }
 
     async getTeachersByGroup(group_id, actorId, actorRole) {

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Period Model
@@ -41,5 +42,7 @@ const periodSchema = new mongoose.Schema(
 // Índices
 periodSchema.index({ school_year_id: 1 });
 periodSchema.index({ school_year_id: 1, start_date: 1 });
+
+tenantPlugin(periodSchema);
 
 export default mongoose.model('Period', periodSchema);

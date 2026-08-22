@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * GroupTeacher Model
@@ -32,6 +33,9 @@ groupTeacherSchema.index({ teacher_id: 1 });
 groupTeacherSchema.index({ group_id: 1 });
 groupTeacherSchema.index({ group_id: 1, area_id: 1 });
 // Un profesor no puede estar asignado dos veces al mismo grupo y área
-groupTeacherSchema.index({ teacher_id: 1, group_id: 1, area_id: 1 }, { unique: true });
+groupTeacherSchema.index({ teacher_id: 1, group_id: 1, area_id: 1 });
+
+tenantPlugin(groupTeacherSchema);
+groupTeacherSchema.index({ institution_id: 1, teacher_id: 1, group_id: 1, area_id: 1 }, { unique: true });
 
 export default mongoose.model('GroupTeacher', groupTeacherSchema);

@@ -3,7 +3,8 @@ import PersonRepository from '../repositories/PersonRepository.js';
 import UserRepository from '../repositories/UserRepository.js';
 import { teacherRepository, studentRepository } from '../repositories/PersonProfileRepository.js';
 import { AppError } from '../utils/error.js';
-import { generateToken } from '../utils/jwt.js';
+import SessionService from './SessionService.js';
+import AuditLogService from './AuditLogService.js';
 import MediaUrlService from './storage/mediaUrl.service.js';
 
 /**
@@ -56,11 +57,11 @@ class AuthService {
             // person_id queda null hasta completar perfil
         });
 
-        const token = generateToken(user._id, null);
+        const session = await SessionService.create({ userId: user._id });
 
         return {
             user: user.toJSON(),
-            token,
+            token: session.token,
             profile_complete: false,
         };
     }
@@ -69,7 +70,7 @@ class AuthService {
      * PASO 2 — Completar perfil personal
      * Crea Person con user_id y actualiza User.person_id.
      */
-    async completeProfile(userId, data) {
+    async completeProfile(userId, data, currentSessionId: string | null | undefined = null, requestContext: Record<string, unknown> = {}) {
         const {
             first_name,
             last_name,
@@ -131,12 +132,21 @@ class AuthService {
             await studentRepository.create({ user_id: userId });
         }
 
-        const token = generateToken(userId, normalizedRole);
+        if (currentSessionId) {
+            await SessionService.revoke(currentSessionId, String(userId), 'profile_completed');
+        }
+
+        const session = await SessionService.create({
+            userId,
+            role: normalizedRole,
+            institutionId: user.institution_id,
+            ...requestContext,
+        });
 
         return {
             person: person.toObject(),
             user: { ...user.toJSON(), person_id: person._id },
-            token,
+            token: session.token,
             profile_complete: true,
         };
     }
@@ -172,13 +182,17 @@ class AuthService {
 
         await UserRepository.updateLastLogin(user._id);
 
-        const token = generateToken(user._id, person?.role || null);
+        const session = await SessionService.create({
+            userId: user._id,
+            role: person?.role || null,
+            institutionId: user.institution_id,
+        });
         await MediaUrlService.refreshUser(user);
 
         return {
             person: person ? (person.toObject ? person.toObject() : person) : null,
             user: user.toJSON(),
-            token,
+            token: session.token,
             profile_complete: !!person,
         };
     }
@@ -209,6 +223,7 @@ class AuthService {
 
         userWithPwd.hash_password = newPassword;
         await userWithPwd.save();
+        await SessionService.revokeAll(String(userId), 'password_changed');
 
         return { message: 'Contraseña actualizada exitosamente' };
     }
@@ -225,6 +240,24 @@ class AuthService {
             person: user.person_id || null,
             profile_complete: !!user.person_id,
         };
+    }
+
+    async logout(userId, sessionId, requestContext = {}) {
+        if (sessionId) {
+            await SessionService.revoke(sessionId, String(userId), 'logout');
+            await AuditLogService.record({
+                actorUserId: userId,
+                actorRole: 'authenticated_user',
+                action: 'session.revoked',
+                entityType: 'Session',
+                entityId: sessionId,
+                before: { revoked_at: null },
+                after: { revoked_at: new Date().toISOString(), reason: 'logout' },
+                ...requestContext,
+            });
+        }
+
+        return { message: 'Logout exitoso' };
     }
 
     /**

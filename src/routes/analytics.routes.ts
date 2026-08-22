@@ -2,6 +2,7 @@ import { Router } from 'express';
 import AnalyticsController from '../controllers/AnalyticsController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     studentOverviewQuerySchema,
     studentAreasQuerySchema,
@@ -24,6 +25,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/student/me/overview', authorize('student'), validateRequest(studentOverviewQuerySchema), AnalyticsController.studentOverview);
 router.get('/student/me/areas', authorize('student'), validateRequest(studentAreasQuerySchema), AnalyticsController.studentAreas);

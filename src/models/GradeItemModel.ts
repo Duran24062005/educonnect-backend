@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * GradeItem Model
@@ -38,5 +39,7 @@ const gradeItemSchema = new mongoose.Schema(
 // Índices
 gradeItemSchema.index({ area_id: 1, period_id: 1 });
 gradeItemSchema.index({ period_id: 1 });
+
+tenantPlugin(gradeItemSchema);
 
 export default mongoose.model('GradeItem', gradeItemSchema);

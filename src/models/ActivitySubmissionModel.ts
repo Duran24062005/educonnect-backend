@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 import { ACTIVITY_SUBMISSION_STATUS, ACTIVITY_SUBMISSION_TYPE } from '../constants/activity.constants.js';
 
 const rubricScoreSchema = new mongoose.Schema(
@@ -170,6 +171,9 @@ const activitySubmissionSchema = new mongoose.Schema(
 
 activitySubmissionSchema.index({ activity_id: 1 });
 activitySubmissionSchema.index({ student_id: 1, submitted_at: -1 });
-activitySubmissionSchema.index({ activity_id: 1, student_id: 1 }, { unique: true });
+activitySubmissionSchema.index({ activity_id: 1, student_id: 1 });
+
+tenantPlugin(activitySubmissionSchema);
+activitySubmissionSchema.index({ institution_id: 1, activity_id: 1, student_id: 1 }, { unique: true });
 
 export default mongoose.model('ActivitySubmission', activitySubmissionSchema);

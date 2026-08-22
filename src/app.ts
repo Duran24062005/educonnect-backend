@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import mongoose from 'mongoose';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
@@ -19,6 +20,9 @@ import evaluationsRouter from './routes/evaluations.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
 import notificationsRouter from './routes/notifications.routes.js';
+import institutionsRouter from './routes/institutions.routes.js';
+import auditLogsRouter from './routes/audit-logs.routes.js';
+import { runTenantRequest } from './tenant/tenant-context.js';
 
 const app = express();
 
@@ -27,6 +31,7 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ extended: true, limit: '6mb' }));
+app.use((_req, _res, next) => runTenantRequest(next));
 
 // Headers de seguridad (H6). La CSP se desactiva para no romper Swagger UI (/api-docs),
 // conservando X-Frame-Options, nosniff, HSTS y referrer-policy.
@@ -61,6 +66,18 @@ app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/health/ready', (_req, res) => {
+    const databaseReady = mongoose.connection.readyState === 1;
+
+    res.status(databaseReady ? 200 : 503).json({
+        status: databaseReady ? 'ready' : 'not_ready',
+        checks: {
+            database: databaseReady ? 'up' : 'down',
+        },
+        timestamp: new Date().toISOString(),
+    });
+});
+
 app.get('/api-docs', (_req, res) => {
     res.redirect(301, '/api-docs/');
 });
@@ -76,6 +93,8 @@ app.use('/api/evaluations', evaluationsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/activities', activitiesRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/institutions', institutionsRouter);
+app.use('/api/audit-logs', auditLogsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

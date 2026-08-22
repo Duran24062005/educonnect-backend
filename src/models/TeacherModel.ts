@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Teacher Model
@@ -26,5 +27,7 @@ const teacherSchema = new mongoose.Schema(
 
 // Índices
 teacherSchema.index({ area: 1 });
+
+tenantPlugin(teacherSchema);
 
 export default mongoose.model('Teacher', teacherSchema);

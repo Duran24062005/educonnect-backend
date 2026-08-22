@@ -2,6 +2,7 @@ import { Router } from 'express';
 import EvaluationController from '../controllers/EvaluationController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     listGradeItemsSchema,
     createGradeItemSchema,
@@ -21,6 +22,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/grade-items', validateRequest(listGradeItemsSchema), EvaluationController.getGradeItems);
 router.post('/grade-items', authorize('admin', 'teacher'), validateRequest(createGradeItemSchema), EvaluationController.createGradeItem);

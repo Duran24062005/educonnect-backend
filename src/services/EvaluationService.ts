@@ -9,6 +9,7 @@ import {
 import { periodRepository, areaRepository } from '../repositories/AcademicRepository.js';
 import { studentRepository, groupTeacherRepository } from '../repositories/PersonProfileRepository.js';
 import { AppError } from '../utils/error.js';
+import AuditLogService from './AuditLogService.js';
 import {
     isAdmin,
     resolveTeacherByUserId,
@@ -117,7 +118,7 @@ class EvaluationService {
     // STUDENT GRADES (Calificaciones)
     // ===========================
 
-    async registerScore(userId, role, student_id, grade_item_id, score) {
+    async registerScore(userId, role, student_id, grade_item_id, score, auditContext = {}) {
         if (score === undefined || score === null) {
             throw new AppError('La calificación es requerida', 400);
         }
@@ -149,7 +150,26 @@ class EvaluationService {
             }
         }
 
-        return await studentGradeRepository.upsert(student_id, grade_item_id, score);
+        const previousGrade = await studentGradeRepository.findByStudentAndItem(student_id, grade_item_id);
+        const updatedGrade = await studentGradeRepository.upsert(student_id, grade_item_id, score);
+
+        await AuditLogService.record({
+            actorUserId: userId,
+            actorRole: role,
+            action: previousGrade ? 'grade.updated' : 'grade.created',
+            entityType: 'StudentGrade',
+            entityId: updatedGrade._id,
+            before: previousGrade,
+            after: updatedGrade,
+            ...auditContext,
+            metadata: {
+                student_id,
+                grade_item_id,
+                ...(auditContext.metadata || {}),
+            },
+        });
+
+        return updatedGrade;
     }
 
     async getScoresByStudent(student_id, userId, role) {

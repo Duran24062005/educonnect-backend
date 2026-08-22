@@ -1,5 +1,7 @@
 import { AppError, asyncHandler } from '../utils/error.js';
 import UserService from '../services/UserService.js';
+import SessionService from '../services/SessionService.js';
+import AuditLogService from '../services/AuditLogService.js';
 import { getQueryString } from '../utils/request.js';
 
 /**
@@ -208,6 +210,54 @@ class UserController {
         res.status(200).json({
             status: 'success',
             data: stats,
+        });
+    });
+
+    listUserSessions = asyncHandler(async (req, res) => {
+        const sessions = await SessionService.listForUser(String(req.params.id));
+
+        res.status(200).json({
+            status: 'success',
+            data: sessions,
+        });
+    });
+
+    revokeUserSession = asyncHandler(async (req, res) => {
+        const targetUserId = String(req.params.id);
+        const jti = String(req.params.jti);
+        const actorUserId = req.userId;
+        const actorRole = req.userRole;
+
+        if (!actorUserId || !actorRole) {
+            throw new AppError('Contexto de autenticación incompleto', 401);
+        }
+
+        const revoked = await SessionService.revoke(
+            jti,
+            targetUserId,
+            'admin_revoked'
+        );
+
+        if (!revoked) {
+            throw new AppError('Sesión no encontrada o ya revocada', 404);
+        }
+
+        await AuditLogService.record({
+            actorUserId,
+            actorRole,
+            action: 'session.revoked_by_admin',
+            entityType: 'Session',
+            entityId: jti,
+            before: { revoked_at: null },
+            after: { revoked_at: new Date().toISOString(), reason: 'admin_revoked' },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+            metadata: { target_user_id: targetUserId },
+        });
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Sesión revocada',
         });
     });
 }

@@ -17,6 +17,8 @@ const options = {
             { name: 'System', description: 'Estado general del servicio' },
             { name: 'Auth', description: 'Autenticación y perfil' },
             { name: 'Users', description: 'Gestión de usuarios' },
+            { name: 'Institutions', description: 'Bootstrap institucional y contexto del piloto' },
+            { name: 'Audit', description: 'Trazabilidad de operaciones sensibles del piloto' },
             { name: 'Students', description: 'Operaciones específicas de estudiantes' },
             { name: 'Academic', description: 'Años escolares, periodos, grados, áreas y aulas' },
             { name: 'Groups', description: 'Grupos, matrículas y asignaciones' },
@@ -182,6 +184,16 @@ const options = {
                     responses: { 200: { description: 'Servicio saludable' } },
                 },
             },
+            '/health/ready': {
+                get: {
+                    tags: ['System'],
+                    summary: 'Readiness check con conexión a MongoDB',
+                    responses: {
+                        200: { description: 'Servicio listo y base de datos conectada' },
+                        503: { description: 'Servicio arriba pero base de datos no disponible' },
+                    },
+                },
+            },
 
             '/api/auth/register': {
                 post: {
@@ -237,7 +249,7 @@ const options = {
             '/api/auth/logout': {
                 post: {
                     tags: ['Auth'],
-                    summary: 'Cerrar sesión (stateless)',
+                    summary: 'Cerrar y revocar la sesión actual',
                     security: [{ bearerAuth: [] }],
                     responses: { 200: { description: 'Logout exitoso' }, 401: { $ref: '#/components/responses/Unauthorized' } },
                 },
@@ -260,6 +272,76 @@ const options = {
                         }),
                     },
                     responses: { 200: { description: 'Contraseña actualizada' }, 401: { $ref: '#/components/responses/Unauthorized' } },
+                },
+            },
+            '/api/institutions': {
+                post: {
+                    tags: ['Institutions'],
+                    summary: 'Crear la institución sandbox del piloto (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['name', 'code', 'type'],
+                            properties: {
+                                name: { type: 'string', minLength: 3 },
+                                code: { type: 'string', minLength: 3 },
+                                type: { type: 'string', enum: ['private', 'public'] },
+                                max_students: { type: 'integer', minimum: 1, maximum: 800, default: 800 },
+                                timezone: { type: 'string', default: 'America/Bogota' },
+                            },
+                        }),
+                    },
+                    responses: {
+                        201: { description: 'Institución creada en sandbox' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                        409: { description: 'El administrador ya tiene institución' },
+                    },
+                },
+            },
+            '/api/institutions/current': {
+                get: {
+                    tags: ['Institutions'],
+                    summary: 'Obtener la institución actual',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        200: { description: 'Institución actual' },
+                        404: { description: 'El usuario aún no pertenece a una institución' },
+                    },
+                },
+            },
+            '/api/institutions/current/users/{user_id}': {
+                patch: {
+                    tags: ['Institutions'],
+                    summary: 'Vincular un usuario a la institución actual (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'user_id', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }],
+                    responses: {
+                        200: { description: 'Usuario vinculado' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                        409: { description: 'El usuario ya pertenece a otra institución' },
+                    },
+                },
+            },
+            '/api/audit-logs': {
+                get: {
+                    tags: ['Audit'],
+                    summary: 'Consultar auditoría de la institución actual (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+                        { name: 'action', in: 'query', schema: { type: 'string' } },
+                        { name: 'entity_type', in: 'query', schema: { type: 'string' } },
+                        { name: 'entity_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'actor_user_id', in: 'query', schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: {
+                        200: { description: 'Eventos auditables paginados' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                        409: { description: 'El admin no tiene institución asignada' },
+                    },
                 },
             },
             '/api/notifications/me': {
@@ -403,6 +485,34 @@ const options = {
                         }),
                     },
                     responses: { 200: { description: 'Estado actualizado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/users/{id}/sessions': {
+                get: {
+                    tags: ['Users'],
+                    summary: 'Listar sesiones de un usuario (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: {
+                        200: { description: 'Sesiones sin tokens secretos' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                    },
+                },
+            },
+            '/api/users/{id}/sessions/{jti}': {
+                delete: {
+                    tags: ['Users'],
+                    summary: 'Revocar una sesión de usuario (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { $ref: '#/components/parameters/ObjectIdParam' },
+                        { name: 'jti', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+                    ],
+                    responses: {
+                        200: { description: 'Sesión revocada' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                        404: { description: 'Sesión no encontrada o ya revocada' },
+                    },
                 },
             },
             '/api/users/{id}/profile-photo': {

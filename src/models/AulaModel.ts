@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Aula Model
@@ -23,5 +24,7 @@ const aulaSchema = new mongoose.Schema(
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
     }
 );
+
+tenantPlugin(aulaSchema);
 
 export default mongoose.model('Aula', aulaSchema);

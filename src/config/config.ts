@@ -32,6 +32,11 @@ interface StorageSection {
     signedUrlRefreshMarginSeconds: number;
 }
 
+interface TenantSection {
+    dataIsolation: boolean;
+    requireInstitutionContext: boolean;
+}
+
 class AppConfig {
     static instance: AppConfig | undefined;
     app!: AppSection;
@@ -39,6 +44,7 @@ class AppConfig {
     jwt!: JwtSection;
     cors!: CorsSection;
     storage!: StorageSection;
+    tenant!: TenantSection;
 
     constructor() {
         if (AppConfig.instance) return AppConfig.instance;
@@ -81,6 +87,11 @@ class AppConfig {
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
             signedUrlTtlSeconds: Number(process.env.AWS_SIGNED_URL_TTL_SECONDS || 900),
             signedUrlRefreshMarginSeconds: 60,
+        };
+
+        this.tenant = {
+            dataIsolation: process.env.TENANT_DATA_ISOLATION === 'true',
+            requireInstitutionContext: process.env.REQUIRE_INSTITUTION_CONTEXT === 'true',
         };
 
         if (this.app.nodeEnv === 'production' && !process.env.JWT_SECRET) {

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * PeriodAreaResult Model
@@ -36,7 +37,10 @@ const periodAreaResultSchema = new mongoose.Schema(
 // Índices
 periodAreaResultSchema.index({ student_id: 1 });
 // Resultado único por combinación estudiante + área + periodo
-periodAreaResultSchema.index({ student_id: 1, area_id: 1, period_id: 1 }, { unique: true });
+periodAreaResultSchema.index({ student_id: 1, area_id: 1, period_id: 1 });
 periodAreaResultSchema.index({ period_id: 1, area_id: 1 });
+
+tenantPlugin(periodAreaResultSchema);
+periodAreaResultSchema.index({ institution_id: 1, student_id: 1, area_id: 1, period_id: 1 }, { unique: true });
 
 export default mongoose.model('PeriodAreaResult', periodAreaResultSchema);

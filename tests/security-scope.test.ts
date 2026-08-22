@@ -38,6 +38,7 @@ let GradeItem: Model<any>;
 let Grade: Model<any>;
 let SchoolYear: Model<any>;
 let Enrollment: Model<any>;
+let AuditLog: Model<any>;
 let mongoServer: MongoMemoryServer;
 let mockStorageService: StorageService;
 let mockEmailService: MockEmailService;
@@ -132,6 +133,7 @@ beforeAll(async () => {
     ({ default: Grade } = await import('../src/models/GradeModel.js'));
     ({ default: SchoolYear } = await import('../src/models/SchoolYearModel.js'));
     ({ default: Enrollment } = await import('../src/models/EnrollmentModel.js'));
+    ({ default: AuditLog } = await import('../src/models/AuditLogModel.js'));
 
     await appConfig.connectDatabase();
 });
@@ -332,11 +334,47 @@ describe('Seguridad — scope de acceso (H1, H2, H3, H13)', () => {
             .send({ student_id: studentAStudentId, grade_item_id: gradeItemId, score: 8 });
         expect(allowed.statusCode).toBe(200);
 
+        const scoreAudit = await AuditLog.findOne({
+            action: 'grade.updated',
+            entity_type: 'StudentGrade',
+            actor_user_id: (await User.findOne({ email: 'scope.teacher1@educonnect.local' }))._id,
+        }).sort({ created_at: -1 });
+        expect(scoreAudit).toBeTruthy();
+        expect(scoreAudit.before.score).toBe(8.5);
+        expect(scoreAudit.after.score).toBe(8);
+        expect(scoreAudit.ip_address).toBeDefined();
+
         const forbiddenItem = await request(app)
             .post('/api/evaluations/grade-items')
             .set('Authorization', `Bearer ${teacher2Token}`)
             .send({ name: 'Ítem ajeno', percentage: 10, area_id: areaId, period_id: periodId });
         expect(forbiddenItem.statusCode).toBe(403);
+    });
+
+    test('P0: los cambios de matrícula quedan trazables con actor y snapshots', async () => {
+        const studentBStudentId = (await Student.findOne({ user_id: studentB._id }))._id;
+
+        const enrollmentResponse = await request(app)
+            .post('/api/groups/enrollments')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({
+                student_id: studentBStudentId,
+                group_id: groupId,
+                school_year_id: schoolYearId,
+            });
+
+        expect(enrollmentResponse.statusCode).toBe(201);
+
+        const enrollmentAudit = await AuditLog.findOne({
+            action: 'enrollment.created',
+            entity_type: 'Enrollment',
+            actor_user_id: (await User.findOne({ email: 'scope.admin@educonnect.local' }))._id,
+        }).sort({ created_at: -1 });
+
+        expect(enrollmentAudit).toBeTruthy();
+        expect(enrollmentAudit.before).toBeNull();
+        expect(enrollmentAudit.after.status).toBe('active');
+        expect(enrollmentAudit.metadata.student_id.toString()).toBe(studentBStudentId.toString());
     });
 
     test('H13: un docente sin asignación no accede a estudiantes ni detalle de un grupo ajeno', async () => {

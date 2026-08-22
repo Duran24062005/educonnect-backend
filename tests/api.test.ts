@@ -123,6 +123,13 @@ describe('EduConnect API', () => {
         expect(response.body.status).toBe('ok');
     });
 
+    test('returns readiness status when MongoDB is connected', async () => {
+        const response = await request(app).get('/health/ready');
+        expect(response.statusCode).toBe(200);
+        expect(response.body.status).toBe('ready');
+        expect(response.body.checks.database).toBe('up');
+    });
+
     test('auth: register + login flow works', async () => {
         const registerRes = await request(app).post('/api/auth/register').send({
             email: ADMIN.email,
@@ -162,6 +169,165 @@ describe('EduConnect API', () => {
         expect(mockEmailService.sentEmails.some((email) =>
             email.template_name === 'login_educonnect.html'
             && email.subject === 'Nuevo inicio de sesión en EduConnect'
+        )).toBe(true);
+    });
+
+    test('auth: logout revokes the current session', async () => {
+        const registerRes = await request(app).post('/api/auth/register').send({
+            email: 'session.revoke@educonnect.local',
+            password: 'Student123!',
+            password_confirm: 'Student123!',
+        });
+
+        const completeRes = await request(app)
+            .post('/api/auth/complete-profile')
+            .set('Authorization', `Bearer ${registerRes.body.data.token}`)
+            .send({
+                first_name: 'Session',
+                last_name: 'Revoke',
+                born_date: '2012-01-01',
+                document_type: 'CC',
+                document_number: 'SESSION-REV-01',
+                requested_role: 'Student',
+            });
+
+        const user = await User.findOne({ email: 'session.revoke@educonnect.local' }).populate('person_id');
+        await Person.findByIdAndUpdate(user.person_id._id, { status: 'active' });
+
+        const loginRes = await request(app).post('/api/auth/login').send({
+            email: 'session.revoke@educonnect.local',
+            password: 'Student123!',
+        });
+        const token = loginRes.body.data.token;
+
+        const beforeLogout = await request(app)
+            .get('/api/auth/me')
+            .set('Authorization', `Bearer ${token}`);
+        expect(beforeLogout.statusCode).toBe(200);
+
+        const logoutRes = await request(app)
+            .post('/api/auth/logout')
+            .set('Authorization', `Bearer ${token}`);
+        expect(logoutRes.statusCode).toBe(200);
+
+        const afterLogout = await request(app)
+            .get('/api/auth/me')
+            .set('Authorization', `Bearer ${token}`);
+        expect(afterLogout.statusCode).toBe(401);
+    });
+
+    test('auth: admin can review and revoke a user session', async () => {
+        const registerRes = await request(app).post('/api/auth/register').send({
+            email: 'session.admin-revoke@educonnect.local',
+            password: 'Student123!',
+            password_confirm: 'Student123!',
+        });
+
+        await request(app)
+            .post('/api/auth/complete-profile')
+            .set('Authorization', `Bearer ${registerRes.body.data.token}`)
+            .send({
+                first_name: 'Admin',
+                last_name: 'Revocable',
+                born_date: '2012-01-01',
+                document_type: 'CC',
+                document_number: 'SESSION-ADM-01',
+                requested_role: 'Student',
+            });
+
+        const user = await User.findOne({ email: 'session.admin-revoke@educonnect.local' }).populate('person_id');
+        await Person.findByIdAndUpdate(user.person_id._id, { status: 'active' });
+
+        const loginRes = await request(app).post('/api/auth/login').send({
+            email: 'session.admin-revoke@educonnect.local',
+            password: 'Student123!',
+        });
+        const userToken = loginRes.body.data.token;
+
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+        const adminToken = adminLogin.body.data.token;
+
+        const listRes = await request(app)
+            .get(`/api/users/${user._id}/sessions`)
+            .set('Authorization', `Bearer ${adminToken}`);
+        expect(listRes.statusCode).toBe(200);
+
+        const currentSession = listRes.body.data.find((session) => session.revoked_at === null);
+        expect(currentSession?.jti).toBeDefined();
+
+        const revokeRes = await request(app)
+            .delete(`/api/users/${user._id}/sessions/${currentSession.jti}`)
+            .set('Authorization', `Bearer ${adminToken}`);
+        expect(revokeRes.statusCode).toBe(200);
+
+        const revokedMe = await request(app)
+            .get('/api/auth/me')
+            .set('Authorization', `Bearer ${userToken}`);
+        expect(revokedMe.statusCode).toBe(401);
+    });
+
+    test('institution: admin bootstraps sandbox and assigns a user', async () => {
+        const adminLogin = await request(app).post('/api/auth/login').send({
+            email: ADMIN.email,
+            password: ADMIN.password,
+        });
+        const adminToken = adminLogin.body.data.token;
+
+        const createRes = await request(app)
+            .post('/api/institutions')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({
+                name: 'Colegio Piloto EduConnect',
+                code: 'PILOTO-014',
+                type: 'private',
+            });
+
+        expect(createRes.statusCode).toBe(201);
+        expect(createRes.body.data.status).toBe('sandbox');
+        expect(createRes.body.data.max_students).toBe(800);
+
+        const currentRes = await request(app)
+            .get('/api/institutions/current')
+            .set('Authorization', `Bearer ${adminToken}`);
+        expect(currentRes.statusCode).toBe(200);
+        expect(currentRes.body.data.code).toBe('PILOTO-014');
+
+        const registerRes = await request(app).post('/api/auth/register').send({
+            email: 'institution.assigned@educonnect.local',
+            password: 'Student123!',
+            password_confirm: 'Student123!',
+        });
+        const completeRes = await request(app)
+            .post('/api/auth/complete-profile')
+            .set('Authorization', `Bearer ${registerRes.body.data.token}`)
+            .send({
+                first_name: 'Institution',
+                last_name: 'Assigned',
+                born_date: '2012-01-01',
+                document_type: 'CC',
+                document_number: 'INST-ASSIGN-01',
+                requested_role: 'Student',
+            });
+        expect(completeRes.statusCode).toBe(200);
+
+        const target = await User.findOne({ email: 'institution.assigned@educonnect.local' });
+        const assignRes = await request(app)
+            .patch(`/api/institutions/current/users/${target._id}`)
+            .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(assignRes.statusCode).toBe(200);
+        expect(assignRes.body.data.institution_id.toString()).toBe(createRes.body.data._id.toString());
+
+        const auditRes = await request(app)
+            .get('/api/audit-logs?action=institution.created')
+            .set('Authorization', `Bearer ${adminToken}`);
+        expect(auditRes.statusCode).toBe(200);
+        expect(auditRes.body.data.events.length).toBeGreaterThan(0);
+        expect(auditRes.body.data.events.every((event) =>
+            event.institution_id === createRes.body.data._id
         )).toBe(true);
     });
 

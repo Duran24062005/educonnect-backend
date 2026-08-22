@@ -2,6 +2,7 @@ import { Router } from 'express';
 import AcademicController from '../controllers/AcademicController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     createSchoolYearSchema,
     schoolYearIdSchema,
@@ -20,6 +21,7 @@ import {
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.get('/school-years', AcademicController.getAllSchoolYears);
 router.get('/school-years/active', AcademicController.getActiveSchoolYear);

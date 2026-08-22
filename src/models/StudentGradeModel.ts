@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * StudentGrade Model
@@ -32,6 +33,9 @@ const studentGradeSchema = new mongoose.Schema(
 studentGradeSchema.index({ student_id: 1 });
 studentGradeSchema.index({ grade_item_id: 1 });
 // Un estudiante solo puede tener una calificación por ítem
-studentGradeSchema.index({ student_id: 1, grade_item_id: 1 }, { unique: true });
+studentGradeSchema.index({ student_id: 1, grade_item_id: 1 });
+
+tenantPlugin(studentGradeSchema);
+studentGradeSchema.index({ institution_id: 1, student_id: 1, grade_item_id: 1 }, { unique: true });
 
 export default mongoose.model('StudentGrade', studentGradeSchema);

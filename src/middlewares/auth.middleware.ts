@@ -4,11 +4,26 @@ import AppError from '../utils/AppError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { authorizeRoles } from './authorizeRoles.js';
 import User from '../models/UserModel.js';
+import SessionService from '../services/SessionService.js';
+import { enterTenantScope } from '../tenant/tenant-context.js';
+import appConfig from '../config/config.js';
 
 type AuthenticatedPerson = {
     _id: import('mongoose').Types.ObjectId;
     role: string;
     status: string;
+};
+
+const assertSessionIsActive = async (userId: string, jti?: string): Promise<void> => {
+    // Tokens issued before session persistence was introduced remain valid only
+    // during the migration window. All new application tokens include jti.
+    if (!jti) return;
+
+    if (!(await SessionService.isActive(userId, jti))) {
+        throw new AppError('La sesión fue revocada o expiró', 401);
+    }
+
+    await SessionService.touch(jti);
 };
 
 export const protect = asyncHandler(async (req, _res, next) => {
@@ -21,6 +36,7 @@ export const protect = asyncHandler(async (req, _res, next) => {
     }
 
     const decoded = verifyToken(token);
+    await assertSessionIsActive(decoded.sub, decoded.jti);
     const user = await User.findById(decoded.sub).populate('person_id');
 
     if (!user) {
@@ -43,6 +59,9 @@ export const protect = asyncHandler(async (req, _res, next) => {
     req.userId = decoded.sub;
     req.userRole = person.role;
     req.personId = person._id;
+    req.sessionId = decoded.jti;
+    req.institutionId = user.institution_id?._id?.toString?.() || user.institution_id?.toString?.();
+    if (req.institutionId) enterTenantScope({ institutionId: req.institutionId, enforce: appConfig.tenant.dataIsolation });
 
     next();
 });
@@ -57,6 +76,7 @@ export const protectIncomplete = asyncHandler(async (req, _res, next) => {
     }
 
     const decoded = verifyToken(token);
+    await assertSessionIsActive(decoded.sub, decoded.jti);
     const user = await User.findById(decoded.sub);
 
     if (!user) {
@@ -65,6 +85,9 @@ export const protectIncomplete = asyncHandler(async (req, _res, next) => {
 
     req.user = user;
     req.userId = decoded.sub;
+    req.sessionId = decoded.jti;
+    req.institutionId = user.institution_id?._id?.toString?.() || user.institution_id?.toString?.();
+    if (req.institutionId) enterTenantScope({ institutionId: req.institutionId, enforce: appConfig.tenant.dataIsolation });
 
     next();
 });
@@ -77,6 +100,7 @@ export const optionalAuth = asyncHandler(async (req, _res, next) => {
     if (token) {
         try {
             const decoded = verifyToken(token);
+            await assertSessionIsActive(decoded.sub, decoded.jti);
             const user = await User.findById(decoded.sub).populate('person_id');
 
             const person = user?.person_id as unknown as AuthenticatedPerson | undefined;
@@ -85,6 +109,9 @@ export const optionalAuth = asyncHandler(async (req, _res, next) => {
                 req.userId = decoded.sub;
                 req.userRole = person.role;
                 req.personId = person._id;
+                req.sessionId = decoded.jti;
+                req.institutionId = user.institution_id?._id?.toString?.() || user.institution_id?.toString?.();
+                if (req.institutionId) enterTenantScope({ institutionId: req.institutionId, enforce: appConfig.tenant.dataIsolation });
             }
         } catch {
             // ignore invalid token for optional auth

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * GradeArea Model
@@ -28,7 +29,10 @@ const gradeAreaSchema = new mongoose.Schema(
 );
 
 // Índices - combinación única
-gradeAreaSchema.index({ grade_id: 1, area_id: 1 }, { unique: true });
+gradeAreaSchema.index({ grade_id: 1, area_id: 1 });
 gradeAreaSchema.index({ area_id: 1 });
+
+tenantPlugin(gradeAreaSchema);
+gradeAreaSchema.index({ institution_id: 1, grade_id: 1, area_id: 1 }, { unique: true });
 
 export default mongoose.model('GradeArea', gradeAreaSchema);

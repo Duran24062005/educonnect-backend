@@ -21,6 +21,13 @@ export const userIdParamSchema = {
     params: idParamSchema,
 };
 
+export const userSessionParamSchema = {
+    params: z.object({
+        id: objectIdSchema,
+        jti: z.string().uuid(),
+    }),
+};
+
 export const updateUserSchema = {
     params: idParamSchema,
     body: z

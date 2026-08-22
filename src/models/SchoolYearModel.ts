@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * SchoolYear Model
@@ -9,7 +10,6 @@ const schoolYearSchema = new mongoose.Schema(
         year: {
             type: Number,
             required: [true, 'El año es requerido'],
-            unique: true,
             min: [2000, 'Año mínimo: 2000'],
             max: [2100, 'Año máximo: 2100'],
         },
@@ -34,5 +34,8 @@ const schoolYearSchema = new mongoose.Schema(
 
 // Índices
 schoolYearSchema.index({ is_active: 1 });
+
+tenantPlugin(schoolYearSchema);
+schoolYearSchema.index({ institution_id: 1, year: 1 }, { unique: true });
 
 export default mongoose.model('SchoolYear', schoolYearSchema);

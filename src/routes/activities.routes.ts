@@ -2,6 +2,7 @@ import { Router } from 'express';
 import ActivityController from '../controllers/ActivityController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 import { validateRequest } from '../middlewares/validateRequest.js';
+import { requireInstitutionContext } from '../middlewares/tenant.middleware.js';
 import {
     teacherActivitiesQuerySchema,
     studentActivitiesQuerySchema,
@@ -15,6 +16,7 @@ import { uploadActivitySubmission } from '../middlewares/activity-upload.middlew
 const router = Router();
 
 router.use(protect);
+router.use(requireInstitutionContext);
 
 router.post('/teacher/me', authorize('teacher'), validateRequest(createActivitySchema), ActivityController.createTeacherActivity);
 router.get('/teacher/me', authorize('teacher'), validateRequest(teacherActivitiesQuerySchema), ActivityController.getTeacherActivities);

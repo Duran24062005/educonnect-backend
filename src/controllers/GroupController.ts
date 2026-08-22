@@ -36,7 +36,12 @@ class GroupController {
     // ---- INSCRIPCIONES ----
     enrollStudent = asyncHandler(async (req, res) => {
         const { student_id, group_id, school_year_id } = req.body;
-        const result = await GroupService.enrollStudent(student_id, group_id, school_year_id);
+        const result = await GroupService.enrollStudent(student_id, group_id, school_year_id, {
+            actorUserId: req.userId,
+            actorRole: req.userRole,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
         res.status(201).json({ status: 'success', message: 'Estudiante inscrito exitosamente', data: result });
     });
 
@@ -47,7 +52,13 @@ class GroupController {
             school_year_id,
             to_group_id,
             reason,
-            observations
+            observations,
+            {
+                actorUserId: req.userId,
+                actorRole: req.userRole,
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+            }
         );
         res.status(201).json({
             status: 'success',
@@ -58,7 +69,12 @@ class GroupController {
 
     changeEnrollmentStatus = asyncHandler(async (req, res) => {
         const { status } = req.body;
-        const result = await GroupService.changeEnrollmentStatus(req.params.id, status);
+        const result = await GroupService.changeEnrollmentStatus(req.params.id, status, {
+            actorUserId: req.userId,
+            actorRole: req.userRole,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
         res.status(200).json({ status: 'success', data: result });
     });
 
@@ -83,7 +99,12 @@ class GroupController {
     // ---- ASIGNACIÓN DE PROFESORES ----
     assignTeacher = asyncHandler(async (req, res) => {
         const { teacher_id, group_id, area_id } = req.body;
-        const result = await GroupService.assignTeacherToGroup(teacher_id, group_id, area_id);
+        const result = await GroupService.assignTeacherToGroup(teacher_id, group_id, area_id, {
+            actorUserId: req.userId,
+            actorRole: req.userRole,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
         res.status(201).json({ status: 'success', message: 'Profesor asignado exitosamente', data: result });
     });
 

@@ -17,11 +17,12 @@ const asJwtClaims = (decoded: string | JwtPayload): JwtClaims => {
 const isExpiredTokenError = (error: unknown): boolean =>
     error instanceof Error && error.name === 'TokenExpiredError';
 
-export const generateToken = (userId: string, role?: string): string => {
+export const generateToken = (userId: string, role?: string, jti?: string): string => {
     return jwt.sign(
         {
             sub: userId,
             role,
+            ...(jti ? { jti } : {}),
             iat: Math.floor(Date.now() / 1000),
         },
         JWT_SECRET,
@@ -30,6 +31,15 @@ export const generateToken = (userId: string, role?: string): string => {
         } satisfies SignOptions
     );
 };
+
+export const generateSessionToken = (
+    userId: string,
+    role: string | null | undefined,
+    jti: string
+): { token: string; jti: string } => ({
+    token: generateToken(userId, role || undefined, jti),
+    jti,
+});
 
 export const generateEmailToken = (email: string): string => {
     return jwt.sign(

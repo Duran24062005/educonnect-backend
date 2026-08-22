@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 /**
  * Student Model
@@ -31,5 +32,7 @@ const studentSchema = new mongoose.Schema(
 // Índices
 studentSchema.index({ group_id: 1 });
 studentSchema.index({ aula_id: 1 });
+
+tenantPlugin(studentSchema);
 
 export default mongoose.model('Student', studentSchema);
