@@ -79,11 +79,9 @@ app.get('/health/ready', (_req, res) => {
     });
 });
 
-app.get('/api-docs', (_req, res) => {
-    res.redirect(301, '/api-docs/');
-});
-app.use('/api-docs', swaggerUi.serveFiles(swaggerSpec));
-app.get('/api-docs/', swaggerUi.setup(swaggerSpec));
+const swaggerUiHandler = swaggerUi.setup(swaggerSpec);
+app.get(['/api-docs', '/api-docs/'], swaggerUiHandler);
+app.use('/api-docs', swaggerUi.serve);
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);

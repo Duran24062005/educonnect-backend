@@ -123,6 +123,14 @@ describe('EduConnect API', () => {
         expect(response.body.status).toBe('ok');
     });
 
+    test.each(['/api-docs', '/api-docs/'])('serves Swagger UI at %s without redirecting', async (path) => {
+        const response = await request(app).get(path);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['content-type']).toMatch(/html/);
+        expect(response.text).toContain('swagger-ui');
+    });
+
     test('returns readiness status when MongoDB is connected', async () => {
         const response = await request(app).get('/health/ready');
         expect(response.statusCode).toBe(200);
