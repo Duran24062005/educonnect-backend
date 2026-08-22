@@ -23,6 +23,7 @@ import ActivitySubmission from '../src/models/ActivitySubmissionModel.js';
 import Notification from '../src/models/NotificationModel.js';
 import Session from '../src/models/SessionModel.js';
 import AuditLog from '../src/models/AuditLogModel.js';
+import ClassSession from '../src/models/ClassSessionModel.js';
 
 const help = process.argv.includes('--help') || process.argv.includes('-h');
 if (help) {
@@ -69,6 +70,7 @@ const models = [
     Notification,
     Session,
     AuditLog,
+    ClassSession,
 ] as unknown as TenantModel[];
 
 const run = async () => {

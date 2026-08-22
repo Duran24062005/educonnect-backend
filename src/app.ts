@@ -22,6 +22,7 @@ import activitiesRouter from './routes/activities.routes.js';
 import notificationsRouter from './routes/notifications.routes.js';
 import institutionsRouter from './routes/institutions.routes.js';
 import auditLogsRouter from './routes/audit-logs.routes.js';
+import calendarRouter from './routes/calendar.routes.js';
 import { runTenantRequest } from './tenant/tenant-context.js';
 
 const app = express();
@@ -95,6 +96,7 @@ app.use('/api/activities', activitiesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/institutions', institutionsRouter);
 app.use('/api/audit-logs', auditLogsRouter);
+app.use('/api/calendar', calendarRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

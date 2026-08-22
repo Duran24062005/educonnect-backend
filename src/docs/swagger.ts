@@ -19,6 +19,7 @@ const options = {
             { name: 'Users', description: 'Gestión de usuarios' },
             { name: 'Institutions', description: 'Bootstrap institucional y contexto del piloto' },
             { name: 'Audit', description: 'Trazabilidad de operaciones sensibles del piloto' },
+            { name: 'Calendar', description: 'Sesiones de clase, catálogo y agenda por rol' },
             { name: 'Students', description: 'Operaciones específicas de estudiantes' },
             { name: 'Academic', description: 'Años escolares, periodos, grados, áreas y aulas' },
             { name: 'Groups', description: 'Grupos, matrículas y asignaciones' },
@@ -341,6 +342,89 @@ const options = {
                         200: { description: 'Eventos auditables paginados' },
                         403: { $ref: '#/components/responses/Forbidden' },
                         409: { description: 'El admin no tiene institución asignada' },
+                    },
+                },
+            },
+            '/api/calendar/catalog': {
+                get: {
+                    tags: ['Calendar'],
+                    summary: 'Obtener opciones del calendario para el usuario autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } },
+                    ],
+                    responses: {
+                        200: { description: 'Años, grados, grupos, materias, docentes y aulas visibles' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                    },
+                },
+            },
+            '/api/calendar': {
+                get: {
+                    tags: ['Calendar'],
+                    summary: 'Consultar sesiones del calendario (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+                        { name: 'school_year_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'grade_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'group_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'area_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'teacher_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'aula_id', in: 'query', schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Sesiones y actividades relacionadas' } },
+                },
+            },
+            '/api/calendar/me': {
+                get: {
+                    tags: ['Calendar'],
+                    summary: 'Consultar las sesiones del estudiante o docente autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+                        { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+                        { name: 'school_year_id', in: 'query', schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Sesiones visibles por matrícula o asignación docente' } },
+                },
+            },
+            '/api/calendar/sessions': {
+                post: {
+                    tags: ['Calendar'],
+                    summary: 'Crear una sesión de clase',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['school_year_id', 'group_id', 'area_id', 'teacher_id', 'aula_id', 'start_at', 'end_at', 'topic'],
+                            properties: {
+                                school_year_id: { type: 'string' },
+                                group_id: { type: 'string' },
+                                area_id: { type: 'string' },
+                                teacher_id: { type: 'string' },
+                                aula_id: { type: 'string' },
+                                start_at: { type: 'string', format: 'date-time' },
+                                end_at: { type: 'string', format: 'date-time' },
+                                topic: { type: 'string' },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Sesión creada' }, 409: { description: 'Conflicto de horario' } },
+                },
+            },
+            '/api/calendar/sessions/{id}': {
+                patch: {
+                    tags: ['Calendar'],
+                    summary: 'Editar, cancelar o reactivar una sesión',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: {
+                        200: { description: 'Sesión actualizada' },
+                        403: { $ref: '#/components/responses/Forbidden' },
+                        409: { description: 'Conflicto de horario' },
                     },
                 },
             },

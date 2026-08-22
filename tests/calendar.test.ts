@@ -1,0 +1,243 @@
+// @ts-nocheck
+import request from 'supertest';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+
+let app;
+let appConfig;
+let SessionService;
+let mongoServer;
+let User;
+let Person;
+let SchoolYear;
+let Period;
+let Grade;
+let Area;
+let GradeArea;
+let Group;
+let GroupTeacher;
+let Teacher;
+let Student;
+let Enrollment;
+let Aula;
+let Activity;
+
+const actor = async (role, index) => {
+    const user = await User.create({
+        email: `calendar.${role.toLowerCase()}.${index}@educonnect.local`,
+        hash_password: 'Calendar123!',
+    });
+    const person = await Person.create({
+        user_id: user._id,
+        first_name: `${role}${index}`,
+        last_name: 'Calendar',
+        role,
+        status: 'active',
+        born_date: '1990-01-01',
+        document_type: 'CC',
+        document_number: `CAL-${role}-${index}`,
+    });
+    await User.findByIdAndUpdate(user._id, { person_id: person._id });
+    const session = await SessionService.create({ userId: user._id, role: role.toLowerCase() });
+    return { user, person, token: session.token };
+};
+
+beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.JWT_SECRET = 'calendar-test-secret';
+    process.env.JWT_EXPIRE = '1d';
+
+    mongoServer = await MongoMemoryServer.create();
+    process.env.DATABASE_URL = mongoServer.getUri('educonnect_calendar_test');
+
+    ({ default: app } = await import('../src/app.js'));
+    ({ default: appConfig } = await import('../src/config/config.js'));
+    ({ default: SessionService } = await import('../src/services/SessionService.js'));
+    ({ default: User } = await import('../src/models/UserModel.js'));
+    ({ default: Person } = await import('../src/models/PersonModel.js'));
+    ({ default: SchoolYear } = await import('../src/models/SchoolYearModel.js'));
+    ({ default: Period } = await import('../src/models/PeriodModel.js'));
+    ({ default: Grade } = await import('../src/models/GradeModel.js'));
+    ({ default: Area } = await import('../src/models/AreaModel.js'));
+    ({ default: GradeArea } = await import('../src/models/GradeAreaModel.js'));
+    ({ default: Group } = await import('../src/models/GroupModel.js'));
+    ({ default: GroupTeacher } = await import('../src/models/GroupTeacherModel.js'));
+    ({ default: Teacher } = await import('../src/models/TeacherModel.js'));
+    ({ default: Student } = await import('../src/models/StudentModel.js'));
+    ({ default: Enrollment } = await import('../src/models/EnrollmentModel.js'));
+    ({ default: Aula } = await import('../src/models/AulaModel.js'));
+    ({ default: Activity } = await import('../src/models/ActivityModel.js'));
+
+    await appConfig.connectDatabase();
+});
+
+afterAll(async () => {
+    await appConfig.disconnectDatabase();
+    await mongoServer.stop();
+    await mongoose.connection.close();
+});
+
+describe('Calendar API', () => {
+    let admin;
+    let teacher;
+    let outsiderTeacher;
+    let student;
+    let schoolYear;
+    let group;
+    let area;
+    let teacherProfile;
+    let aula;
+    let sessionInput;
+    let range;
+
+    beforeAll(async () => {
+        [admin, teacher, outsiderTeacher, student] = await Promise.all([
+            actor('Admin', 1),
+            actor('Teacher', 1),
+            actor('Teacher', 2),
+            actor('Student', 1),
+        ]);
+
+        schoolYear = await SchoolYear.create({
+            year: 2026,
+            start_date: '2026-01-01',
+            end_date: '2026-12-31',
+            is_active: true,
+        });
+        const grade = await Grade.create({ name: '7°', level: '7' });
+        area = await Area.create({ name: 'Matemáticas' });
+        aula = await Aula.create({ name: 'Aula 201', max_capacity: 40 });
+        await GradeArea.create({ grade_id: grade._id, area_id: area._id, weekly_hours: 4 });
+        group = await Group.create({
+            name: '7A',
+            grade_id: grade._id,
+            school_year_id: schoolYear._id,
+            max_capacity: 40,
+        });
+        teacherProfile = await Teacher.create({ user_id: teacher.user._id, area: 'Matemáticas' });
+        const outsiderProfile = await Teacher.create({ user_id: outsiderTeacher.user._id, area: 'Lenguaje' });
+        await GroupTeacher.create({ teacher_id: teacherProfile._id, group_id: group._id, area_id: area._id });
+
+        const studentProfile = await Student.create({ user_id: student.user._id, group_id: group._id });
+        await Enrollment.create({
+            student_id: studentProfile._id,
+            school_year_id: schoolYear._id,
+            group_id: group._id,
+            status: 'active',
+        });
+
+        const period = await Period.create({
+            school_year_id: schoolYear._id,
+            name: 'Periodo 1',
+            weight: 1,
+            start_date: '2026-01-01',
+            end_date: '2026-04-30',
+        });
+        await Activity.create({
+            title: 'Taller de ecuaciones',
+            description: 'Actividad calendarizada',
+            context: 'Resolver ecuaciones lineales',
+            group_id: group._id,
+            area_id: area._id,
+            period_id: period._id,
+            school_year_id: schoolYear._id,
+            teacher_id: teacherProfile._id,
+            open_at: new Date(Date.now() - 60 * 60 * 1000),
+            due_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            allowed_extensions: ['link'],
+            rubric_criteria: [{ title: 'Procedimiento', max_points: 10 }],
+            status: 'published',
+        });
+
+        const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+        const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+        sessionInput = {
+            school_year_id: schoolYear._id.toString(),
+            group_id: group._id.toString(),
+            area_id: area._id.toString(),
+            teacher_id: teacherProfile._id.toString(),
+            aula_id: aula._id.toString(),
+            start_at: startAt.toISOString(),
+            end_at: endAt.toISOString(),
+            topic: 'Ecuaciones lineales',
+        };
+        range = {
+            from: startAt.toISOString().slice(0, 10),
+            to: new Date(startAt.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        };
+
+        expect(outsiderProfile).toBeTruthy();
+    });
+
+    test('returns a real catalog and creates a session with an audit-ready response', async () => {
+        const catalogResponse = await request(app)
+            .get(`/api/calendar/catalog?school_year_id=${schoolYear._id}`)
+            .set('Authorization', `Bearer ${admin.token}`);
+
+        expect(catalogResponse.statusCode).toBe(200);
+        expect(catalogResponse.body.data.groups[0]._id.toString()).toBe(group._id.toString());
+        expect(catalogResponse.body.data.areas[0]._id.toString()).toBe(area._id.toString());
+
+        const response = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send(sessionInput);
+
+        expect(response.statusCode).toBe(201);
+        expect(response.body.data.topic).toBe('Ecuaciones lineales');
+        expect(response.body.data.group._id.toString()).toBe(group._id.toString());
+        expect(response.body.data.status).toBe('scheduled');
+    });
+
+    test('limits /me by enrollment or assignment and includes pending activities', async () => {
+        const studentResponse = await request(app)
+            .get('/api/calendar/me')
+            .query({ ...range, school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${student.token}`);
+        const teacherResponse = await request(app)
+            .get('/api/calendar/me')
+            .query({ ...range, school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${teacher.token}`);
+
+        expect(studentResponse.statusCode).toBe(200);
+        expect(studentResponse.body.data.sessions).toHaveLength(1);
+        expect(studentResponse.body.data.sessions[0].pending_activities[0].status).toBe('pending');
+        expect(teacherResponse.statusCode).toBe(200);
+        expect(teacherResponse.body.data.sessions).toHaveLength(1);
+        expect(teacherResponse.body.data.sessions[0].teacher._id.toString()).toBe(teacherProfile._id.toString());
+    });
+
+    test('enforces teacher ownership, detects conflicts and reactivates cancelled sessions', async () => {
+        const forbidden = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${outsiderTeacher.token}`)
+            .send(sessionInput);
+        expect(forbidden.statusCode).toBe(403);
+
+        const conflict = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ ...sessionInput, topic: 'Conflicto de horario' });
+        expect(conflict.statusCode).toBe(409);
+
+        const sessionId = (await request(app)
+            .get('/api/calendar')
+            .query({ ...range, school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${admin.token}`)).body.data.sessions[0]._id;
+
+        const cancelled = await request(app)
+            .patch(`/api/calendar/sessions/${sessionId}`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ status: 'cancelled' });
+        expect(cancelled.statusCode).toBe(200);
+        expect(cancelled.body.data.status).toBe('cancelled');
+
+        const activated = await request(app)
+            .patch(`/api/calendar/sessions/${sessionId}`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ status: 'scheduled' });
+        expect(activated.statusCode).toBe(200);
+        expect(activated.body.data.status).toBe('scheduled');
+        expect(activated.body.data.topic).toBe('Ecuaciones lineales');
+    });
+});
