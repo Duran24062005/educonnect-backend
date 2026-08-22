@@ -36,6 +36,14 @@ Generada desde `src/docs/swagger.js`.
 
 - `GET /api/audit-logs` (Admin con institución asignada)
 
+### Calendario
+
+- `GET /api/calendar/catalog` (protegido, opciones visibles por rol)
+- `GET /api/calendar` (Admin, rango y filtros por grado, grupo, materia, docente y aula)
+- `GET /api/calendar/me` (Docente o estudiante, alcance por asignación o matrícula)
+- `POST /api/calendar/sessions` (Admin o docente asignado)
+- `PATCH /api/calendar/sessions/:id` (Admin o docente autorizado; editar, cancelar o reactivar)
+
 ### Usuarios
 
 - `GET /api/users` (Admin)

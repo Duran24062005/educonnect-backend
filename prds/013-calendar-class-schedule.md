@@ -2,7 +2,7 @@
 
 ## Estado
 
-Fase demo implementada en `educonnect-portal`. La persistencia, permisos definitivos y endpoints de la API permanecen pendientes en `educonnect-backend`.
+Fase demo y primera integracion persistente implementadas. El portal puede seleccionar el proveedor API mediante `VITE_CALENDAR_DATA_SOURCE=api` y consume el catalogo, consultas y mutaciones de `educonnect-backend`. La validacion con datos institucionales, tenant activo y operacion de staging permanece pendiente.
 
 Este PRD conserva el contrato funcional que debe usarse al implementar la segunda fase.
 
@@ -51,12 +51,13 @@ La primera versión persistirá sesiones concretas. No se define todavía un mot
 
 ### Segunda fase: API y persistencia
 
-- Modelo persistido de sesiones.
-- Consultas por rango de fechas y alcance del usuario.
-- Creación, edición y cancelación con validación de permisos.
-- Cálculo real de actividades pendientes usando `Activity` y `ActivitySubmission`.
-- Validación de conflictos de docente, grupo y aula.
-- Integración del portal mediante el mismo contrato definido en este documento.
+- [x] Modelo persistido de sesiones.
+- [x] Consultas por rango de fechas y alcance del usuario.
+- [x] Creación, edición, cancelación y reactivación con validación de permisos.
+- [x] Cálculo real de actividades pendientes usando `Activity` y `ActivitySubmission`.
+- [x] Validación de conflictos de docente, grupo y aula.
+- [x] Integración del portal mediante el mismo contrato definido en este documento.
+- [ ] Validación de tenant, backup y datos institucionales en staging.
 
 ## Fuera de alcance inicial
 
@@ -236,6 +237,12 @@ Respuesta mínima:
 - `POST /api/calendar/sessions`
 - `PATCH /api/calendar/sessions/:id`
 - `DELETE /api/calendar/sessions/:id` solo si se decide eliminación física; la recomendación es usar cancelación.
+
+### Catálogo para formularios
+
+- `GET /api/calendar/catalog?school_year_id=...`
+
+La respuesta entrega `years`, `grades`, `groups`, `areas`, `teachers` y `aulas` limitados por rol y año escolar. El portal usa este endpoint para dejar de depender de identificadores demo al crear o editar una sesión.
 
 Payload mínimo de creación/edición:
 

@@ -6,9 +6,9 @@ Este documento describe el estado real observado en los dos repositorios de EduC
 
 ## Resumen ejecutivo
 
-EduConnect tiene una base funcional para autenticacion, usuarios, estructura academica, grupos, evaluaciones, actividades, analitica y notificaciones. El primer corte de preparacion comercial implementa fundamentos P0 para sesiones revocables, instituciones, auditoria, aislamiento por tenant y operaciones de backup.
+EduConnect tiene una base funcional para autenticacion, usuarios, estructura academica, grupos, evaluaciones, actividades, analitica, notificaciones y calendario de clases. El primer corte de preparacion comercial implementa fundamentos P0 para sesiones revocables, instituciones, auditoria, aislamiento por tenant y operaciones de backup.
 
-El producto aun no esta listo para datos reales de un colegio. El aislamiento por institucion esta implementado como una capacidad opt-in y el gate P0 sigue bloqueado hasta demostrarlo en un entorno de staging con migracion, backup restaurado y pruebas operativas. Tampoco estan completos el expediente de acudientes, matricula institucional completa, asistencia, calendario persistente, boletines oficiales ni las comunicaciones comerciales.
+El producto aun no esta listo para datos reales de un colegio. El aislamiento por institucion esta implementado como una capacidad opt-in y el gate P0 sigue bloqueado hasta demostrarlo en un entorno de staging con migracion, backup restaurado y pruebas operativas. Tampoco estan completos el expediente de acudientes, matricula institucional completa, asistencia, boletines oficiales ni las comunicaciones comerciales.
 
 ## Repositorios y estado de trabajo
 
@@ -61,7 +61,7 @@ La carpeta raiz `docs/task-to-make-educonnect-comercial` es un roadmap local ign
 - Grupos, enrolamientos y asignaciones docentes.
 - Evaluaciones, resultados, actividades, entregas y analitica.
 - Notificaciones in-app y anuncios dirigidos.
-- Calendario visual demo en el portal, con soporte de estados de clase como cancelada/reactivable en la experiencia local; falta persistencia backend y reglas productivas.
+- Calendario visual en el portal conectado a API persistente, con catálogo real, consultas por rol, filtros administrativos, conflictos de horario y cancelación/reactivación; falta operar el módulo con datos institucionales en staging.
 
 ### Pendiente para el piloto comercial
 
@@ -71,7 +71,6 @@ La carpeta raiz `docs/task-to-make-educonnect-comercial` es un roadmap local ign
 - Catalogo academico formal y carga docente.
 - SIEE configurable, historial de notas, cierre y reapertura de periodos.
 - Asistencia diaria, justificaciones e historial.
-- Calendario persistente de clases con conflictos, permisos, cancelacion y reactivacion.
 - Boletin oficial versionado y documentos verificables.
 - Portal de acudientes restringido a estudiantes vinculados.
 - Importacion controlada desde Excel/CSV, validacion por fila y trazabilidad del proceso.
@@ -94,7 +93,7 @@ El uso de datos reales debe permanecer bloqueado si cualquiera de estos controle
 
 En `educonnect-backend` se validaron los siguientes comandos:
 
-- `yarn test`: 6 suites y 42 pruebas aprobadas.
+- `yarn test`: 7 suites y 45 pruebas aprobadas.
 - `yarn typecheck`: aprobado.
 - `yarn build`: aprobado.
 - `git diff --check`: aprobado.
@@ -110,7 +109,7 @@ Estas validaciones comprueban el corte de codigo, pero no sustituyen la prueba d
 3. Ejecutar backup, restaurarlo en una base aislada y registrar evidencia de integridad.
 4. Activar los flags tenant en staging y ejecutar pruebas de aislamiento, permisos y revocacion.
 5. Completar los PRDs 017 y 018 para permisos contextuales, auditoria atomica, consentimiento y proteccion de menores.
-6. Implementar los PRDs 019-023 y llevar el PRD 013 del calendario demo a persistencia productiva.
+6. Implementar los PRDs 019-023 y validar el PRD 013 con datos institucionales en staging.
 7. Implementar los PRDs 024-029 para migracion, boletines, documentos, portal de acudientes, reportes y comunicaciones.
 8. Ejecutar el flujo completo del piloto con datos sinteticos y aprobar el gate P0.
 9. Habilitar datos reales solo despues de la aprobacion formal del gate.

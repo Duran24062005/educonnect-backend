@@ -110,6 +110,7 @@ Routers montados:
 - `/api/notifications`
 - `/api/institutions`
 - `/api/audit-logs`
+- `/api/calendar`
 
 ## Endpoints agregados orientados a performance
 
