@@ -52,7 +52,7 @@ beforeAll(async () => {
 
     ({ default: app } = await import('../src/app.js'));
     ({ default: appConfig } = await import('../src/config/config.js'));
-    ({ default: SessionService } = await import('../src/services/SessionService.js'));
+    ({ default: SessionService } = await import('../src/modules/auth/SessionService.js'));
     ({ default: User } = await import('../src/models/UserModel.js'));
     ({ default: Person } = await import('../src/models/PersonModel.js'));
     ({ default: SchoolYear } = await import('../src/models/SchoolYearModel.js'));

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import type { Model } from 'mongoose';
 import type { Express } from 'express';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import type { StorageService } from '../src/services/storage/StorageService.js';
+import type { StorageService } from '../src/shared/storage/StorageService.js';
 
 declare global {
     var __EDUCONNECT_EMAIL_SERVICE__: MockEmailService | undefined;
