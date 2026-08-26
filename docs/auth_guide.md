@@ -46,7 +46,7 @@ Compatibilidad:
 El flujo público usa un código de 6 dígitos enviado por email:
 
 1. `POST /api/auth/request-password-reset` recibe el correo y siempre responde con un mensaje genérico.
-2. Si existe una cuenta, se crea un desafío con vigencia de 10 minutos y se envía el código mediante la plantilla `password_reset`.
+2. Si existe una cuenta, se crea un desafío con vigencia de 10 minutos y se envía el código mediante la plantilla `reset_password.html`.
 3. `POST /api/auth/verify-password-reset-code` valida el código, con máximo 5 intentos, y entrega un `reset_token` temporal.
 4. `POST /api/auth/reset-password` cambia la contraseña, consume el desafío y revoca las sesiones existentes.
 

@@ -43,7 +43,7 @@ const requestCode = async (email: string) => {
 
     expect(response.statusCode).toBe(202);
     const resetEmail = mockEmailService.sentEmails.at(-1);
-    expect(resetEmail.template_name).toBe('password_reset');
+    expect(resetEmail.template_name).toBe('reset_password.html');
     return resetEmail.template_data.codigo;
 };
 

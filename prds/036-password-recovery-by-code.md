@@ -16,7 +16,7 @@ Permitir que una persona que olvidó su contraseña recupere el acceso desde el 
 
 - Endpoints públicos de solicitud, validación y cambio de contraseña.
 - Persistencia de desafíos de recuperación en MongoDB.
-- Envío del código mediante la plantilla externa `password_reset`.
+- Envío del código mediante la plantilla externa `reset_password.html`.
 - Pantalla pública del portal con correo, código y nueva contraseña.
 
 ## Fuera de alcance
@@ -59,7 +59,7 @@ Se agrega `PasswordResetRequest` con `user_id`, `code_hash`, `expires_at`, conta
 
 ### API e integraciones
 
-La plantilla `password_reset` del proveedor de email debe renderizar `template_data.codigo`. La plantilla fuente está en `templates/password_reset.html` y usa los placeholders `{{nombre}}`, `{{codigo}}` y `{{empresa}}`. El backend no envía el código en la respuesta HTTP.
+La plantilla `reset_password.html` del proveedor de email debe renderizar `template_data.codigo`. La plantilla fuente está en `templates/reset_password.html` y usa los placeholders `{{nombre}}`, `{{codigo}}` y `{{empresa}}`. El backend no envía el código en la respuesta HTTP.
 
 ### Seguridad
 
@@ -78,5 +78,5 @@ La plantilla `password_reset` del proveedor de email debe renderizar `template_d
 
 ## Riesgos y operación
 
-- El proveedor de correo debe tener actualizada la plantilla `password_reset`; si no renderiza `codigo`, el usuario no podrá completar el flujo aunque la solicitud se cree correctamente.
+- El proveedor de correo debe tener actualizada la plantilla `reset_password.html`; si no renderiza `codigo`, el usuario no podrá completar el flujo aunque la solicitud se cree correctamente.
 - Los índices nuevos deben crearse al iniciar la aplicación o mediante el proceso habitual de sincronización de índices de MongoDB.

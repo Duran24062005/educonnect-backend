@@ -29,7 +29,7 @@ Generada desde `src/docs/swagger.js`.
 - `POST /api/auth/logout` (protegido)
 - `POST /api/auth/change-password` (protegido)
 
-La recuperación responde de forma genérica para no revelar si un correo existe. Usa un código de 6 dígitos con vigencia de 10 minutos y máximo 5 intentos. La plantilla externa `password_reset` debe mostrar `template_data.codigo`. La plantilla fuente está en [`templates/password_reset.html`](../templates/password_reset.html) y usa `{{nombre}}`, `{{codigo}}` y `{{empresa}}`.
+La recuperación responde de forma genérica para no revelar si un correo existe. Usa un código de 6 dígitos con vigencia de 10 minutos y máximo 5 intentos. La plantilla externa `reset_password.html` debe mostrar `template_data.codigo`. La plantilla fuente está en [`templates/reset_password.html`](../templates/reset_password.html) y usa `{{nombre}}`, `{{codigo}}` y `{{empresa}}`.
 
 ### Instituciones y piloto
 
