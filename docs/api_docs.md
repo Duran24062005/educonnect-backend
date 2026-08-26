@@ -20,11 +20,16 @@ Generada desde `src/docs/swagger.js`.
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/request-password-reset`
+- `POST /api/auth/verify-password-reset-code`
+- `POST /api/auth/reset-password`
 - `POST /api/auth/complete-profile` (token requerido, perfil incompleto permitido)
 - `GET /api/auth/profile-status` (token requerido)
 - `GET /api/auth/me` (protegido)
 - `POST /api/auth/logout` (protegido)
 - `POST /api/auth/change-password` (protegido)
+
+La recuperación responde de forma genérica para no revelar si un correo existe. Usa un código de 6 dígitos con vigencia de 10 minutos y máximo 5 intentos. La plantilla externa `password_reset` debe mostrar `template_data.codigo`. La plantilla fuente está en [`templates/password_reset.html`](../templates/password_reset.html) y usa `{{nombre}}`, `{{codigo}}` y `{{empresa}}`.
 
 ### Instituciones y piloto
 

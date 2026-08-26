@@ -41,10 +41,20 @@ Compatibilidad:
 3. Usuario queda en `pending` hasta aprobación administrativa.
 4. Admin aprueba con `POST /api/users/:id/approve`.
 
+## Recuperación de contraseña
+
+El flujo público usa un código de 6 dígitos enviado por email:
+
+1. `POST /api/auth/request-password-reset` recibe el correo y siempre responde con un mensaje genérico.
+2. Si existe una cuenta, se crea un desafío con vigencia de 10 minutos y se envía el código mediante la plantilla `password_reset`.
+3. `POST /api/auth/verify-password-reset-code` valida el código, con máximo 5 intentos, y entrega un `reset_token` temporal.
+4. `POST /api/auth/reset-password` cambia la contraseña, consume el desafío y revoca las sesiones existentes.
+
+Las cuentas no activas pueden actualizar su contraseña, pero el login continúa aplicando su estado de cuenta.
+
 ## Buenas prácticas productivas
 
 - Configurar `JWT_SECRET` robusto en producción.
 - Definir `JWT_EXPIRE` acorde a política de seguridad.
 - Restringir `CORS_ORIGIN` a dominios confiables.
 - Nunca exponer secretos en repositorio.
-

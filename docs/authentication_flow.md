@@ -192,6 +192,18 @@
 
 ────────────────────────────────────────────────────────────────
 
+## Recuperación de contraseña por código
+
+1. El portal envía `POST /api/auth/request-password-reset` con el correo.
+2. El backend crea un `PasswordResetRequest` con un hash de código de 6 dígitos, expiración de 10 minutos y máximo 5 intentos.
+3. El servicio externo recibe la plantilla `password_reset` con `template_data.codigo`.
+4. El portal envía correo y código a `POST /api/auth/verify-password-reset-code`.
+5. El backend marca el desafío como verificado y devuelve un `reset_token` temporal asociado al desafío.
+6. El portal envía la nueva contraseña a `POST /api/auth/reset-password`.
+7. El backend consume el desafío, hashea la nueva contraseña con el hook de `User` y revoca las sesiones existentes.
+
+La respuesta de solicitud es igual para correos registrados y no registrados. El código, correo y token temporal permanecen en memoria del portal.
+
 [Cliente con token admin]
     │
     │ GET /api/users
