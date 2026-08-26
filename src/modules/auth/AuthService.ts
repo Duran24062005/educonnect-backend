@@ -1,11 +1,23 @@
 // @ts-nocheck
+import { createHash, randomInt } from 'node:crypto';
 import PersonRepository from '../../repositories/PersonRepository.js';
 import UserRepository from '../../repositories/UserRepository.js';
+import PasswordResetRepository from '../../repositories/PasswordResetRepository.js';
 import { teacherRepository, studentRepository } from '../../repositories/PersonProfileRepository.js';
 import { AppError } from '../../utils/error.js';
+import { generatePasswordResetToken, verifyPasswordResetToken } from '../../utils/jwt.js';
 import SessionService from './SessionService.js';
 import AuditLogService from '../audit/AuditLogService.js';
 import MediaUrlService from '../../shared/storage/mediaUrl.service.js';
+import { sendPasswordResetEmail } from '../../shared/EmailService.js';
+
+const PASSWORD_RESET_MESSAGE =
+    'Si el correo está registrado, recibirás un código para recuperar tu contraseña.';
+const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000;
+const MAX_PASSWORD_RESET_ATTEMPTS = 5;
+
+const generatePasswordResetCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
+const hashPasswordResetCode = (code) => createHash('sha256').update(code).digest('hex');
 
 /**
  * AuthService
@@ -195,6 +207,121 @@ class AuthService {
             token: session.token,
             profile_complete: !!person,
         };
+    }
+
+    /**
+     * Solicitar recuperación de contraseña.
+     * La respuesta no revela si el correo existe.
+     */
+    async requestPasswordReset(email) {
+        const normalizedEmail = this.normalizeEmail(email);
+        if (!normalizedEmail) {
+            throw new AppError('Email inválido', 400);
+        }
+
+        const user = await UserRepository.findByEmail(normalizedEmail);
+        if (!user) {
+            return { message: PASSWORD_RESET_MESSAGE };
+        }
+
+        const code = generatePasswordResetCode();
+        await PasswordResetRepository.invalidateActive(user._id);
+
+        await PasswordResetRepository.create({
+            user_id: user._id,
+            institution_id: user.institution_id || null,
+            code_hash: hashPasswordResetCode(code),
+            expires_at: new Date(Date.now() + PASSWORD_RESET_CODE_TTL_MS),
+            attempts: 0,
+        });
+
+        const firstName = user.person_id?.first_name || 'usuario';
+        await sendPasswordResetEmail(user.email, firstName, code);
+
+        return { message: PASSWORD_RESET_MESSAGE };
+    }
+
+    /**
+     * Validar el código y entregar una credencial temporal para cambiar la clave.
+     */
+    async verifyPasswordResetCode(email, code) {
+        const normalizedEmail = this.normalizeEmail(email);
+        if (!normalizedEmail || !/^\d{6}$/.test(String(code || ''))) {
+            throw new AppError('El código es inválido o expiró', 400);
+        }
+
+        const user = await UserRepository.findByEmail(normalizedEmail);
+        const request = user ? await PasswordResetRepository.findLatestActive(user._id) : null;
+
+        if (!user || !request || request.attempts >= MAX_PASSWORD_RESET_ATTEMPTS) {
+            throw new AppError('El código es inválido o expiró', 400);
+        }
+
+        const isValid = request.code_hash === hashPasswordResetCode(String(code));
+        if (!isValid) {
+            await PasswordResetRepository.incrementAttempts(request._id);
+            throw new AppError('El código es inválido o expiró', 400);
+        }
+
+        const verifiedRequest = await PasswordResetRepository.markVerified(request._id);
+        if (!verifiedRequest) {
+            throw new AppError('El código es inválido o expiró', 400);
+        }
+
+        return {
+            reset_token: generatePasswordResetToken(
+                String(user._id),
+                user.email,
+                String(request._id)
+            ),
+        };
+    }
+
+    /**
+     * Actualizar la contraseña después de validar el código.
+     */
+    async resetPassword(resetToken, newPassword, newPasswordConfirm) {
+        if (!resetToken || !newPassword || !newPasswordConfirm) {
+            throw new AppError('Todos los campos son requeridos', 400);
+        }
+
+        if (newPassword.length < 8) {
+            throw new AppError('La nueva contraseña debe tener al menos 8 caracteres', 400);
+        }
+
+        if (newPassword !== newPasswordConfirm) {
+            throw new AppError('Las nuevas contraseñas no coinciden', 400);
+        }
+
+        let claims;
+        try {
+            claims = verifyPasswordResetToken(resetToken);
+        } catch {
+            throw new AppError('La solicitud de recuperación no es válida o expiró', 400);
+        }
+
+        if (!claims.sub || !claims.jti) {
+            throw new AppError('La solicitud de recuperación no es válida o expiró', 400);
+        }
+
+        const user = await UserRepository.findById(claims.sub);
+        if (!user) {
+            throw new AppError('La solicitud de recuperación no es válida o expiró', 400);
+        }
+
+        const consumed = await PasswordResetRepository.consumeVerified(
+            claims.jti,
+            claims.sub
+        );
+        if (!consumed) {
+            throw new AppError('La solicitud de recuperación no es válida o expiró', 400);
+        }
+
+        user.hash_password = newPassword;
+        await user.save();
+        await SessionService.revokeAll(String(user._id), 'password_reset');
+
+        return { message: 'Contraseña actualizada exitosamente' };
     }
 
     /**

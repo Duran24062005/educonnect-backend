@@ -54,3 +54,23 @@ export const registerLimiter = make({
     message: tooManyRequestsMessage,
     skip: skipOptions,
 });
+
+/** Password reset requests: 5 attempts / 15 minutes per IP. */
+export const passwordResetRequestLimiter = make({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: tooManyRequestsMessage,
+    skip: skipOptions,
+});
+
+/** Password reset code validation: 10 attempts / 15 minutes per IP. */
+export const passwordResetVerifyLimiter = make({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: tooManyRequestsMessage,
+    skip: skipOptions,
+});

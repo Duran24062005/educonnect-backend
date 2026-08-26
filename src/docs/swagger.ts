@@ -70,6 +70,30 @@ const options = {
                         password: { type: 'string' },
                     },
                 },
+                PasswordResetRequestBody: {
+                    type: 'object',
+                    required: ['email'],
+                    properties: {
+                        email: { type: 'string', format: 'email' },
+                    },
+                },
+                PasswordResetCodeBody: {
+                    type: 'object',
+                    required: ['email', 'code'],
+                    properties: {
+                        email: { type: 'string', format: 'email' },
+                        code: { type: 'string', pattern: '^\\d{6}$', example: '123456' },
+                    },
+                },
+                PasswordResetBody: {
+                    type: 'object',
+                    required: ['reset_token', 'new_password', 'new_password_confirm'],
+                    properties: {
+                        reset_token: { type: 'string' },
+                        new_password: { type: 'string', minLength: 8 },
+                        new_password_confirm: { type: 'string', minLength: 8 },
+                    },
+                },
                 CompleteProfileBody: {
                     type: 'object',
                     required: ['first_name', 'last_name', 'document_type', 'document_number'],
@@ -217,6 +241,39 @@ const options = {
                     responses: {
                         200: { description: 'Login exitoso' },
                         401: { $ref: '#/components/responses/Unauthorized' },
+                    },
+                },
+            },
+            '/api/auth/request-password-reset': {
+                post: {
+                    tags: ['Auth'],
+                    summary: 'Solicitar código de recuperación de contraseña',
+                    requestBody: { required: true, content: jsonContent({ $ref: '#/components/schemas/PasswordResetRequestBody' }) },
+                    responses: {
+                        202: { description: 'Solicitud aceptada con mensaje genérico' },
+                        400: { $ref: '#/components/responses/ValidationError' },
+                    },
+                },
+            },
+            '/api/auth/verify-password-reset-code': {
+                post: {
+                    tags: ['Auth'],
+                    summary: 'Validar código de recuperación',
+                    requestBody: { required: true, content: jsonContent({ $ref: '#/components/schemas/PasswordResetCodeBody' }) },
+                    responses: {
+                        200: { description: 'Código válido y token temporal emitido' },
+                        400: { $ref: '#/components/responses/ValidationError' },
+                    },
+                },
+            },
+            '/api/auth/reset-password': {
+                post: {
+                    tags: ['Auth'],
+                    summary: 'Establecer nueva contraseña con token temporal',
+                    requestBody: { required: true, content: jsonContent({ $ref: '#/components/schemas/PasswordResetBody' }) },
+                    responses: {
+                        200: { description: 'Contraseña actualizada y sesiones revocadas' },
+                        400: { $ref: '#/components/responses/ValidationError' },
                     },
                 },
             },

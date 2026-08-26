@@ -44,3 +44,30 @@ export const changePasswordSchema = {
         })
         .passthrough(),
 };
+
+export const requestPasswordResetSchema = {
+    body: z
+        .object({
+            email: z.string().trim().email(),
+        })
+        .passthrough(),
+};
+
+export const verifyPasswordResetCodeSchema = {
+    body: z
+        .object({
+            email: z.string().trim().email(),
+            code: z.string().regex(/^\d{6}$/),
+        })
+        .passthrough(),
+};
+
+export const resetPasswordSchema = {
+    body: z
+        .object({
+            reset_token: z.string().min(1),
+            new_password: z.string().min(8),
+            new_password_confirm: z.string().min(8),
+        })
+        .passthrough(),
+};

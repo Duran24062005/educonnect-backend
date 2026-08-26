@@ -177,24 +177,22 @@ export const sendApprovalEmail = async (email, firstName, role) => {
 };
 
 /**
- * Enviar email de cambio de contraseña
+ * Enviar email con el código de recuperación de contraseña
  * @param {string} email - Email del usuario
  * @param {string} firstName - Nombre del usuario
- * @param {string} resetToken - Token para resetear contraseña
+ * @param {string} resetCode - Código de 6 dígitos para resetear contraseña
  * @returns {Promise<Object>} Respuesta de la API
  */
-export const sendPasswordResetEmail = async (email, firstName, resetToken) => {
+export const sendPasswordResetEmail = async (email, firstName, resetCode) => {
     try {
-        const resetLink = `${DEFAULT_FRONTEND_URL}/reset-password?token=${resetToken}`;
-
         return await sendTemplateEmail({
             recipient: email,
             subject: 'Recupera tu contraseña en EduConnect',
-            templateName: 'password_reset',
+            templateName: 'reset_password.html',
             templateData: {
                 nombre: firstName,
                 empresa: EMAIL_COMPANY,
-                reset_link: resetLink,
+                codigo: resetCode,
             },
         });
     } catch (error) {

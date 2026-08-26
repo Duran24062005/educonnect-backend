@@ -55,17 +55,22 @@ export const generateEmailToken = (email: string): string => {
     );
 };
 
-export const generatePasswordResetToken = (userId: string, email: string): string => {
+export const generatePasswordResetToken = (
+    userId: string,
+    email: string,
+    resetRequestId: string
+): string => {
     return jwt.sign(
         {
             sub: userId,
             email,
             type: 'password_reset',
+            jti: resetRequestId,
             iat: Math.floor(Date.now() / 1000),
         },
         JWT_SECRET,
         {
-            expiresIn: '1h',
+            expiresIn: '10m',
         }
     );
 };

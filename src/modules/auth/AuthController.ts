@@ -104,6 +104,46 @@ class AuthController {
     });
 
     /**
+     * POST /api/auth/request-password-reset
+     */
+    requestPasswordReset = asyncHandler(async (req, res) => {
+        const result = await AuthService.requestPasswordReset(req.body.email);
+
+        res.status(202).json({
+            status: 'success',
+            message: result.message,
+        });
+    });
+
+    /**
+     * POST /api/auth/verify-password-reset-code
+     */
+    verifyPasswordResetCode = asyncHandler(async (req, res) => {
+        const result = await AuthService.verifyPasswordResetCode(req.body.email, req.body.code);
+
+        res.status(200).json({
+            status: 'success',
+            data: result,
+        });
+    });
+
+    /**
+     * POST /api/auth/reset-password
+     */
+    resetPassword = asyncHandler(async (req, res) => {
+        const result = await AuthService.resetPassword(
+            req.body.reset_token,
+            req.body.new_password,
+            req.body.new_password_confirm
+        );
+
+        res.status(200).json({
+            status: 'success',
+            message: result.message,
+        });
+    });
+
+    /**
      * GET /api/auth/me
      */
     getCurrentUser = asyncHandler(async (req, res) => {
