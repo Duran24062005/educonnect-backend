@@ -47,6 +47,7 @@ Los estados describen la realidad del repositorio, no solo la existencia del arc
 | 032 | [Integraciones colombianas](./032-colombian-reporting-integrations.md) | Planificado | No hay integraciones oficiales activas. |
 | 033 | [Onboarding y soporte](./033-commercial-onboarding-and-support.md) | Planificado | Hay runbooks tecnicos parciales, no proceso comercial completo. |
 | 034 | [Analitica de diferenciacion](./034-differentiation-analytics.md) | Planificado | Dashboards base existentes; riesgo y benchmarking pendientes. |
+| 035 | [Monolito modular del backend](./035-modular-monolith-backend.md) | Base existente | Módulos de dominio y composición HTTP modular implementados sin cambiar contratos. |
 
 ## Regla de mantenimiento
 

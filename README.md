@@ -48,12 +48,19 @@ Este backend no es responsable de:
 - `analytics`: dashboards agregados para admin y teacher
 - `activities`: actividades, entregas y archivos
 - `notifications`: notificaciones in-app, conteo de no leidas y anuncios dirigidos
+- `attendance`: sesiones, registros y reportes de asistencia
+- `calendar`: agenda y sesiones de clase
+- `institutions`: institución, sedes y jornadas
+- `audit`: trazabilidad de operaciones
+- `imports`: importación masiva de datos
 
-## Arquitectura actual
+## Arquitectura modular
 
-La base sigue una arquitectura por capas:
+El backend es un monolito modular: se despliega y ejecuta como una sola aplicación Express, pero cada dominio mantiene juntas sus rutas, controladores, servicios y validadores. La persistencia Mongoose y los componentes transversales siguen compartidos para conservar una única fuente de verdad.
 
-`routes -> controllers -> services -> repositories -> models`
+El flujo de una petición es:
+
+`app -> módulo -> controller -> service -> repository/model`
 
 Estructura principal:
 
@@ -62,17 +69,26 @@ src/
   app.ts                  # Configuracion de Express y montaje de routers
   index.ts                # Bootstrap del servidor Node y conexion a MongoDB
   config/                 # Configuracion y conexion
-  constants/              # Constantes de dominio
-  controllers/            # Adaptacion HTTP
   docs/                   # Swagger/OpenAPI
   middlewares/            # Auth, roles, uploads, errores, validacion
+  modules/                # Módulos de negocio y composición de la API
+    auth/                 # Rutas, controller, service y validators de auth
+    users/                # Administración y ciclo de usuarios
+    academic/             # Estructura académica
+    groups/ students/     # Operación académica y perfiles
+    guardians/            # Relaciones familiares
+    evaluations/          # Calificaciones y resultados
+    analytics/            # Dashboards agregados
+    activities/           # Actividades y entregas
+    notifications/        # Notificaciones y anuncios
+    attendance/ calendar/ # Asistencia y agenda
+    institutions/         # Institución, sedes y jornadas
+    audit/ imports/       # Auditoría e importaciones
   models/                 # Esquemas Mongoose
-  repositories/           # Acceso a datos
-  routes/                 # Rutas por modulo
-  schemas/                # Esquemas de apoyo
-  services/               # Reglas de negocio
+  repositories/           # Persistencia compartida por los módulos
+  shared/                 # Capacidades transversales y contratos comunes
+    storage/              # Storage privado y URLs firmadas
   utils/                  # Helpers compartidos
-  validators/             # Validacion Zod por endpoint
   types/                  # Tipos compartidos y extensiones globales
 api/                      # Entrypoint serverless para Vercel
 scripts/                  # Seeds y scripts utilitarios
@@ -97,7 +113,7 @@ Rutas base publicadas:
 - `GET /health/ready`: readiness check que confirma conexión con MongoDB
 - `GET /api-docs`: Swagger UI
 
-Routers montados:
+Los routers se registran desde `src/modules/index.ts`; cada módulo declara su `name`, `basePath` y `router`. Los prefijos publicados son:
 
 - `/api/auth`
 - `/api/users`

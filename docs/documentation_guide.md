@@ -1,4 +1,4 @@
-# 🔧 Guía de Implementación: Arquitectura en Capas
+# 🔧 Guía de Implementación: Monolito Modular
 
 ## Qué Cambió
 
@@ -11,26 +11,28 @@ Tu proyecto anterior tenía:
 
 Ahora tiene:
 
-- ✅ Capas claramente separadas
+- ✅ Módulos de negocio con capas internas claras
 - ✅ Responsabilidades únicas
 - ✅ Fácil de testear
 - ✅ Código profesional y escalable
 
 ---
 
-## 📁 Estructura Nueva
+## 📁 Estructura Modular
 
 ```
 src/
-├── routes/                    # CAPA 1: Endpoints
-├── controllers/               # CAPA 2: Manejo HTTP
-├── services/                  # CAPA 3: Lógica de negocio
-├── repositories/              # CAPA 4: Acceso a datos (NUEVO!)
-├── models/                    # CAPA 5: Estructura de datos
-├── middleware/
+├── modules/<domain>/           # Rutas, controller, service y validators del dominio
+├── modules/index.ts            # Registro explícito de módulos HTTP
+├── repositories/               # Persistencia compartida
+├── models/                     # Esquemas Mongoose compartidos
+├── shared/                     # Capacidades transversales
+├── middlewares/
 ├── utils/
 └── config/
 ```
+
+Un módulo permanece dentro del mismo proceso y puede usar infraestructura compartida. Las dependencias entre dominios deben dirigirse a servicios, nunca a rutas o controladores.
 
 ---
 
@@ -38,10 +40,10 @@ src/
 
 ### Caso 1: Crear nuevo Endpoint
 
-**Paso 1: Crear Route** (`routes/` → Controller)
+**Paso 1: Crear Route** (`modules/<domain>/` → Controller)
 
 ```javascript
-// routes/classroom.routes.js
+// modules/classroom/classroom.routes.ts
 router.post(
   "/classrooms",
   protect,
@@ -53,7 +55,7 @@ router.post(
 **Paso 2: Crear Controller** (HTTP → Service)
 
 ```javascript
-// controllers/ClassroomController.js
+// modules/classroom/ClassroomController.ts
 createClassroom = asyncHandler(async (req, res) => {
   const data = {
     name: req.body.name,
@@ -73,7 +75,7 @@ createClassroom = asyncHandler(async (req, res) => {
 **Paso 3: Crear Service** (Lógica de negocio)
 
 ```javascript
-// services/ClassroomService.js
+// modules/classroom/ClassroomService.ts
 async createClassroom(data, teacherId) {
     // Validar
     if (!data.name) throw new AppError('Nombre requerido', 400);
@@ -167,7 +169,7 @@ describe("UserRepository", () => {
 ### Test Service (Con mock de Repository)
 
 ```javascript
-import AuthService from "../services/AuthService";
+import AuthService from "../modules/auth/AuthService";
 import UserRepository from "../repositories/UserRepository";
 
 jest.mock("../repositories/UserRepository");
@@ -189,10 +191,10 @@ describe("AuthService", () => {
 ### Test Controller (Con mock de Service)
 
 ```javascript
-import AuthController from "../controllers/AuthController";
-import AuthService from "../services/AuthService";
+import AuthController from "../modules/auth/AuthController";
+import AuthService from "../modules/auth/AuthService";
 
-jest.mock("../services/AuthService");
+jest.mock("../modules/auth/AuthService");
 
 describe("AuthController", () => {
   test("register debe retornar 201", async () => {
@@ -222,7 +224,7 @@ describe("AuthController", () => {
 Los servicios se exportan como **singleton** (instancia única):
 
 ```javascript
-// services/AuthService.js
+// modules/auth/AuthService.ts
 
 class AuthService {
   async register(data) {
@@ -254,22 +256,22 @@ Ventajas:
   - delete()
   - Métodos específicos
 
-□ Crear Service en services/
+□ Crear módulo en modules/<domain>/
   - Validaciones
   - Reglas de negocio
   - Llamadas a repository
 
-□ Crear Controller en controllers/
+□ Crear Controller en el módulo
   - Extraer datos del request
   - Llamar servicio
   - Formatear respuesta
 
-□ Crear Route en routes/
+□ Crear Route en el módulo
   - Mapear método HTTP
   - Asociar controller
   - Agregar middlewares (protect, authorize)
 
-□ Registrar ruta en src/index.js
+□ Registrar el módulo en src/modules/index.ts
   - app.use('/api/...', router)
 
 □ Escribir tests

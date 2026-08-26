@@ -31,15 +31,15 @@ Si algo cruza ambos repositorios:
 
 ## Flujo tecnico del backend
 
-1. `src/index.js` carga configuracion y conecta MongoDB.
-2. `src/app.js` crea Express, configura `cors`, parseo JSON, Swagger y static files.
-3. Las rutas validan y autentican.
-4. Los controladores traducen HTTP a llamadas de servicio.
+1. `src/index.ts` carga configuración y conecta MongoDB.
+2. `src/app.ts` crea Express, configura `cors`, parseo JSON, Swagger y middlewares globales.
+3. `src/modules/index.ts` registra los módulos HTTP.
+4. Cada módulo valida/autentica en sus rutas y traduce HTTP mediante su controlador.
 5. Los servicios aplican reglas de negocio.
-6. Los repositories interactuan con Mongoose.
+6. Los repositories interactúan con Mongoose.
 7. `errorHandler` normaliza la respuesta de error.
 
-## Modulos principales
+## Módulos principales
 
 - `auth`: identidad, login, registro, perfil y estado de acceso
 - `users`: administracion de usuarios y aprobaciones
@@ -50,6 +50,13 @@ Si algo cruza ambos repositorios:
 - `analytics`: dashboards agregados por rol
 - `activities`: actividades, entregas y uploads asociados
 - `notifications`: notificaciones persistidas, conteo unread y anuncios dirigidos
+- `attendance`: sesiones, registros y reportes de asistencia
+- `calendar`: agenda y sesiones de clase
+- `institutions`: institución, sedes y jornadas
+- `audit`: trazabilidad de operaciones
+- `imports`: carga masiva y trabajos de importación
+
+Cada módulo vive en `src/modules/<domain>/` y contiene sus rutas, controladores, servicios y validadores. `src/shared/` contiene solo piezas transversales; los modelos y repositorios siguen siendo infraestructura compartida.
 
 ## Dependencias externas relevantes
 
