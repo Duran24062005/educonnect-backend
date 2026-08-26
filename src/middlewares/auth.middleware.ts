@@ -4,7 +4,7 @@ import AppError from '../utils/AppError.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import { authorizeRoles } from './authorizeRoles.js';
 import User from '../models/UserModel.js';
-import SessionService from '../services/SessionService.js';
+import SessionService from '../modules/auth/SessionService.js';
 import { enterTenantScope } from '../tenant/tenant-context.js';
 import appConfig from '../config/config.js';
 

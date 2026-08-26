@@ -5,7 +5,7 @@ import AppError from '../utils/AppError.js';
 import {
     ACTIVITY_ALLOWED_EXTENSIONS,
     ACTIVITY_FILE_SIZE_LIMIT,
-} from '../constants/activity.constants.js';
+} from '../shared/activity.constants.js';
 
 const fileFilter = (
     _req: Request,

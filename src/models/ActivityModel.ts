@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ACTIVITY_ALLOWED_EXTENSIONS, ACTIVITY_STATUS } from '../constants/activity.constants.js';
+import { ACTIVITY_ALLOWED_EXTENSIONS, ACTIVITY_STATUS } from '../shared/activity.constants.js';
 import { tenantPlugin } from '../tenant/tenant-plugin.js';
 
 const rubricCriterionSchema = new mongoose.Schema(

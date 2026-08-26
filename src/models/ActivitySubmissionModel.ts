@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { tenantPlugin } from '../tenant/tenant-plugin.js';
-import { ACTIVITY_SUBMISSION_STATUS, ACTIVITY_SUBMISSION_TYPE } from '../constants/activity.constants.js';
+import { ACTIVITY_SUBMISSION_STATUS, ACTIVITY_SUBMISSION_TYPE } from '../shared/activity.constants.js';
 
 const rubricScoreSchema = new mongoose.Schema(
     {

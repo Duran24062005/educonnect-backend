@@ -11,21 +11,7 @@ import { globalLimiter } from './middlewares/rateLimit.middleware.js';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import { swaggerSpec } from './docs/swagger.js';
 
-import authRouter from './routes/auth/auth.routes.js';
-import usersRouter from './routes/users.routes.js';
-import studentsRouter from './routes/students.routes.js';
-import guardiansRouter from './routes/guardians.routes.js';
-import academicRouter from './routes/academic.routes.js';
-import groupsRouter from './routes/groups.routes.js';
-import evaluationsRouter from './routes/evaluations.routes.js';
-import analyticsRouter from './routes/analytics.routes.js';
-import activitiesRouter from './routes/activities.routes.js';
-import notificationsRouter from './routes/notifications.routes.js';
-import institutionsRouter from './routes/institutions.routes.js';
-import auditLogsRouter from './routes/audit-logs.routes.js';
-import calendarRouter from './routes/calendar.routes.js';
-import attendanceRouter from './routes/attendance.routes.js';
-import importRouter from './routes/import.routes.js';
+import { apiModules } from './modules/index.js';
 import { runTenantRequest } from './tenant/tenant-context.js';
 
 const app = express();
@@ -91,21 +77,9 @@ const swaggerUiHandler = (_req: express.Request, res: express.Response) => {
 app.get(['/api-docs', '/api-docs/'], swaggerUiHandler);
 app.use('/api-docs', swaggerUi.serve);
 
-app.use('/api/auth', authRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/students', studentsRouter);
-app.use('/api/guardians', guardiansRouter);
-app.use('/api/academic', academicRouter);
-app.use('/api/groups', groupsRouter);
-app.use('/api/evaluations', evaluationsRouter);
-app.use('/api/analytics', analyticsRouter);
-app.use('/api/activities', activitiesRouter);
-app.use('/api/notifications', notificationsRouter);
-app.use('/api/institutions', institutionsRouter);
-app.use('/api/audit-logs', auditLogsRouter);
-app.use('/api/calendar', calendarRouter);
-app.use('/api/attendance', attendanceRouter);
-app.use('/api/imports', importRouter);
+for (const apiModule of apiModules) {
+    app.use(apiModule.basePath, apiModule.router);
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);
