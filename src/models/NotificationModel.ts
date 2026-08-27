@@ -11,7 +11,7 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['activity_created', 'activity_submitted', 'admin_announcement', 'teacher_announcement'],
+            enum: ['activity_created', 'activity_submitted', 'admin_announcement', 'teacher_announcement', 'schedule_change_request', 'schedule_change_decision'],
             required: true,
             index: true,
         },
@@ -50,7 +50,7 @@ const notificationSchema = new mongoose.Schema(
         },
         source_type: {
             type: String,
-            enum: ['activity', 'announcement'],
+            enum: ['activity', 'announcement', 'schedule_request'],
             default: null,
         },
         source_id: {

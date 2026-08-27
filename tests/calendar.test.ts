@@ -21,6 +21,8 @@ let Student;
 let Enrollment;
 let Aula;
 let Activity;
+let SchoolShift;
+let WeeklySchedule;
 
 const actor = async (role, index) => {
     const user = await User.create({
@@ -67,6 +69,8 @@ beforeAll(async () => {
     ({ default: Enrollment } = await import('../src/models/EnrollmentModel.js'));
     ({ default: Aula } = await import('../src/models/AulaModel.js'));
     ({ default: Activity } = await import('../src/models/ActivityModel.js'));
+    ({ default: SchoolShift } = await import('../src/models/SchoolShiftModel.js'));
+    ({ default: WeeklySchedule } = await import('../src/models/WeeklyScheduleModel.js'));
 
     await appConfig.connectDatabase();
 });
@@ -114,6 +118,26 @@ describe('Calendar API', () => {
             school_year_id: schoolYear._id,
             max_capacity: 40,
         });
+        const shift = await SchoolShift.create({
+            name: 'Jornada mañana',
+            code: 'MANANA',
+            start_time: '06:15',
+            end_time: '12:15',
+            created_by_user_id: admin.user._id,
+        });
+        group.shift_id = shift._id;
+        await group.save();
+        await WeeklySchedule.create({
+            school_year_id: schoolYear._id,
+            version: 1,
+            status: 'published',
+            school_days: [1, 2, 3, 4, 5],
+            availability_windows: [{ window_id: 'window-7a', group_id: group._id, start_time: '06:15', end_time: '12:15' }],
+            created_by: admin.user._id,
+            updated_by: admin.user._id,
+            published_by: admin.user._id,
+            published_at: new Date(),
+        });
         teacherProfile = await Teacher.create({ user_id: teacher.user._id, area: 'Matemáticas' });
         const outsiderProfile = await Teacher.create({ user_id: outsiderTeacher.user._id, area: 'Lenguaje' });
         await GroupTeacher.create({ teacher_id: teacherProfile._id, group_id: group._id, area_id: area._id });
@@ -149,7 +173,7 @@ describe('Calendar API', () => {
             status: 'published',
         });
 
-        const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+        const startAt = new Date('2026-08-31T12:00:00.000Z');
         const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
         sessionInput = {
             school_year_id: schoolYear._id.toString(),
@@ -239,5 +263,97 @@ describe('Calendar API', () => {
         expect(activated.statusCode).toBe(200);
         expect(activated.body.data.status).toBe('scheduled');
         expect(activated.body.data.topic).toBe('Ecuaciones lineales');
+    });
+
+    test('enforces published availability for teachers and isolates their calendar', async () => {
+        const teacherSession = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${teacher.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-08-31T13:00:00.000Z',
+                end_at: '2026-08-31T14:00:00.000Z',
+                topic: 'Clase registrada por docente',
+            });
+        expect(teacherSession.statusCode).toBe(201);
+        expect(teacherSession.body.data.source).toBe('schedule');
+        expect(teacherSession.body.data.schedule_window_id).toBe('window-7a');
+
+        const outsideWindow = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${teacher.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-08-31T17:00:00.000Z',
+                end_at: '2026-08-31T18:00:00.000Z',
+                topic: 'Fuera de jornada',
+            });
+        expect(outsideWindow.statusCode).toBe(409);
+
+        const outsideByAdmin = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-08-31T17:00:00.000Z',
+                end_at: '2026-08-31T18:00:00.000Z',
+                topic: 'Sesión administrativa fuera de jornada',
+            });
+        expect(outsideByAdmin.statusCode).toBe(409);
+
+        const exception = await request(app)
+            .post('/api/calendar/exceptions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-08-31T17:00:00.000Z',
+                end_at: '2026-08-31T18:00:00.000Z',
+                topic: 'Reunión extraordinaria',
+                reason: 'Actividad institucional autorizada',
+            });
+        expect(exception.statusCode).toBe(201);
+        expect(exception.body.data.source).toBe('exception');
+        expect(exception.body.data.exception_reason).toBe('Actividad institucional autorizada');
+
+        const teacherCalendar = await request(app)
+            .get('/api/calendar/me')
+            .query({ ...range, school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${teacher.token}`);
+        expect(teacherCalendar.statusCode).toBe(200);
+        expect(teacherCalendar.body.data.sessions).toHaveLength(3);
+        expect(teacherCalendar.body.data.sessions.every((item) => item.teacher._id.toString() === teacherProfile._id.toString())).toBe(true);
+    });
+
+    test('publishes versioned group availability without converting legacy subject slots', async () => {
+        const draft = await request(app)
+            .post('/api/calendar/schedules/drafts')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ school_year_id: schoolYear._id.toString() });
+        expect(draft.statusCode).toBe(201);
+        expect(draft.body.data.status).toBe('draft');
+        expect(draft.body.data.availability_windows).toHaveLength(1);
+
+        const updated = await request(app)
+            .patch(`/api/calendar/schedules/${draft.body.data.id}`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                school_days: [1, 2, 3, 4, 5],
+                availability_windows: [{ window_id: 'window-7a', group_id: group._id.toString(), start_time: '06:15', end_time: '12:15' }],
+            });
+        expect(updated.statusCode).toBe(200);
+
+        const published = await request(app)
+            .post(`/api/calendar/schedules/${draft.body.data.id}/publish`)
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(published.statusCode).toBe(200);
+        expect(published.body.data.status).toBe('published');
+        expect(published.body.data.version).toBe(2);
+
+        const archived = await request(app)
+            .get('/api/calendar/schedules')
+            .query({ school_year_id: schoolYear._id.toString(), status: 'archived' })
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(archived.statusCode).toBe(200);
+        expect(archived.body.data.schedules).toHaveLength(1);
     });
 });

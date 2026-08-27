@@ -63,6 +63,7 @@
         "backup:mongodb": "bash scripts/backup-mongodb.sh",
         "restore:mongodb": "bash scripts/restore-mongodb.sh",
         "migrate:tenant": "tsx scripts/migrate-tenant.ts",
+        "migrate:schedule-availability": "tsx scripts/migrate-schedule-availability.ts",
         "test": "NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand"
     }
 }

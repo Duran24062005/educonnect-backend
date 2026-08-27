@@ -76,7 +76,7 @@ La copia local del roadmap no debe editarse como fuente de estado. Cuando exista
 - Reporte institucional de asistencia en JSON y CSV, filtrable por año, grupo y rango de fechas desde el portal administrativo.
 - Exportación CSV del padrón de matrículas con grupo, grado, sede y jornada desde la administración.
 - Boletin basico para acudientes: consulta autorizada por estudiante, ano y periodo; el documento oficial firmado sigue pendiente.
-- Calendario visual en el portal conectado a API persistente, con catálogo real, consultas por rol, alcance familiar para acudientes, filtros administrativos, conflictos de horario y cancelación/reactivación; falta operar el módulo con datos institucionales en staging.
+- Calendario visual en el portal conectado a API persistente, con disponibilidad semanal publicada por grupo, sesiones concretas, alcance por rol, conflictos de horario, excepciones administrativas y cancelación/reactivación; falta operar el módulo con datos institucionales en staging.
 
 ### Pendiente para el piloto comercial
 

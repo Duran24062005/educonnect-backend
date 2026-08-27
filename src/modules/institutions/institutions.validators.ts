@@ -24,3 +24,6 @@ export const campusIdSchema = structureId;
 export const shiftCreateSchema = { body: shiftBody };
 export const shiftUpdateSchema = { ...structureId, body: shiftBody.partial() };
 export const shiftIdSchema = structureId;
+export const scheduleConfigSchema = {
+    body: z.object({ school_days: z.array(z.coerce.number().int().min(1).max(7)).min(1).max(7) }).passthrough(),
+};

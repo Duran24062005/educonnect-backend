@@ -29,6 +29,16 @@ const groupSchema = new mongoose.Schema(
             required: [true, 'La capacidad máxima es requerida'],
             min: [1, 'Mínimo 1 estudiante'],
         },
+        campus_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Campus',
+            default: null,
+        },
+        shift_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'SchoolShift',
+            default: null,
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

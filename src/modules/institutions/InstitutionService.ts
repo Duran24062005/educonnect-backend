@@ -66,6 +66,26 @@ class InstitutionService {
         return user.institution_id;
     }
 
+    async getScheduleConfig(userId: string) {
+        const institution = await this.getCurrent(userId) as unknown as { school_days?: number[]; timezone?: string };
+        return {
+            school_days: institution.school_days || [1, 2, 3, 4, 5],
+            timezone: institution.timezone || 'America/Bogota',
+        };
+    }
+
+    async updateScheduleConfig(userId: string, input: { school_days: number[] }) {
+        const institutionId = await this.getInstitutionId(userId);
+        const school_days = [...new Set(input.school_days.map(Number))].sort((left, right) => left - right);
+        if (!school_days.length || school_days.some((day) => day < 1 || day > 7)) {
+            throw new AppError('Debes seleccionar al menos un día lectivo válido', 400);
+        }
+        const current = await Institution.findById(institutionId);
+        const updated = await Institution.findByIdAndUpdate(institutionId, { school_days }, { new: true, runValidators: true });
+        await AuditLogService.record({ actorUserId: userId, actorRole: 'admin', action: 'institution.schedule_config.updated', entityType: 'Institution', entityId: institutionId, before: current, after: updated, institutionId });
+        return updated;
+    }
+
     async assignUser(actorUserId: string, targetUserId: string) {
         const actor = await User.findById(actorUserId).select('institution_id');
         if (!actor?.institution_id) {

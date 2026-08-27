@@ -16,6 +16,7 @@ import AppError from '../../utils/AppError.js';
 import AuditLogService from '../audit/AuditLogService.js';
 import { resolveStudentByUserId, resolveTeacherByUserId } from '../../shared/accessScope.service.js';
 import GuardianRepository from '../../repositories/GuardianRepository.js';
+import ScheduleService from './ScheduleService.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -193,6 +194,12 @@ class CalendarService {
             start_at: session.start_at,
             end_at: session.end_at,
             status: session.status,
+            schedule_id: toIdString(session.schedule_id),
+            schedule_slot_id: session.schedule_slot_id || null,
+            schedule_window_id: session.schedule_window_id || null,
+            occurrence_date: session.occurrence_date || null,
+            source: session.source || 'legacy',
+            exception_reason: session.exception_reason || null,
             school_year: schoolYearEntity(schoolYear),
             grade: entity(group?.grade_id, 'Grado'),
             group: entity(group, 'Grupo'),
@@ -331,6 +338,8 @@ class CalendarService {
         const filter = await this.buildListFilter({ ...query, range }, role, userId);
         if (!filter) return { sessions: [], pending_activities: [], range: { from: query.from, to: query.to } };
 
+        // Availability schedules authorize concrete sessions; they are not
+        // projected as virtual occurrences, which prevents duplicate rows.
         const sessions = await ClassSession.find(filter)
             .populate(sessionPopulate)
             .sort({ start_at: 1 });
@@ -340,8 +349,11 @@ class CalendarService {
 
     async create(userId, role, institutionId, data, requestContext) {
         const normalizedRole = String(role).toLowerCase();
-        if (normalizedRole === 'teacher') await this.assertTeacherCanManage(userId, data);
+        if (normalizedRole === 'teacher') {
+            await this.assertTeacherCanManage(userId, data);
+        }
         const references = await this.validateReferences(data);
+        const availability = await ScheduleService.assertSessionWithinAvailability(institutionId, data, references);
         await this.assertNoConflict(references);
 
         const session = await ClassSession.create({
@@ -353,6 +365,11 @@ class CalendarService {
             start_at: references.startAt,
             end_at: references.endAt,
             topic: data.topic.trim(),
+            schedule_id: availability.schedule._id,
+            schedule_window_id: availability.window.window_id,
+            occurrence_date: availability.occurrenceDate,
+            source: 'schedule',
+            is_manual_override: false,
             status: 'scheduled',
             created_by: userId,
             updated_by: userId,
@@ -362,6 +379,42 @@ class CalendarService {
             actorUserId: userId,
             actorRole: role,
             action: 'calendar.session.created',
+            entityType: 'ClassSession',
+            entityId: session._id,
+            before: null,
+            after: session,
+            institutionId,
+            ...requestContext,
+        });
+        return this.serializeSession(hydrated);
+    }
+
+    async createException(userId, role, institutionId, data, requestContext) {
+        if (String(role).toLowerCase() !== 'admin') throw new AppError('Solo un administrador puede crear excepciones', 403);
+        const references = await this.validateReferences(data);
+        await ScheduleService.assertSessionDate(institutionId, data, references);
+        await this.assertNoConflict(references);
+        const session = await ClassSession.create({
+            school_year_id: references.schoolYear._id,
+            group_id: references.group._id,
+            area_id: references.area._id,
+            teacher_id: references.teacher._id,
+            aula_id: references.aula._id,
+            start_at: references.startAt,
+            end_at: references.endAt,
+            topic: data.topic.trim(),
+            source: 'exception',
+            is_manual_override: true,
+            exception_reason: data.reason.trim(),
+            status: 'scheduled',
+            created_by: userId,
+            updated_by: userId,
+        });
+        const hydrated = await this.loadSession(session._id);
+        await AuditLogService.record({
+            actorUserId: userId,
+            actorRole: role,
+            action: 'calendar.exception.created',
             entityType: 'ClassSession',
             entityId: session._id,
             before: null,
@@ -389,8 +442,13 @@ class CalendarService {
         };
         const nextStatus = data.status || current.status;
 
-        if (String(role).toLowerCase() === 'teacher') await this.assertTeacherCanManage(userId, next);
+        let availability = null;
+        if (String(role).toLowerCase() === 'teacher') {
+            const teacher = await this.assertTeacherCanManage(userId, next);
+            if (current.source !== 'legacy') availability = await ScheduleService.assertSessionWithinAvailability(institutionId, next, await this.validateReferences(next));
+        }
         const references = await this.validateReferences(next);
+        if (!availability && current.source === 'schedule') availability = await ScheduleService.assertSessionWithinAvailability(institutionId, next, references);
         if (nextStatus === 'scheduled') await this.assertNoConflict(references, id);
 
         const before = current.toObject();
@@ -405,6 +463,13 @@ class CalendarService {
             topic: next.topic.trim(),
             status: nextStatus,
             updated_by: userId,
+            ...(availability ? {
+                schedule_id: availability.schedule._id,
+                schedule_window_id: availability.window.window_id,
+                occurrence_date: availability.occurrenceDate,
+                source: 'schedule',
+                is_manual_override: false,
+            } : {}),
             ...(nextStatus === 'cancelled'
                 ? { cancelled_at: new Date(), cancelled_by: userId }
                 : { cancelled_at: null, cancelled_by: null }),

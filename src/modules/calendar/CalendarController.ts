@@ -34,6 +34,17 @@ class CalendarController {
         res.status(201).json({ status: 'success', data: result });
     });
 
+    createException = asyncHandler(async (req, res) => {
+        const result = await CalendarService.createException(
+            req.userId,
+            req.userRole,
+            req.institutionId,
+            req.body,
+            requestContext(req)
+        );
+        res.status(201).json({ status: 'success', data: result });
+    });
+
     updateSession = asyncHandler(async (req, res) => {
         const result = await CalendarService.update(
             req.userId,

@@ -3,13 +3,14 @@ import InstitutionController from './InstitutionController.js';
 import { protect, authorize } from '../../middlewares/auth.middleware.js';
 import { validateRequest } from '../../middlewares/validateRequest.js';
 import { requireInstitutionContext } from '../../middlewares/tenant.middleware.js';
-import { createInstitutionSchema, assignInstitutionUserSchema, campusCreateSchema, campusUpdateSchema, campusIdSchema, shiftCreateSchema, shiftUpdateSchema, shiftIdSchema } from './institutions.validators.js';
+import { createInstitutionSchema, assignInstitutionUserSchema, campusCreateSchema, campusUpdateSchema, campusIdSchema, shiftCreateSchema, shiftUpdateSchema, shiftIdSchema, scheduleConfigSchema } from './institutions.validators.js';
 
 const router = Router();
 
 router.use(protect);
 router.post('/', authorize('admin'), validateRequest(createInstitutionSchema), InstitutionController.create);
 router.get('/current', requireInstitutionContext, InstitutionController.getCurrent);
+router.get('/current/schedule-config', requireInstitutionContext, InstitutionController.getScheduleConfig);
 router.patch(
     '/current/users/:user_id',
     authorize('admin'),
@@ -25,5 +26,6 @@ router.get('/current/shifts', requireInstitutionContext, InstitutionController.l
 router.post('/current/shifts', authorize('admin'), requireInstitutionContext, validateRequest(shiftCreateSchema), InstitutionController.createShift);
 router.patch('/current/shifts/:id', authorize('admin'), requireInstitutionContext, validateRequest(shiftUpdateSchema), InstitutionController.updateShift);
 router.delete('/current/shifts/:id', authorize('admin'), requireInstitutionContext, validateRequest(shiftIdSchema), InstitutionController.deleteShift);
+router.patch('/current/schedule-config', authorize('admin'), requireInstitutionContext, validateRequest(scheduleConfigSchema), InstitutionController.updateScheduleConfig);
 
 export default router;

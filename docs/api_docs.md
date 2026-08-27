@@ -35,6 +35,8 @@ La recuperación responde de forma genérica para no revelar si un correo existe
 
 - `POST /api/institutions` (Admin, crea el sandbox institucional)
 - `GET /api/institutions/current` (protegido)
+- `GET /api/institutions/current/schedule-config` (protegido; días lectivos y zona horaria)
+- `PATCH /api/institutions/current/schedule-config` (Admin; actualiza días lectivos)
 - `PATCH /api/institutions/current/users/:user_id` (Admin)
 
 ### Auditoría
@@ -47,7 +49,12 @@ La recuperación responde de forma genérica para no revelar si un correo existe
 - `GET /api/calendar` (Admin, rango y filtros por grado, grupo, materia, docente y aula)
 - `GET /api/calendar/me` (Docente o estudiante, alcance por asignación o matrícula)
 - `POST /api/calendar/sessions` (Admin o docente asignado)
+- `POST /api/calendar/exceptions` (Admin; requiere motivo y representa una excepción fuera de la disponibilidad)
 - `PATCH /api/calendar/sessions/:id` (Admin o docente autorizado; editar, cancelar o reactivar)
+- `GET /api/calendar/schedules` (Admin; horarios por año y estado)
+- `POST /api/calendar/schedules/drafts` (Admin)
+- `PATCH /api/calendar/schedules/:id` (Admin; días y ventanas por grupo)
+- `POST /api/calendar/schedules/:id/publish` (Admin)
 
 ### Usuarios
 

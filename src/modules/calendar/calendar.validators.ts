@@ -42,6 +42,12 @@ export const createCalendarSessionSchema = {
     body: sessionFields.passthrough(),
 };
 
+export const createCalendarExceptionSchema = {
+    body: sessionFields.extend({
+        reason: z.string().trim().min(3).max(1000),
+    }).passthrough(),
+};
+
 export const updateCalendarSessionSchema = {
     params: z.object({ id: objectIdSchema }),
     body: z

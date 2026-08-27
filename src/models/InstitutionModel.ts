@@ -47,6 +47,14 @@ const institutionSchema = new mongoose.Schema(
             default: 'America/Bogota',
             trim: true,
         },
+        school_days: {
+            type: [Number],
+            default: [1, 2, 3, 4, 5],
+            validate: {
+                validator: (days: number[]) => days.length > 0 && new Set(days).size === days.length && days.every((day) => Number.isInteger(day) && day >= 1 && day <= 7),
+                message: 'Los días lectivos deben ser únicos y estar entre 1 y 7',
+            },
+        },
         created_by_user_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

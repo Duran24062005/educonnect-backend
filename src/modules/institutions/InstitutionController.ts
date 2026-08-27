@@ -17,6 +17,8 @@ class InstitutionController {
         res.status(200).json({ status: 'success', data: institution });
     });
 
+    getScheduleConfig = asyncHandler(async (req, res) => res.status(200).json({ status: 'success', data: await InstitutionService.getScheduleConfig(authContext(req)) }));
+
     assignUser = asyncHandler(async (req, res) => {
         const user = await InstitutionService.assignUser(authContext(req), String(req.params.user_id));
         res.status(200).json({ status: 'success', data: user });
@@ -30,6 +32,7 @@ class InstitutionController {
     createShift = asyncHandler(async (req, res) => res.status(201).json({ status: 'success', data: await InstitutionService.createShift(authContext(req), req.body) }));
     updateShift = asyncHandler(async (req, res) => res.status(200).json({ status: 'success', data: await InstitutionService.updateShift(authContext(req), String(req.params.id), req.body) }));
     deleteShift = asyncHandler(async (req, res) => res.status(200).json({ status: 'success', data: await InstitutionService.deleteShift(authContext(req), String(req.params.id)) }));
+    updateScheduleConfig = asyncHandler(async (req, res) => res.status(200).json({ status: 'success', data: await InstitutionService.updateScheduleConfig(authContext(req), req.body) }));
 }
 
 export default new InstitutionController();

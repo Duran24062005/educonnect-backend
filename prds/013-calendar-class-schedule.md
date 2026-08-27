@@ -6,6 +6,8 @@ Fase demo y primera integración persistente implementadas. El portal puede sele
 
 Este PRD conserva el contrato funcional que debe usarse al implementar la segunda fase.
 
+La política de disponibilidad semanal descrita en este documento fue sustituida por el [PRD 037](./037-weekly-group-availability.md). Para reglas vigentes de horario, ventanas por grupo y excepciones administrativas, el PRD 037 es la fuente de verdad.
+
 ## Objetivo
 
 Agregar un calendario académico para consultar y administrar las sesiones de clase de EduConnect.

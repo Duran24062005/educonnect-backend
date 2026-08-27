@@ -371,6 +371,21 @@ const options = {
                     },
                 },
             },
+            '/api/institutions/current/schedule-config': {
+                get: {
+                    tags: ['Institutions'],
+                    summary: 'Obtener configuración de días lectivos',
+                    security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Configuración de calendario institucional' }, 404: { description: 'El usuario aún no pertenece a una institución' } },
+                },
+                patch: {
+                    tags: ['Institutions'],
+                    summary: 'Actualizar días lectivos institucionales (Admin)',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_days'], properties: { school_days: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 7 } } } }) },
+                    responses: { 200: { description: 'Días lectivos actualizados' }, 400: { $ref: '#/components/responses/ValidationError' } },
+                },
+            },
             '/api/institutions/current/users/{user_id}': {
                 patch: {
                     tags: ['Institutions'],
@@ -559,6 +574,66 @@ const options = {
                         }),
                     },
                     responses: { 201: { description: 'Sesión creada' }, 409: { description: 'Conflicto de horario' } },
+                },
+            },
+            '/api/calendar/exceptions': {
+                post: {
+                    tags: ['Calendar'],
+                    summary: 'Crear una excepción administrativa de calendario',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['school_year_id', 'group_id', 'area_id', 'teacher_id', 'aula_id', 'start_at', 'end_at', 'topic', 'reason'],
+                            properties: {
+                                school_year_id: { type: 'string' }, group_id: { type: 'string' }, area_id: { type: 'string' },
+                                teacher_id: { type: 'string' }, aula_id: { type: 'string' }, start_at: { type: 'string', format: 'date-time' },
+                                end_at: { type: 'string', format: 'date-time' }, topic: { type: 'string' }, reason: { type: 'string' },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Excepción creada' }, 403: { $ref: '#/components/responses/Forbidden' }, 409: { description: 'Conflicto o referencia inválida' } },
+                },
+            },
+            '/api/calendar/schedules': {
+                get: {
+                    tags: ['Calendar'],
+                    summary: 'Listar horarios de disponibilidad por grupo',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'school_year_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['draft', 'published', 'archived'] } },
+                    ],
+                    responses: { 200: { description: 'Horarios versionados' } },
+                },
+            },
+            '/api/calendar/schedules/drafts': {
+                post: {
+                    tags: ['Calendar'],
+                    summary: 'Crear borrador de disponibilidad',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_year_id'], properties: { school_year_id: { type: 'string' } } }) },
+                    responses: { 201: { description: 'Borrador creado' } },
+                },
+            },
+            '/api/calendar/schedules/{id}': {
+                patch: {
+                    tags: ['Calendar'],
+                    summary: 'Actualizar días y ventanas de disponibilidad',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_days', 'availability_windows'], properties: { school_days: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 7 } }, availability_windows: { type: 'array', items: { type: 'object', required: ['group_id', 'start_time', 'end_time'] } } } }) },
+                    responses: { 200: { description: 'Borrador actualizado' }, 409: { description: 'Horario inválido' } },
+                },
+            },
+            '/api/calendar/schedules/{id}/publish': {
+                post: {
+                    tags: ['Calendar'],
+                    summary: 'Publicar disponibilidad',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
+                    responses: { 200: { description: 'Horario publicado' }, 409: { description: 'Horario inválido' } },
                 },
             },
             '/api/calendar/sessions/{id}': {

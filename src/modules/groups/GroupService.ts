@@ -46,8 +46,23 @@ class GroupService {
     // GRUPOS
     // ===========================
 
+    async resolveGroupStructure({ campus_id = null, shift_id = null } = {}) {
+        const refs = {};
+        if (campus_id) {
+            const campus = await Campus.findOne({ _id: campus_id, status: 'active' });
+            if (!campus) throw new AppError('Sede no encontrada o inactiva', 404);
+            refs.campus_id = campus._id;
+        } else if (campus_id === null) refs.campus_id = null;
+        if (shift_id) {
+            const shift = await SchoolShift.findOne({ _id: shift_id, status: 'active' });
+            if (!shift) throw new AppError('Jornada no encontrada o inactiva', 404);
+            refs.shift_id = shift._id;
+        } else if (shift_id === null) refs.shift_id = null;
+        return refs;
+    }
+
     async createGroup(data) {
-        const { name, grade_id, school_year_id, max_capacity } = data;
+        const { name, grade_id, school_year_id, max_capacity, campus_id, shift_id } = data;
 
         if (!name || !grade_id || !school_year_id || !max_capacity) {
             throw new AppError('Nombre, grado, año escolar y capacidad son requeridos', 400);
@@ -61,7 +76,8 @@ class GroupService {
         const schoolYear = await schoolYearRepository.findById(school_year_id);
         if (!schoolYear) throw new AppError('Año escolar no encontrado', 404);
 
-        return await groupRepository.create({ name, grade_id, school_year_id, max_capacity });
+        const structure = await this.resolveGroupStructure({ campus_id, shift_id });
+        return await groupRepository.create({ name, grade_id, school_year_id, max_capacity, ...structure });
     }
 
     async getGroupsBySchoolYear(school_year_id) {
@@ -113,7 +129,14 @@ class GroupService {
     async updateGroup(id, data) {
         const group = await groupRepository.findById(id);
         if (!group) throw new AppError('Grupo no encontrado', 404);
-        return await groupRepository.update(id, data);
+        const structure = {};
+        if (Object.prototype.hasOwnProperty.call(data, 'campus_id') || Object.prototype.hasOwnProperty.call(data, 'shift_id')) {
+            Object.assign(structure, await this.resolveGroupStructure({
+                campus_id: Object.prototype.hasOwnProperty.call(data, 'campus_id') ? data.campus_id : group.campus_id,
+                shift_id: Object.prototype.hasOwnProperty.call(data, 'shift_id') ? data.shift_id : group.shift_id,
+            }));
+        }
+        return await groupRepository.update(id, { ...data, ...structure });
     }
 
     async deleteGroup(id) {
