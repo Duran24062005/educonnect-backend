@@ -42,6 +42,8 @@ El script rechaza `NODE_ENV=production` salvo que exista la confirmacion explici
 
 El dataset crea una institucion activa con cuentas de administrador, docente y acudiente. El acudiente tiene dos estudiantes vinculados, cada uno con matricula y grupo propio, para validar el alcance multiestudiante del portal familiar.
 
+Ademas genera la estructura de secundaria y media de sexto a undecimo, con dos grupos por grado (`6A`, `6B`, `7A`, `7B`, ..., `11A`, `11B`) y cinco estudiantes matriculados activamente en cada grupo: 12 grupos y 60 estudiantes en total. `student.one` queda en `6A` y `student.two` en `6B` para conservar el escenario del portal familiar.
+
 Ademas crea como minimo un registro valido para cada modelo persistente:
 
 | Entidad | Ejemplo incluido |
@@ -52,10 +54,10 @@ Ademas crea como minimo un registro valido para cada modelo persistente:
 | `Teacher` / `Student` | perfiles especializados asociados a usuarios |
 | `Campus` / `SchoolShift` | sede Centro y jornada manana |
 | `SchoolYear` / `Period` | año 2026 y Periodo 1 |
-| `Grade` / `Area` / `GradeArea` | Sexto, Matematicas y Lenguaje |
-| `Group` / `Aula` | grupos 6A/6B y aulas 101/102 |
-| `Enrollment` | una matricula activa por estudiante |
-| `GroupTeacher` | docente asignado a los dos grupos |
+| `Grade` / `Area` / `GradeArea` | Sexto a Undecimo, Matematicas y Lenguaje |
+| `Group` / `Aula` | grupos 6A/6B hasta 11A/11B y un aula demo por grupo |
+| `Enrollment` | 60 matriculas activas: cinco estudiantes por grupo |
+| `GroupTeacher` | docente de Matemáticas asignado a los 12 grupos |
 | `GradeItem` / `StudentGrade` | items y calificaciones de ambos estudiantes |
 | `PeriodAreaResult` / `FinalResult` | resultados periodicos y anuales |
 | `Activity` / `ActivitySubmission` | actividad publicada y entrega calificada |

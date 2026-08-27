@@ -57,11 +57,49 @@ type SeedIdentity = {
 
 type SeedStats = Record<string, { created: number; updated: number }>;
 
+type GradeSeedSpec = {
+    level: string;
+    name: string;
+    description: string;
+};
+
+type StudentSeedSpec = {
+    groupName: string;
+    slot: number;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    documentNumber?: string;
+    phone?: string;
+    bornDate?: string;
+};
+
 const DEFAULT_PASSWORD = process.env.SEED_PASSWORD || 'EduConnect123!';
 const DEFAULT_NAMESPACE = process.env.SEED_NAMESPACE || 'demo';
 const SEED_CONFIRMATION = 'EDUCONNECT-DEMO';
 const RESET_CONFIRMATION = 'EDUCONNECT-RESET';
 const ANCHOR_DATE = process.env.SEED_ANCHOR_DATE || '2026-08-24T00:00:00.000Z';
+
+const GRADE_SPECS: GradeSeedSpec[] = [
+    { level: '6', name: 'Sexto', description: 'Educacion basica secundaria' },
+    { level: '7', name: 'Septimo', description: 'Educacion basica secundaria' },
+    { level: '8', name: 'Octavo', description: 'Educacion basica secundaria' },
+    { level: '9', name: 'Noveno', description: 'Educacion basica secundaria' },
+    { level: '10', name: 'Decimo', description: 'Educacion media' },
+    { level: '11', name: 'Undecimo', description: 'Educacion media' },
+];
+
+const GROUP_SECTIONS = ['A', 'B'] as const;
+const STUDENTS_PER_GROUP = 5;
+const GENERATED_FIRST_NAMES = [
+    'Valentina', 'Samuel', 'Isabella', 'Nicolas', 'Mariana', 'Sebastian',
+    'Gabriela', 'Alejandro', 'Luciana', 'Santiago', 'Antonella', 'Tomas',
+    'Manuela', 'Juan', 'Emilia', 'David', 'Sara', 'Andres', 'Salome', 'Martin',
+];
+const GENERATED_LAST_NAMES = [
+    'Gomez', 'Martinez', 'Rodriguez', 'Hernandez', 'Ramirez', 'Torres',
+    'Castro', 'Moreno', 'Vargas', 'Rojas', 'Mendoza', 'Navarro',
+];
 
 const stats: SeedStats = {};
 
@@ -109,6 +147,73 @@ const at = (dayOffset: number, hour: number, minute = 0): Date => {
 };
 
 const id = (document: { _id: mongoose.Types.ObjectId }): mongoose.Types.ObjectId => document._id;
+
+const buildStudentSeedSpecs = (): StudentSeedSpec[] => {
+    const specs: StudentSeedSpec[] = [];
+
+    for (const grade of GRADE_SPECS) {
+        for (const section of GROUP_SECTIONS) {
+            const groupName = `${grade.level}${section}`;
+
+            for (let slot = 1; slot <= STUDENTS_PER_GROUP; slot += 1) {
+                specs.push({ groupName, slot });
+            }
+        }
+    }
+
+    return specs;
+};
+
+const getStudentIdentitySpec = (spec: StudentSeedSpec, index: number): Omit<IdentitySpec, 'institutionId'> => {
+    const isLegacyDemoStudent = spec.groupName === '6A' && spec.slot === 1;
+    const isSecondLegacyDemoStudent = spec.groupName === '6B' && spec.slot === 1;
+
+    if (isLegacyDemoStudent) {
+        return {
+            email: `student.one.${namespace}@educonnect.local`,
+            firstName: 'Sofia',
+            lastName: 'Rodriguez',
+            role: 'Student',
+            documentType: 'RC',
+            documentNumber: `EST-${namespace}-001`,
+            phone: '3004440001',
+            bornDate: '2012-03-15',
+            profile: 'student',
+        };
+    }
+
+    if (isSecondLegacyDemoStudent) {
+        return {
+            email: `student.two.${namespace}@educonnect.local`,
+            firstName: 'Mateo',
+            lastName: 'Rodriguez',
+            role: 'Student',
+            documentType: 'RC',
+            documentNumber: `EST-${namespace}-002`,
+            phone: '3004440002',
+            bornDate: '2014-07-20',
+            profile: 'student',
+        };
+    }
+
+    const generatedIndex = index < 5 ? index - 1 : index - 2;
+    const firstName = GENERATED_FIRST_NAMES[generatedIndex % GENERATED_FIRST_NAMES.length];
+    const lastName = GENERATED_LAST_NAMES[Math.floor(generatedIndex / GENERATED_FIRST_NAMES.length) % GENERATED_LAST_NAMES.length];
+    const normalizedGroup = spec.groupName.toLowerCase();
+    const studentNumber = String(index < 5 ? index + 2 : index + 1).padStart(3, '0');
+
+    return {
+        email: `student.${normalizedGroup}.${spec.slot}.${namespace}@educonnect.local`,
+        firstName,
+        lastName,
+        role: 'Student',
+        documentType: 'RC',
+        documentNumber: `EST-${namespace}-${studentNumber}`,
+        phone: `300${String(4450000 + index).padStart(7, '0')}`,
+        bornDate: `${2010 + (index % 5)}-${String((index % 12) + 1).padStart(2, '0')}-${String((index % 27) + 1).padStart(2, '0')}`,
+        profile: 'student',
+    };
+};
 
 const ensureDocument = async (
     model: SeedModel,
@@ -337,31 +442,6 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
             bornDate: '1987-08-22',
             institutionId,
         });
-        const studentOne = await ensureIdentity({
-            email: `student.one.${namespace}@educonnect.local`,
-            firstName: 'Sofia',
-            lastName: 'Rodriguez',
-            role: 'Student',
-            documentType: 'RC',
-            documentNumber: `EST-${namespace}-001`,
-            phone: '3004440001',
-            bornDate: '2012-03-15',
-            institutionId,
-            profile: 'student',
-        });
-        const studentTwo = await ensureIdentity({
-            email: `student.two.${namespace}@educonnect.local`,
-            firstName: 'Mateo',
-            lastName: 'Rodriguez',
-            role: 'Student',
-            documentType: 'RC',
-            documentNumber: `EST-${namespace}-002`,
-            phone: '3004440002',
-            bornDate: '2014-07-20',
-            institutionId,
-            profile: 'student',
-        });
-
         const campus = await ensureDocument(
             Campus,
             { institution_id: institutionId, code: 'CENTRO' },
@@ -408,12 +488,6 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
             },
             'Period',
         );
-        const grade = await ensureDocument(
-            Grade,
-            { institution_id: institutionId, name: 'Sexto' },
-            { level: '6', description: 'Educacion basica secundaria' },
-            'Grade',
-        );
         const areaMath = await ensureDocument(
             Area,
             { institution_id: institutionId, name: 'Matematicas' },
@@ -426,97 +500,110 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
             { description: 'Lectura critica y produccion textual' },
             'Area',
         );
-        await ensureDocument(
-            GradeArea,
-            { institution_id: institutionId, grade_id: id(grade), area_id: id(areaMath) },
-            { weekly_hours: 4 },
-            'GradeArea',
-        );
-        await ensureDocument(
-            GradeArea,
-            { institution_id: institutionId, grade_id: id(grade), area_id: id(areaLanguage) },
-            { weekly_hours: 3 },
-            'GradeArea',
-        );
-        const aulaOne = await ensureDocument(
-            Aula,
-            { institution_id: institutionId, name: 'Aula 101' },
-            { max_capacity: 35 },
-            'Aula',
-        );
-        const aulaTwo = await ensureDocument(
-            Aula,
-            { institution_id: institutionId, name: 'Aula 102' },
-            { max_capacity: 35 },
-            'Aula',
-        );
-        const groupOne = await ensureDocument(
-            Group,
-            { institution_id: institutionId, school_year_id: id(schoolYear), grade_id: id(grade), name: '6A' },
-            { max_capacity: 35 },
-            'Group',
-        );
-        const groupTwo = await ensureDocument(
-            Group,
-            { institution_id: institutionId, school_year_id: id(schoolYear), grade_id: id(grade), name: '6B' },
-            { max_capacity: 35 },
-            'Group',
-        );
+        const gradesByLevel = new Map<string, any>();
+        for (const gradeSpec of GRADE_SPECS) {
+            const grade = await ensureDocument(
+                Grade,
+                { institution_id: institutionId, name: gradeSpec.name },
+                { level: gradeSpec.level, description: gradeSpec.description },
+                'Grade',
+            );
+            gradesByLevel.set(gradeSpec.level, grade);
 
-        await ensureDocument(
-            Enrollment,
-            { institution_id: institutionId, student_id: id(studentOne.profile), school_year_id: id(schoolYear) },
-            {
-                group_id: id(groupOne),
-                campus_id: id(campus),
-                shift_id: id(shift),
-                status: 'active',
-                previous_enrollment_id: null,
-                closed_at: null,
-                transfer_reason: null,
-                observations: 'Registro demo para validar el portal familiar.',
-            },
-            'Enrollment',
-        );
-        await ensureDocument(
-            Enrollment,
-            { institution_id: institutionId, student_id: id(studentTwo.profile), school_year_id: id(schoolYear) },
-            {
-                group_id: id(groupTwo),
-                campus_id: id(campus),
-                shift_id: id(shift),
-                status: 'active',
-                previous_enrollment_id: null,
-                closed_at: null,
-                transfer_reason: null,
-                observations: 'Segundo estudiante del mismo acudiente.',
-            },
-            'Enrollment',
-        );
-        await ensureDocument(
-            Student,
-            { _id: id(studentOne.profile) },
-            { institution_id: institutionId, group_id: id(groupOne), aula_id: id(aulaOne) },
-            'Student',
-        );
-        await ensureDocument(
-            Student,
-            { _id: id(studentTwo.profile) },
-            { institution_id: institutionId, group_id: id(groupTwo), aula_id: id(aulaTwo) },
-            'Student',
-        );
-        await ensureDocument(
-            GroupTeacher,
-            { institution_id: institutionId, teacher_id: id(teacher.profile), group_id: id(groupOne), area_id: id(areaMath) },
-            {},
-            'GroupTeacher',
-        );
-        await ensureDocument(
-            GroupTeacher,
-            { institution_id: institutionId, teacher_id: id(teacher.profile), group_id: id(groupTwo), area_id: id(areaMath) },
-            {},
-            'GroupTeacher',
-        );
+            await ensureDocument(
+                GradeArea,
+                { institution_id: institutionId, grade_id: id(grade), area_id: id(areaMath) },
+                { weekly_hours: 4 },
+                'GradeArea',
+            );
+            await ensureDocument(
+                GradeArea,
+                { institution_id: institutionId, grade_id: id(grade), area_id: id(areaLanguage) },
+                { weekly_hours: 3 },
+                'GradeArea',
+            );
+        }
+
+        const aulasByGroup = new Map<string, any>();
+        const groupsByName = new Map<string, any>();
+        for (const gradeSpec of GRADE_SPECS) {
+            const grade = gradesByLevel.get(gradeSpec.level);
+            if (!grade) throw new Error(`No se pudo crear el grado ${gradeSpec.name}`);
+
+            for (const section of GROUP_SECTIONS) {
+                const groupName = `${gradeSpec.level}${section}`;
+                const classroomName = groupName === '6A' ? 'Aula 101' : groupName === '6B' ? 'Aula 102' : `Aula ${groupName}`;
+                const aula = await ensureDocument(
+                    Aula,
+                    { institution_id: institutionId, name: classroomName },
+                    { max_capacity: 35 },
+                    'Aula',
+                );
+                const group = await ensureDocument(
+                    Group,
+                    { institution_id: institutionId, school_year_id: id(schoolYear), grade_id: id(grade), name: groupName },
+                    { max_capacity: 35, campus_id: id(campus), shift_id: id(shift) },
+                    'Group',
+                );
+
+                aulasByGroup.set(groupName, aula);
+                groupsByName.set(groupName, group);
+
+                await ensureDocument(
+                    GroupTeacher,
+                    { institution_id: institutionId, teacher_id: id(teacher.profile), group_id: id(group), area_id: id(areaMath) },
+                    {},
+                    'GroupTeacher',
+                );
+            }
+        }
+
+        const seededStudents: Array<SeedIdentity & { groupName: string; slot: number }> = [];
+        for (const [index, studentSpec] of buildStudentSeedSpecs().entries()) {
+            const identitySpec = getStudentIdentitySpec(studentSpec, index);
+            const student = await ensureIdentity({ ...identitySpec, institutionId });
+            const group = groupsByName.get(studentSpec.groupName);
+            const aula = aulasByGroup.get(studentSpec.groupName);
+            if (!group || !aula) throw new Error(`No se pudo preparar el grupo ${studentSpec.groupName}`);
+
+            await ensureDocument(
+                Enrollment,
+                { institution_id: institutionId, student_id: id(student.profile), school_year_id: id(schoolYear) },
+                {
+                    group_id: id(group),
+                    campus_id: id(campus),
+                    shift_id: id(shift),
+                    status: 'active',
+                    previous_enrollment_id: null,
+                    closed_at: null,
+                    transfer_reason: null,
+                    observations: studentSpec.groupName === '6A' && studentSpec.slot === 1
+                        ? 'Registro demo para validar el portal familiar.'
+                        : studentSpec.groupName === '6B' && studentSpec.slot === 1
+                            ? 'Segundo estudiante del mismo acudiente.'
+                            : `Estudiante demo ${studentSpec.groupName}-${studentSpec.slot}.`,
+                },
+                'Enrollment',
+            );
+            await ensureDocument(
+                Student,
+                { _id: id(student.profile) },
+                { institution_id: institutionId, group_id: id(group), aula_id: id(aula) },
+                'Student',
+            );
+
+            seededStudents.push({ ...student, groupName: studentSpec.groupName, slot: studentSpec.slot });
+        }
+
+        const studentOne = seededStudents.find((student) => student.groupName === '6A' && student.slot === 1);
+        const studentTwo = seededStudents.find((student) => student.groupName === '6B' && student.slot === 1);
+        const groupOne = groupsByName.get('6A');
+        const groupTwo = groupsByName.get('6B');
+        const aulaOne = aulasByGroup.get('6A');
+        const aulaTwo = aulasByGroup.get('6B');
+        if (!studentOne?.profile || !studentTwo?.profile || !groupOne || !groupTwo || !aulaOne || !aulaTwo) {
+            throw new Error('El seed no pudo resolver los datos demo de Sexto');
+        }
 
         const gradeItemMath = await ensureDocument(
             GradeItem,

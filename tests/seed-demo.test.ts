@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import Enrollment from '../src/models/EnrollmentModel.js';
+import Group from '../src/models/GroupModel.js';
 
 let mongoServer: MongoMemoryServer;
 let runSeed: (options?: { reset?: boolean }) => Promise<{
@@ -32,10 +34,30 @@ describe('seed-demo', () => {
 
         expect(Object.keys(firstRun.counts)).toHaveLength(30);
         expect(Object.values(firstRun.counts).every((count) => count > 0)).toBe(true);
-        expect(firstRun.counts.Student).toBe(2);
+        expect(firstRun.counts.Grade).toBe(6);
+        expect(firstRun.counts.Group).toBe(12);
+        expect(firstRun.counts.Student).toBe(60);
+        expect(firstRun.counts.Enrollment).toBe(60);
         expect(firstRun.counts.StudentGuardian).toBe(2);
         expect(firstRun.counts.ClassSession).toBe(2);
         expect(firstRun.counts.AttendanceRecord).toBe(2);
+
+        const databaseUrl = process.env.DATABASE_URL;
+        if (!databaseUrl) throw new Error('DATABASE_URL no fue configurada por el test');
+        await mongoose.connect(databaseUrl);
+        try {
+            const seededGroups = await Group.find({ institution_id: firstRun.institutionId }).select('_id name').lean();
+            expect(seededGroups.map((group) => group.name).sort()).toEqual([
+                '10A', '10B', '11A', '11B', '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B',
+            ]);
+            for (const group of seededGroups) {
+                await expect(
+                    Enrollment.countDocuments({ institution_id: firstRun.institutionId, group_id: group._id, status: 'active' }),
+                ).resolves.toBe(5);
+            }
+        } finally {
+            await mongoose.disconnect();
+        }
 
         const secondRun = await runSeed();
 
@@ -47,5 +69,5 @@ describe('seed-demo', () => {
 
         expect(resetRun.counts).toEqual(firstRun.counts);
         expect(Object.values(resetRun.stats).some(({ created }) => created > 0)).toBe(true);
-    });
+    }, 30000);
 });
