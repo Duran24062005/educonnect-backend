@@ -11,6 +11,17 @@ const availabilityWindowSchema = z.object({
     end_time: timeSchema,
 });
 
+const scheduleSlotSchema = z.object({
+    slot_id: z.string().trim().min(1).max(100).optional(),
+    group_id: objectIdSchema,
+    area_id: objectIdSchema,
+    teacher_id: objectIdSchema,
+    aula_id: objectIdSchema,
+    weekday: z.coerce.number().int().min(1).max(7),
+    start_time: timeSchema,
+    end_time: timeSchema,
+});
+
 export const scheduleQuerySchema = {
     query: z.object({ school_year_id: objectIdSchema.optional(), status: z.enum(['draft', 'published', 'archived']).optional() }).passthrough(),
 };
@@ -23,5 +34,9 @@ export const createScheduleSchema = {
 
 export const updateScheduleSchema = {
     params: z.object({ id: objectIdSchema }),
-    body: z.object({ school_days: schoolDaysSchema, availability_windows: z.array(availabilityWindowSchema).max(500) }).passthrough(),
+    body: z.object({
+        school_days: schoolDaysSchema,
+        availability_windows: z.array(availabilityWindowSchema).max(500),
+        slots: z.array(scheduleSlotSchema).max(2000).optional(),
+    }).passthrough(),
 };

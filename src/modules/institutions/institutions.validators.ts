@@ -17,7 +17,7 @@ export const assignInstitutionUserSchema = {
 
 const structureId = { params: z.object({ id: objectIdSchema }) };
 const campusBody = z.object({ name: z.string().trim().min(2).max(120), code: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9-]+$/), address: z.string().trim().max(250).optional(), status: z.enum(['active', 'inactive']).optional() });
-const shiftBody = z.object({ name: z.string().trim().min(2).max(80), code: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9-]+$/), start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), status: z.enum(['active', 'inactive']).optional() });
+const shiftBody = z.object({ name: z.string().trim().min(2).max(80), code: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9-]+$/), shift_type: z.enum(['morning', 'afternoon', 'hybrid']).default('morning'), start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), status: z.enum(['active', 'inactive']).optional() });
 export const campusCreateSchema = { body: campusBody };
 export const campusUpdateSchema = { ...structureId, body: campusBody.partial() };
 export const campusIdSchema = structureId;

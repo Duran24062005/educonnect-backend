@@ -14,7 +14,7 @@ interface InstitutionInput {
 }
 
 interface CampusInput { name: string; code: string; address?: string | null; status?: 'active' | 'inactive'; }
-interface ShiftInput { name: string; code: string; start_time: string; end_time: string; status?: 'active' | 'inactive'; }
+interface ShiftInput { name: string; code: string; shift_type?: 'morning' | 'afternoon' | 'hybrid'; start_time: string; end_time: string; status?: 'active' | 'inactive'; }
 
 class InstitutionService {
     async getInstitutionId(userId: string) {
@@ -160,7 +160,11 @@ class InstitutionService {
 
     async updateShift(userId: string, id: string, input: Partial<ShiftInput>) {
         const institutionId = await this.getInstitutionId(userId);
-        if (input.start_time && input.end_time && input.start_time >= input.end_time) throw new AppError('La hora inicial debe ser anterior a la final', 400);
+        const current = await SchoolShift.findOne({ _id: id, institution_id: institutionId });
+        if (!current) throw new AppError('Jornada no encontrada', 404);
+        const startTime = input.start_time || current.start_time;
+        const endTime = input.end_time || current.end_time;
+        if (startTime >= endTime) throw new AppError('La hora inicial debe ser anterior a la final', 400);
         const shift = await SchoolShift.findOneAndUpdate({ _id: id, institution_id: institutionId }, { ...input, ...(input.code ? { code: input.code.trim().toUpperCase() } : {}) }, { new: true, runValidators: true });
         if (!shift) throw new AppError('Jornada no encontrada', 404);
         return shift;

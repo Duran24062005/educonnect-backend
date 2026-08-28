@@ -4,6 +4,11 @@ import WeeklySchedule from '../../models/WeeklyScheduleModel.js';
 import Institution from '../../models/InstitutionModel.js';
 import SchoolYear from '../../models/SchoolYearModel.js';
 import Group from '../../models/GroupModel.js';
+import Area from '../../models/AreaModel.js';
+import Teacher from '../../models/TeacherModel.js';
+import Aula from '../../models/AulaModel.js';
+import GradeArea from '../../models/GradeAreaModel.js';
+import GroupTeacher from '../../models/GroupTeacherModel.js';
 import AppError from '../../utils/AppError.js';
 import AuditLogService from '../audit/AuditLogService.js';
 
@@ -129,7 +134,16 @@ class ScheduleService {
             status: 'draft',
             school_days: published?.school_days || institution.school_days || [1, 2, 3, 4, 5],
             availability_windows: await this.initialWindows(schoolYearId, published),
-            slots: [],
+            slots: (published?.slots || []).map((slot) => ({
+                slot_id: slot.slot_id,
+                group_id: slot.group_id,
+                area_id: slot.area_id,
+                teacher_id: slot.teacher_id,
+                aula_id: slot.aula_id,
+                weekday: slot.weekday,
+                start_time: slot.start_time,
+                end_time: slot.end_time,
+            })),
             created_by: userId,
             updated_by: userId,
         });
@@ -145,6 +159,12 @@ class ScheduleService {
             ...window,
             window_id: window.window_id || randomUUID(),
         }));
+        if (data.slots !== undefined) {
+            schedule.slots = data.slots.map((slot) => ({
+                ...slot,
+                slot_id: slot.slot_id || randomUUID(),
+            }));
+        }
         schedule.updated_by = userId;
         await schedule.save();
         return this.serializeSchedule(await WeeklySchedule.findById(schedule._id).populate(schedulePopulate));
@@ -154,7 +174,9 @@ class ScheduleService {
         const errors = [];
         const schoolDays = [...new Set((schedule.school_days || []).map(Number))];
         if (!schoolDays.length || schoolDays.some((day) => day < 1 || day > 7)) errors.push('Configura al menos un día lectivo válido');
-        if (!(schedule.availability_windows || []).length) errors.push('Configura al menos una ventana de disponibilidad');
+        if (!(schedule.availability_windows || []).length && !(schedule.slots || []).length) {
+            errors.push('Configura al menos una ventana o clase del horario');
+        }
 
         const seenGroups = new Set();
         const seenWindows = new Set();
@@ -175,6 +197,61 @@ class ScheduleService {
                 errors.push(`El grupo ${group.name} debe tener una jornada activa configurada`);
             } else if (minutes(window.start_time) < minutes(group.shift_id.start_time) || minutes(window.end_time) > minutes(group.shift_id.end_time)) {
                 errors.push(`La ventana del grupo ${group.name} debe estar dentro de su jornada ${group.shift_id.name}`);
+            }
+        }
+
+        const seenSlots = new Set();
+        const resourceSlots = new Map();
+        for (const slot of schedule.slots || []) {
+            if (seenSlots.has(slot.slot_id)) errors.push(`El bloque ${slot.slot_id} está duplicado`);
+            seenSlots.add(slot.slot_id);
+
+            if (!schoolDays.includes(Number(slot.weekday))) {
+                errors.push(`El bloque ${slot.slot_id} usa un día que no está configurado como lectivo`);
+            }
+            if (minutes(slot.end_time) <= minutes(slot.start_time)) {
+                errors.push(`La hora final del bloque ${slot.slot_id} debe ser posterior a la inicial`);
+            }
+
+            const group = await Group.findById(slot.group_id).populate('grade_id').populate('school_year_id').populate('shift_id');
+            const [area, teacher, aula] = await Promise.all([
+                Area.findById(slot.area_id),
+                Teacher.findById(slot.teacher_id),
+                Aula.findById(slot.aula_id),
+            ]);
+            if (!group) errors.push(`Grupo no encontrado para el bloque ${slot.slot_id}`);
+            if (!area) errors.push(`Materia no encontrada para el bloque ${slot.slot_id}`);
+            if (!teacher) errors.push(`Docente no encontrado para el bloque ${slot.slot_id}`);
+            if (!aula) errors.push(`Aula no encontrada para el bloque ${slot.slot_id}`);
+            if (!group || !area || !teacher || !aula) continue;
+
+            if (id(group.school_year_id) !== id(schedule.school_year_id)) {
+                errors.push(`El grupo del bloque ${slot.slot_id} no pertenece al año escolar`);
+            }
+            if (!(await GradeArea.exists({ grade_id: group.grade_id, area_id: area._id }))) {
+                errors.push(`La materia ${area.name} no está configurada para el grado del grupo ${group.name}`);
+            }
+            if (!(await GroupTeacher.exists({ teacher_id: teacher._id, group_id: group._id, area_id: area._id }))) {
+                errors.push(`El docente no está asignado a ${group.name} y ${area.name}`);
+            }
+            if (!group.shift_id || group.shift_id.status !== 'active') {
+                errors.push(`El grupo ${group.name} debe tener una jornada activa configurada`);
+            } else if (minutes(slot.start_time) < minutes(group.shift_id.start_time) || minutes(slot.end_time) > minutes(group.shift_id.end_time)) {
+                errors.push(`El bloque de ${group.name} debe estar dentro de su jornada ${group.shift_id.name}`);
+            }
+
+            for (const resource of [
+                ['grupo', id(group._id)],
+                ['docente', id(teacher._id)],
+                ['aula', id(aula._id)],
+            ]) {
+                const resourceKey = `${resource[0]}:${resource[1]}:${slot.weekday}`;
+                const previous = resourceSlots.get(resourceKey) || [];
+                if (previous.some((item) => minutes(slot.start_time) < minutes(item.end_time) && minutes(slot.end_time) > minutes(item.start_time))) {
+                    errors.push(`El bloque ${slot.slot_id} se cruza con otro bloque del mismo ${resource[0]}`);
+                }
+                previous.push(slot);
+                resourceSlots.set(resourceKey, previous);
             }
         }
         return errors;
@@ -225,12 +302,26 @@ class ScheduleService {
         const { local, localEnd, occurrenceDate } = await this.assertSessionDate(institutionId, data, references);
         if (!schedule.school_days.includes(local.weekday)) throw new AppError('La fecha no corresponde a un día lectivo', 409);
 
+        const slots = schedule.slots || [];
         const window = (schedule.availability_windows || []).find((item) => id(item.group_id) === id(data.group_id));
-        if (!window) throw new AppError('El grupo no tiene una ventana de disponibilidad publicada', 409);
-        if (minutes(local.time) < minutes(window.start_time) || minutes(localEnd.time) > minutes(window.end_time)) {
+        if (!window && !slots.length) throw new AppError('El grupo no tiene una ventana de disponibilidad publicada', 409);
+        if (window && (minutes(local.time) < minutes(window.start_time) || minutes(localEnd.time) > minutes(window.end_time))) {
             throw new AppError(`La sesión debe estar dentro de la jornada permitida (${window.start_time} - ${window.end_time})`, 409);
         }
-        return { schedule, window, occurrenceDate, local };
+
+        const matchingSlot = slots.length
+            ? slots.find((slot) => id(slot.group_id) === id(data.group_id)
+                && id(slot.area_id) === id(data.area_id)
+                && id(slot.teacher_id) === id(data.teacher_id)
+                && Number(slot.weekday) === Number(local.weekday)
+                && minutes(local.time) >= minutes(slot.start_time)
+                && minutes(localEnd.time) <= minutes(slot.end_time))
+            : null;
+        if (slots.length && !matchingSlot) {
+            throw new AppError('La sesión no coincide con un bloque publicado para el grupo, materia, docente y hora seleccionados', 409);
+        }
+
+        return { schedule, window, slot: matchingSlot, occurrenceDate, local };
     }
 }
 
