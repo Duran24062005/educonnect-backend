@@ -157,15 +157,17 @@ describe('Institution structure', () => {
         const created = await request(app)
             .post('/api/institutions/current/shifts')
             .set('Authorization', 'Bearer ' + token)
-            .send({ name: 'Jornada mañana', code: 'AM', start_time: '07:00', end_time: '12:00' });
+            .send({ name: 'Jornada mañana', code: 'AM', shift_type: 'morning', start_time: '07:00', end_time: '12:00' });
         expect(created.status).toBe(201);
+        expect(created.body.data.shift_type).toBe('morning');
 
         const updated = await request(app)
             .patch('/api/institutions/current/shifts/' + created.body.data._id)
             .set('Authorization', 'Bearer ' + token)
-            .send({ end_time: '13:00' });
+            .send({ shift_type: 'hybrid', end_time: '13:00' });
         expect(updated.status).toBe(200);
         expect(updated.body.data.end_time).toBe('13:00');
+        expect(updated.body.data.shift_type).toBe('hybrid');
     });
 
     it('persists optional campus and shift references on an enrollment', async () => {

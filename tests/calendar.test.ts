@@ -356,4 +356,71 @@ describe('Calendar API', () => {
         expect(archived.statusCode).toBe(200);
         expect(archived.body.data.schedules).toHaveLength(1);
     });
+
+    test('persists exact weekly subject slots and enforces them for scheduled sessions', async () => {
+        const draft = await request(app)
+            .post('/api/calendar/schedules/drafts')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ school_year_id: schoolYear._id.toString() });
+        expect(draft.statusCode).toBe(201);
+
+        const updated = await request(app)
+            .patch(`/api/calendar/schedules/${draft.body.data.id}`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                school_days: [1, 2, 3, 4, 5],
+                availability_windows: [{ window_id: 'window-7a', group_id: group._id.toString(), start_time: '06:15', end_time: '12:15' }],
+                slots: [{
+                    slot_id: 'martes-matematicas-0615',
+                    group_id: group._id.toString(),
+                    area_id: area._id.toString(),
+                    teacher_id: teacherProfile._id.toString(),
+                    aula_id: aula._id.toString(),
+                    weekday: 2,
+                    start_time: '06:15',
+                    end_time: '08:15',
+                }],
+            });
+        expect(updated.statusCode).toBe(200);
+        expect(updated.body.data.slots[0].area.name).toBe('Matemáticas');
+
+        const legacyUpdate = await request(app)
+            .patch(`/api/calendar/schedules/${draft.body.data.id}`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                school_days: [1, 2, 3, 4, 5],
+                availability_windows: [{ window_id: 'window-7a', group_id: group._id.toString(), start_time: '06:15', end_time: '12:15' }],
+            });
+        expect(legacyUpdate.statusCode).toBe(200);
+        expect(legacyUpdate.body.data.slots).toHaveLength(1);
+
+        const published = await request(app)
+            .post(`/api/calendar/schedules/${draft.body.data.id}/publish`)
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(published.statusCode).toBe(200);
+        expect(published.body.data.slots[0].slot_id).toBe('martes-matematicas-0615');
+
+        const allowed = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-09-01T12:00:00.000Z',
+                end_at: '2026-09-01T13:00:00.000Z',
+                topic: 'Clase dentro del bloque',
+            });
+        expect(allowed.statusCode).toBe(201);
+        expect(allowed.body.data.schedule_slot_id).toBe('martes-matematicas-0615');
+
+        const outsideSlot = await request(app)
+            .post('/api/calendar/sessions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({
+                ...sessionInput,
+                start_at: '2026-09-01T14:00:00.000Z',
+                end_at: '2026-09-01T15:00:00.000Z',
+                topic: 'Clase fuera del bloque',
+            });
+        expect(outsideSlot.statusCode).toBe(409);
+    });
 });
