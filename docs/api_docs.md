@@ -37,6 +37,8 @@ La recuperación responde de forma genérica para no revelar si un correo existe
 - `GET /api/institutions/current` (protegido)
 - `GET /api/institutions/current/schedule-config` (protegido; días lectivos y zona horaria)
 - `PATCH /api/institutions/current/schedule-config` (Admin; actualiza días lectivos)
+
+Las jornadas institucionales incluyen `shift_type` (`morning`, `afternoon` o `hybrid`) además de nombre, código y rango horario. Los registros anteriores sin este campo se leen como `morning`.
 - `PATCH /api/institutions/current/users/:user_id` (Admin)
 
 ### Auditoría
@@ -53,8 +55,10 @@ La recuperación responde de forma genérica para no revelar si un correo existe
 - `PATCH /api/calendar/sessions/:id` (Admin o docente autorizado; editar, cancelar o reactivar)
 - `GET /api/calendar/schedules` (Admin; horarios por año y estado)
 - `POST /api/calendar/schedules/drafts` (Admin)
-- `PATCH /api/calendar/schedules/:id` (Admin; días y ventanas por grupo)
+- `PATCH /api/calendar/schedules/:id` (Admin; días, ventanas compatibles y slots exactos por grupo/materia/día/hora)
 - `POST /api/calendar/schedules/:id/publish` (Admin)
+
+Los horarios aceptan `slots` con `slot_id`, `group_id`, `area_id`, `teacher_id`, `aula_id`, `weekday`, `start_time` y `end_time`. Cuando un horario publicado contiene slots, una sesión calendarizada debe coincidir con el grupo, materia, docente, día y rango de uno de ellos. Los horarios históricos que solo tienen `availability_windows` conservan su comportamiento anterior.
 
 ### Usuarios
 

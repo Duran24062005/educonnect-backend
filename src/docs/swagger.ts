@@ -461,6 +461,7 @@ const options = {
                             properties: {
                                 name: { type: 'string' },
                                 code: { type: 'string' },
+                                shift_type: { type: 'string', enum: ['morning', 'afternoon', 'hybrid'], example: 'morning' },
                                 start_time: { type: 'string', example: '07:00' },
                                 end_time: { type: 'string', example: '12:00' },
                                 status: { type: 'string', enum: ['active', 'inactive'] },
@@ -620,10 +621,10 @@ const options = {
             '/api/calendar/schedules/{id}': {
                 patch: {
                     tags: ['Calendar'],
-                    summary: 'Actualizar días y ventanas de disponibilidad',
+                    summary: 'Actualizar días, ventanas y clases exactas de disponibilidad',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }],
-                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_days', 'availability_windows'], properties: { school_days: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 7 } }, availability_windows: { type: 'array', items: { type: 'object', required: ['group_id', 'start_time', 'end_time'] } } } }) },
+                    requestBody: { required: true, content: jsonContent({ type: 'object', required: ['school_days', 'availability_windows'], properties: { school_days: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 7 } }, availability_windows: { type: 'array', items: { type: 'object', required: ['group_id', 'start_time', 'end_time'] } }, slots: { type: 'array', items: { type: 'object', required: ['group_id', 'area_id', 'teacher_id', 'aula_id', 'weekday', 'start_time', 'end_time'], properties: { slot_id: { type: 'string' }, group_id: { type: 'string' }, area_id: { type: 'string' }, teacher_id: { type: 'string' }, aula_id: { type: 'string' }, weekday: { type: 'integer', minimum: 1, maximum: 7 }, start_time: { type: 'string', example: '06:15' }, end_time: { type: 'string', example: '08:15' } } } } } }) },
                     responses: { 200: { description: 'Borrador actualizado' }, 409: { description: 'Horario inválido' } },
                 },
             },
