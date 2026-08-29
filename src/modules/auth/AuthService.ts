@@ -9,7 +9,7 @@ import { generatePasswordResetToken, verifyPasswordResetToken } from '../../util
 import SessionService from './SessionService.js';
 import AuditLogService from '../audit/AuditLogService.js';
 import MediaUrlService from '../../shared/storage/mediaUrl.service.js';
-import { sendPasswordResetEmail } from '../../shared/EmailService.js';
+import { sendInstitutionAdminInvitation, sendPasswordResetEmail } from '../../shared/EmailService.js';
 
 const PASSWORD_RESET_MESSAGE =
     'Si el correo está registrado, recibirás un código para recuperar tu contraseña.';
@@ -239,6 +239,38 @@ class AuthService {
         await sendPasswordResetEmail(user.email, firstName, code);
 
         return { message: PASSWORD_RESET_MESSAGE };
+    }
+
+    /**
+     * Genera un reto de contraseña para un administrador creado por la
+     * plataforma. El código solo se entrega al servicio de correo.
+     */
+    async issueInstitutionAdminInvitation(userId) {
+        const user = await UserRepository.findById(userId);
+        if (!user || !user.person_id) {
+            throw new AppError('Administrador institucional no encontrado', 404);
+        }
+
+        const code = generatePasswordResetCode();
+        await PasswordResetRepository.invalidateActive(user._id);
+        await PasswordResetRepository.create({
+            user_id: user._id,
+            institution_id: user.institution_id || null,
+            code_hash: hashPasswordResetCode(code),
+            expires_at: new Date(Date.now() + PASSWORD_RESET_CODE_TTL_MS),
+            attempts: 0,
+        });
+
+        const email = await sendInstitutionAdminInvitation(
+            user.email,
+            user.person_id.first_name || 'administrador',
+            code
+        );
+
+        return {
+            sent: email?.sent !== false && !email?.error,
+            skipped: Boolean(email?.skipped),
+        };
     }
 
     /**

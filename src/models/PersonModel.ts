@@ -38,7 +38,7 @@ const personSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ['Student', 'Teacher', 'Admin', 'Parent', 'Guardian'],
+            enum: ['Student', 'Teacher', 'Admin', 'SuperAdmin', 'Parent', 'Guardian'],
             required: [true, 'El rol es requerido'],
         },
         status: {

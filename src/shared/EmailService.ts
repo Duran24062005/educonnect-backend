@@ -200,3 +200,26 @@ export const sendPasswordResetEmail = async (email, firstName, resetCode) => {
         return { error: error.message, sent: false };
     }
 };
+
+/**
+ * Envía el código inicial para que un administrador institucional establezca
+ * su contraseña. Reutiliza la plantilla existente para no introducir una
+ * dependencia obligatoria en el proveedor de correo durante el MVP.
+ */
+export const sendInstitutionAdminInvitation = async (email, firstName, resetCode) => {
+    try {
+        return await sendTemplateEmail({
+            recipient: email,
+            subject: 'Invitación para administrar tu institución en EduConnect',
+            templateName: 'reset_password.html',
+            templateData: {
+                nombre: firstName,
+                empresa: EMAIL_COMPANY,
+                codigo: resetCode,
+            },
+        });
+    } catch (error) {
+        console.error('Institution invitation email error:', error.message);
+        return { error: error.message, sent: false };
+    }
+};
