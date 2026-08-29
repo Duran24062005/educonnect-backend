@@ -32,7 +32,7 @@ describe('seed-demo', () => {
     it('covers every persistent model and remains idempotent', async () => {
         const firstRun = await runSeed();
 
-        expect(Object.keys(firstRun.counts)).toHaveLength(30);
+        expect(Object.keys(firstRun.counts)).toHaveLength(32);
         expect(Object.values(firstRun.counts).every((count) => count > 0)).toBe(true);
         expect(firstRun.counts.Grade).toBe(6);
         expect(firstRun.counts.Group).toBe(12);
@@ -40,6 +40,8 @@ describe('seed-demo', () => {
         expect(firstRun.counts.Enrollment).toBe(60);
         expect(firstRun.counts.StudentGuardian).toBe(2);
         expect(firstRun.counts.ClassSession).toBe(2);
+        expect(firstRun.counts.ScheduleEntry).toBe(2);
+        expect(firstRun.counts.LessonPlan).toBe(1);
         expect(firstRun.counts.AttendanceRecord).toBe(2);
 
         const databaseUrl = process.env.DATABASE_URL;

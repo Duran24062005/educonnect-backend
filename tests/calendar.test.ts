@@ -289,9 +289,8 @@ describe('Calendar API', () => {
                 end_at: '2026-08-31T14:00:00.000Z',
                 topic: 'Clase registrada por docente',
             });
-        expect(teacherSession.statusCode).toBe(201);
-        expect(teacherSession.body.data.source).toBe('schedule');
-        expect(teacherSession.body.data.schedule_window_id).toBe('window-7a');
+        expect(teacherSession.statusCode).toBe(403);
+        expect(teacherSession.body.message).toContain('generadas por el horario institucional');
 
         const outsideWindow = await request(app)
             .post('/api/calendar/sessions')
@@ -302,7 +301,7 @@ describe('Calendar API', () => {
                 end_at: '2026-08-31T18:00:00.000Z',
                 topic: 'Fuera de jornada',
             });
-        expect(outsideWindow.statusCode).toBe(409);
+        expect(outsideWindow.statusCode).toBe(403);
 
         const outsideByAdmin = await request(app)
             .post('/api/calendar/sessions')
@@ -334,7 +333,7 @@ describe('Calendar API', () => {
             .query({ ...range, school_year_id: schoolYear._id.toString() })
             .set('Authorization', `Bearer ${teacher.token}`);
         expect(teacherCalendar.statusCode).toBe(200);
-        expect(teacherCalendar.body.data.sessions).toHaveLength(3);
+        expect(teacherCalendar.body.data.sessions).toHaveLength(2);
         expect(teacherCalendar.body.data.sessions.every((item) => item.teacher._id.toString() === teacherProfile._id.toString())).toBe(true);
     });
 
@@ -431,8 +430,47 @@ describe('Calendar API', () => {
                 end_at: '2026-09-01T13:00:00.000Z',
                 topic: 'Clase dentro del bloque',
             });
-        expect(allowed.statusCode).toBe(201);
-        expect(allowed.body.data.schedule_slot_id).toBe('martes-matematicas-0615');
+        expect(allowed.statusCode).toBe(409);
+
+        const generated = await request(app)
+            .get('/api/calendar')
+            .query({ from: '2026-09-01', to: '2026-09-01', school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(generated.statusCode).toBe(200);
+        const generatedSession = generated.body.data.sessions.find((item) => item.schedule_slot_id === 'martes-matematicas-0615');
+        expect(generatedSession).toBeTruthy();
+
+        const entries = await request(app)
+            .get(`/api/calendar/schedules/${draft.body.data.id}/entries`)
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(entries.statusCode).toBe(200);
+        expect(entries.body.data.entries).toHaveLength(1);
+
+        const plan = await request(app)
+            .post('/api/lesson-plans')
+            .set('Authorization', `Bearer ${teacher.token}`)
+            .send({ session_id: generatedSession._id, topic: 'Ecuaciones lineales', learning_objective: 'Resolver ecuaciones de primer grado', status: 'completed' });
+        expect(plan.statusCode).toBe(201);
+        expect(plan.body.data.status).toBe('completed');
+
+        const studentPlan = await request(app)
+            .get(`/api/lesson-plans/session/${generatedSession._id}`)
+            .set('Authorization', `Bearer ${student.token}`);
+        expect(studentPlan.statusCode).toBe(200);
+        expect(studentPlan.body.data.topic).toBe('Ecuaciones lineales');
+
+        const teacherSessionUpdate = await request(app)
+            .patch(`/api/calendar/sessions/${generatedSession._id}`)
+            .set('Authorization', `Bearer ${teacher.token}`)
+            .send({ start_at: '2026-09-01T15:00:00.000Z' });
+        expect(teacherSessionUpdate.statusCode).toBe(403);
+
+        const cancellation = await request(app)
+            .post('/api/calendar/exceptions')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ type: 'cancelled', session_id: generatedSession._id, reason: 'Jornada institucional suspendida' });
+        expect(cancellation.statusCode).toBe(201);
+        expect(cancellation.body.data.status).toBe('cancelled');
 
         const outsideSlot = await request(app)
             .post('/api/calendar/sessions')
@@ -444,5 +482,35 @@ describe('Calendar API', () => {
                 topic: 'Clase fuera del bloque',
             });
         expect(outsideSlot.statusCode).toBe(409);
+    });
+
+    test('supports canonical teaching assignments and schedule entries', async () => {
+        const outsiderProfile = await Teacher.findOne({ user_id: outsiderTeacher.user._id });
+        const assignment = await request(app)
+            .post('/api/teaching-assignments')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ school_year_id: schoolYear._id.toString(), teacher_id: outsiderProfile._id.toString(), group_id: group._id.toString(), area_id: area._id.toString() });
+        expect(assignment.statusCode).toBe(201);
+        expect(assignment.body.data.status).toBe('active');
+
+        const draft = await request(app)
+            .post('/api/calendar/schedules/drafts')
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ school_year_id: schoolYear._id.toString() });
+        expect(draft.statusCode).toBe(201);
+
+        const entry = await request(app)
+            .post(`/api/calendar/schedules/${draft.body.data.id}/entries`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ teaching_assignment_id: assignment.body.data.id, aula_id: aula._id.toString(), entry_key: 'jueves-outsider-0900', weekday: 4, start_time: '09:00', end_time: '10:00' });
+        expect(entry.statusCode).toBe(201);
+        expect(entry.body.data.group.id.toString()).toBe(group._id.toString());
+        expect(entry.body.data.teacher.id.toString()).toBe(outsiderProfile._id.toString());
+
+        const duplicate = await request(app)
+            .post(`/api/calendar/schedules/${draft.body.data.id}/entries`)
+            .set('Authorization', `Bearer ${admin.token}`)
+            .send({ teaching_assignment_id: assignment.body.data.id, aula_id: aula._id.toString(), entry_key: 'jueves-outsider-0930', weekday: 4, start_time: '09:30', end_time: '10:30' });
+        expect(duplicate.statusCode).toBe(409);
     });
 });

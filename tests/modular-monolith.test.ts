@@ -16,13 +16,15 @@ describe('modular monolith composition', () => {
             'analytics',
             'activities',
             'materials',
-            'notifications',
             'platform',
+            'notifications',
             'institutions',
             'audit',
             'calendar',
             'attendance',
             'imports',
+            'teachingAssignments',
+            'lessonPlans',
         ]);
         expect(new Set(names).size).toBe(names.length);
         expect(new Set(basePaths).size).toBe(basePaths.length);

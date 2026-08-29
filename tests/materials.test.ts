@@ -17,6 +17,7 @@ let GroupTeacher: any;
 let Enrollment: any;
 let Aula: any;
 let ClassSession: any;
+let LessonPlan: any;
 let Material: any;
 let mongoServer: MongoMemoryServer;
 let sequence = 0;
@@ -82,6 +83,7 @@ beforeAll(async () => {
     ({ default: Enrollment } = await import('../src/models/EnrollmentModel.js'));
     ({ default: Aula } = await import('../src/models/AulaModel.js'));
     ({ default: ClassSession } = await import('../src/models/ClassSessionModel.js'));
+    ({ default: LessonPlan } = await import('../src/models/LessonPlanModel.js'));
     ({ default: Material } = await import('../src/models/MaterialModel.js'));
     await appConfig.connectDatabase();
 });
@@ -196,7 +198,8 @@ describe('Materials API', () => {
             ;
         expect(created.statusCode).toBe(201);
         const refreshedSession = await ClassSession.findById(session._id);
-        expect(refreshedSession.topic).toBe('Sistemas de ecuaciones');
+        expect(refreshedSession.topic).toBe('Ecuaciones lineales');
+        expect((await LessonPlan.findOne({ session_id: session._id })).topic).toBe('Sistemas de ecuaciones');
 
         await ClassSession.findByIdAndUpdate(session._id, { status: 'cancelled' });
         const studentList = await request(app).get('/api/materials/student/me').set('Authorization', `Bearer ${student.token}`).expect(200);
