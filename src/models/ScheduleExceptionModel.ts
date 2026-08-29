@@ -22,7 +22,16 @@ const scheduleExceptionSchema = new mongoose.Schema(
 );
 
 scheduleExceptionSchema.index({ institution_id: 1, school_year_id: 1, occurrence_date: 1, status: 1 });
-scheduleExceptionSchema.index({ institution_id: 1, schedule_entry_id: 1, occurrence_date: 1 }, { unique: true, sparse: true });
+scheduleExceptionSchema.index(
+    { institution_id: 1, schedule_entry_id: 1, occurrence_date: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            schedule_entry_id: { $type: 'objectId' },
+            occurrence_date: { $type: 'date' },
+        },
+    }
+);
 
 tenantPlugin(scheduleExceptionSchema);
 

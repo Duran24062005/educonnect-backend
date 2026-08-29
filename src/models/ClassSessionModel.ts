@@ -125,7 +125,18 @@ classSessionSchema.index({ aula_id: 1, start_at: 1 });
 classSessionSchema.index({ institution_id: 1, school_year_id: 1, start_at: 1 });
 classSessionSchema.index({ schedule_id: 1, schedule_slot_id: 1, occurrence_date: 1 }, { sparse: true });
 classSessionSchema.index({ schedule_id: 1, schedule_window_id: 1, occurrence_date: 1 }, { sparse: true });
-classSessionSchema.index({ institution_id: 1, schedule_entry_id: 1, occurrence_date: 1 }, { unique: true, sparse: true });
+// Solo las sesiones materializadas desde una entrada de horario participan en
+// la unicidad. Las sesiones legacy/manuales guardan estos campos como null.
+classSessionSchema.index(
+    { institution_id: 1, schedule_entry_id: 1, occurrence_date: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            schedule_entry_id: { $type: 'objectId' },
+            occurrence_date: { $type: 'date' },
+        },
+    }
+);
 
 tenantPlugin(classSessionSchema);
 
