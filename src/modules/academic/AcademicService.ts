@@ -426,10 +426,10 @@ class AcademicService {
     // ===========================
 
     async createAula(data) {
-        const { name, max_capacity } = data;
+        const { name, max_capacity, campus_id = null } = data;
         if (!name || !max_capacity) throw new AppError('Nombre y capacidad son requeridos', 400);
         if (max_capacity < 1) throw new AppError('La capacidad debe ser mayor a 0', 400);
-        return await aulaRepository.create({ name, max_capacity });
+        return await aulaRepository.create({ name, max_capacity, campus_id });
     }
 
     async getAllAulas() {

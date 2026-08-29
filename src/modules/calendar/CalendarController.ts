@@ -19,6 +19,11 @@ class CalendarController {
         res.status(200).json({ status: 'success', data: result });
     });
 
+    getSession = asyncHandler(async (req, res) => {
+        const result = await CalendarService.getSession(req.params.id, req.userRole, req.userId);
+        res.status(200).json({ status: 'success', data: result });
+    });
+
     getCatalog = asyncHandler(async (req, res) => {
         const result = await CalendarService.catalog(req.userRole, req.userId, req.query.school_year_id);
         res.status(200).json({ status: 'success', data: result });

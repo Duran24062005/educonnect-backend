@@ -101,6 +101,7 @@ export const createAulaSchema = {
         .object({
             name: z.string().trim().min(1),
             max_capacity: z.coerce.number().int().min(1),
+            campus_id: objectIdSchema.nullable().optional(),
         })
         .passthrough(),
 };
@@ -111,6 +112,7 @@ export const updateAulaSchema = {
         .object({
             name: z.string().trim().min(1).optional(),
             max_capacity: z.coerce.number().int().min(1).optional(),
+            campus_id: objectIdSchema.nullable().optional(),
         })
         .passthrough(),
 };

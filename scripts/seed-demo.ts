@@ -10,6 +10,7 @@ import AuditLog from '../src/models/AuditLogModel.js';
 import Aula from '../src/models/AulaModel.js';
 import Campus from '../src/models/CampusModel.js';
 import ClassSession from '../src/models/ClassSessionModel.js';
+import LessonPlan from '../src/models/LessonPlanModel.js';
 import Enrollment from '../src/models/EnrollmentModel.js';
 import FinalResult from '../src/models/FinalResultModel.js';
 import GradeArea from '../src/models/GradeAreaModel.js';
@@ -25,6 +26,9 @@ import Period from '../src/models/PeriodModel.js';
 import Person from '../src/models/PersonModel.js';
 import SchoolShift from '../src/models/SchoolShiftModel.js';
 import SchoolYear from '../src/models/SchoolYearModel.js';
+import ScheduleEntry from '../src/models/ScheduleEntryModel.js';
+import WeeklySchedule from '../src/models/WeeklyScheduleModel.js';
+import { default as ScheduleEntryService } from '../src/modules/calendar/ScheduleEntryService.js';
 import Session from '../src/models/SessionModel.js';
 import StudentGuardian from '../src/models/StudentGuardianModel.js';
 import StudentGrade from '../src/models/StudentGradeModel.js';
@@ -356,6 +360,8 @@ const verifyCoverage = async (institutionId: mongoose.Types.ObjectId, sessionJti
         ['Activity', countFor(Activity, { institution_id: institutionId })],
         ['ActivitySubmission', countFor(ActivitySubmission, { institution_id: institutionId })],
         ['ClassSession', countFor(ClassSession, { institution_id: institutionId })],
+        ['ScheduleEntry', countFor(ScheduleEntry, { institution_id: institutionId })],
+        ['LessonPlan', countFor(LessonPlan, { institution_id: institutionId })],
         ['AttendanceSession', countFor(AttendanceSession, { institution_id: institutionId })],
         ['AttendanceRecord', countFor(AttendanceRecord, { institution_id: institutionId })],
         ['StudentGuardian', countFor(StudentGuardian, { institution_id: institutionId })],
@@ -536,7 +542,7 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
                 const aula = await ensureDocument(
                     Aula,
                     { institution_id: institutionId, name: classroomName },
-                    { max_capacity: 35 },
+                    { max_capacity: 35, campus_id: id(campus) },
                     'Aula',
                 );
                 const group = await ensureDocument(
@@ -552,11 +558,42 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
                 await ensureDocument(
                     GroupTeacher,
                     { institution_id: institutionId, teacher_id: id(teacher.profile), group_id: id(group), area_id: id(areaMath) },
-                    {},
+                    { school_year_id: id(schoolYear), status: 'active' },
                     'GroupTeacher',
                 );
             }
         }
+
+        const weeklySchedule = await ensureDocument(
+            WeeklySchedule,
+            { institution_id: institutionId, school_year_id: id(schoolYear), status: 'published' },
+            {
+                version: 1,
+                school_days: [1, 2, 3, 4, 5],
+                availability_windows: [...groupsByName.values()].map((group) => ({ group_id: id(group), window_id: `seed-window-${group.name}`, start_time: '07:00', end_time: '13:00' })),
+                slots: [],
+                created_by: id(admin.user),
+                updated_by: id(admin.user),
+                published_by: id(admin.user),
+                published_at: at(0, 7),
+            },
+            'WeeklySchedule',
+        );
+        const createSeedEntry = async (groupName: string, startTime: string, endTime: string) => {
+            const group = groupsByName.get(groupName);
+            const aula = aulasByGroup.get(groupName);
+            const assignment = await GroupTeacher.findOne({ institution_id: institutionId, group_id: id(group), teacher_id: id(teacher.profile), area_id: id(areaMath) });
+            if (!group || !aula || !assignment) throw new Error(`No se pudo crear la entrada demo de ${groupName}`);
+            return ensureDocument(
+                ScheduleEntry,
+                { institution_id: institutionId, schedule_id: id(weeklySchedule), entry_key: `seed-${groupName}-martes` },
+                { teaching_assignment_id: id(assignment), school_year_id: id(schoolYear), group_id: id(group), area_id: id(areaMath), teacher_id: id(teacher.profile), campus_id: id(campus), aula_id: id(aula), weekday: 2, start_time: startTime, end_time: endTime, status: 'active' },
+                'ScheduleEntry',
+            );
+        };
+        const seedEntryOne = await createSeedEntry('6A', '08:00', '09:00');
+        const seedEntryTwo = await createSeedEntry('6B', '10:00', '11:00');
+        await ScheduleEntryService.materialize(weeklySchedule);
 
         const seededStudents: Array<SeedIdentity & { groupName: string; slot: number }> = [];
         for (const [index, studentSpec] of buildStudentSeedSpecs().entries()) {
@@ -691,12 +728,16 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
 
         await ensureDocument(
             ClassSession,
-            { institution_id: institutionId, group_id: id(groupOne), area_id: id(areaMath), start_at: at(1, 8) },
+            { institution_id: institutionId, schedule_entry_id: id(seedEntryOne), occurrence_date: new Date('2026-08-25T00:00:00.000Z') },
             {
                 school_year_id: id(schoolYear),
+                group_id: id(groupOne),
+                area_id: id(areaMath),
                 teacher_id: id(teacher.profile),
                 aula_id: id(aulaOne),
-                end_at: at(1, 9),
+                schedule_id: id(weeklySchedule),
+                start_at: new Date('2026-08-25T13:00:00.000Z'),
+                end_at: new Date('2026-08-25T14:00:00.000Z'),
                 topic: 'Fracciones equivalentes',
                 status: 'scheduled',
                 created_by: id(admin.user),
@@ -706,12 +747,16 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
         );
         await ensureDocument(
             ClassSession,
-            { institution_id: institutionId, group_id: id(groupTwo), area_id: id(areaMath), start_at: at(1, 10) },
+            { institution_id: institutionId, schedule_entry_id: id(seedEntryTwo), occurrence_date: new Date('2026-08-25T00:00:00.000Z') },
             {
                 school_year_id: id(schoolYear),
+                group_id: id(groupTwo),
+                area_id: id(areaMath),
                 teacher_id: id(teacher.profile),
                 aula_id: id(aulaTwo),
-                end_at: at(1, 11),
+                schedule_id: id(weeklySchedule),
+                start_at: new Date('2026-08-25T15:00:00.000Z'),
+                end_at: new Date('2026-08-25T16:00:00.000Z'),
                 topic: 'Problemas con porcentajes',
                 status: 'scheduled',
                 created_by: id(admin.user),
@@ -719,6 +764,15 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
             },
             'ClassSession',
         );
+        const seededSessionOne = await ClassSession.findOne({ institution_id: institutionId, schedule_entry_id: id(seedEntryOne), occurrence_date: new Date('2026-08-25T00:00:00.000Z') });
+        if (seededSessionOne) {
+            await ensureDocument(
+                LessonPlan,
+                { institution_id: institutionId, session_id: id(seededSessionOne) },
+                { teacher_id: id(teacher.profile), topic: 'Fracciones equivalentes', learning_objective: 'Resolver fracciones equivalentes en situaciones cotidianas.', description: 'Clase demo generada desde el horario institucional.', teacher_notes: 'Revisar el procedimiento de Sofia.', homework: 'Resolver ejercicios 1 a 5.', status: 'completed', created_by: id(teacher.user), updated_by: id(teacher.user) },
+                'LessonPlan',
+            );
+        }
 
         const attendanceOne = await ensureDocument(
             AttendanceSession,

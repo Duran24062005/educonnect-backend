@@ -716,6 +716,11 @@ const options = {
                 },
             },
             '/api/calendar/sessions/{id}': {
+                get: {
+                    tags: ['Calendar'], summary: 'Consultar una sesión autorizada', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Sesión y estado de planeación' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
                 patch: {
                     tags: ['Calendar'],
                     summary: 'Editar, cancelar o reactivar una sesión',
@@ -727,6 +732,31 @@ const options = {
                         409: { description: 'Conflicto de horario' },
                     },
                 },
+            },
+            '/api/calendar/schedules/{id}/entries': {
+                get: { tags: ['Calendar'], summary: 'Listar entradas administrativas del horario', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Entradas del horario' } } },
+                post: { tags: ['Calendar'], summary: 'Crear una entrada del horario', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 201: { description: 'Entrada creada' }, 409: { description: 'Conflicto de horario' } } },
+            },
+            '/api/calendar/schedules/{id}/entries/{entryId}': {
+                patch: { tags: ['Calendar'], summary: 'Editar una entrada del horario', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'entryId', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Entrada actualizada' }, 409: { description: 'Conflicto de horario' } } },
+                delete: { tags: ['Calendar'], summary: 'Archivar una entrada del horario', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'entryId', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Entrada archivada' } } },
+            },
+            '/api/teaching-assignments': {
+                get: { tags: ['Academic'], summary: 'Listar asignaciones docentes', security: [{ bearerAuth: [] }], responses: { 200: { description: 'Asignaciones autorizadas' } } },
+                post: { tags: ['Academic'], summary: 'Crear una asignación docente', security: [{ bearerAuth: [] }], responses: { 201: { description: 'Asignación creada' }, 409: { description: 'Asignación duplicada' } } },
+            },
+            '/api/teaching-assignments/{id}': {
+                get: { tags: ['Academic'], summary: 'Consultar una asignación docente', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Asignación docente' } } },
+                patch: { tags: ['Academic'], summary: 'Activar o desactivar una asignación docente', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Asignación actualizada' } } },
+            },
+            '/api/lesson-plans/session/{sessionId}': {
+                get: { tags: ['Lesson Plans'], summary: 'Consultar la planeación de una sesión', security: [{ bearerAuth: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Planeación visible' } } },
+            },
+            '/api/lesson-plans': {
+                post: { tags: ['Lesson Plans'], summary: 'Crear planeación docente', security: [{ bearerAuth: [] }], responses: { 201: { description: 'Planeación creada' }, 403: { $ref: '#/components/responses/Forbidden' } } },
+            },
+            '/api/lesson-plans/{id}': {
+                patch: { tags: ['Lesson Plans'], summary: 'Editar planeación docente', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Planeación actualizada' } } },
             },
             '/api/materials/teacher/me': {
                 get: {

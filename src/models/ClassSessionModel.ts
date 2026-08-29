@@ -53,6 +53,11 @@ const classSessionSchema = new mongoose.Schema(
             ref: 'WeeklySchedule',
             default: null,
         },
+        schedule_entry_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ScheduleEntry',
+            default: null,
+        },
         schedule_slot_id: {
             type: String,
             trim: true,
@@ -84,7 +89,7 @@ const classSessionSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['scheduled', 'cancelled'],
+            enum: ['scheduled', 'completed', 'cancelled'],
             default: 'scheduled',
             index: true,
         },
@@ -120,6 +125,7 @@ classSessionSchema.index({ aula_id: 1, start_at: 1 });
 classSessionSchema.index({ institution_id: 1, school_year_id: 1, start_at: 1 });
 classSessionSchema.index({ schedule_id: 1, schedule_slot_id: 1, occurrence_date: 1 }, { sparse: true });
 classSessionSchema.index({ schedule_id: 1, schedule_window_id: 1, occurrence_date: 1 }, { sparse: true });
+classSessionSchema.index({ institution_id: 1, schedule_entry_id: 1, occurrence_date: 1 }, { unique: true, sparse: true });
 
 tenantPlugin(classSessionSchema);
 

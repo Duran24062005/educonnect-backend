@@ -19,6 +19,11 @@ const aulaSchema = new mongoose.Schema(
             required: [true, 'La capacidad máxima es requerida'],
             min: [1, 'Mínimo 1 persona'],
         },
+        campus_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Campus',
+            default: null,
+        },
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -26,5 +31,6 @@ const aulaSchema = new mongoose.Schema(
 );
 
 tenantPlugin(aulaSchema);
+aulaSchema.index({ institution_id: 1, campus_id: 1, name: 1 });
 
 export default mongoose.model('Aula', aulaSchema);

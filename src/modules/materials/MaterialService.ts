@@ -8,7 +8,7 @@ import AppError from '../../utils/AppError.js';
 import { getStorageService } from '../../shared/storage/index.js';
 import MediaUrlService from '../../shared/storage/mediaUrl.service.js';
 import materialRepository from '../../repositories/MaterialRepository.js';
-import { calendarService } from '../calendar/index.js';
+import LessonPlan from '../../models/LessonPlanModel.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 const normalizeOptionalText = (value) => {
@@ -125,7 +125,15 @@ class MaterialService {
         if (topic === undefined || topic === null) return;
         const normalized = normalizeOptionalText(topic);
         if (!normalized) throw new AppError('El tema de la sesión es requerido', 400);
-        await calendarService.update(userId, 'teacher', institutionId, sessionId, { topic: normalized }, requestContext);
+        const { teacher } = await this.assertTeacherSession(userId, sessionId);
+        await LessonPlan.findOneAndUpdate(
+            { session_id: sessionId },
+            {
+                $set: { topic: normalized, updated_by: userId, teacher_id: teacher._id },
+                $setOnInsert: { session_id: sessionId, created_by: userId, status: 'draft' },
+            },
+            { upsert: true, new: true, runValidators: true }
+        );
     }
 
     async prepareResource(file, linkUrl, { allowEmpty = false } = {}) {

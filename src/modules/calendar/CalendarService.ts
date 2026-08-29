@@ -17,6 +17,8 @@ import AuditLogService from '../audit/AuditLogService.js';
 import { resolveStudentByUserId, resolveTeacherByUserId } from '../../shared/accessScope.service.js';
 import GuardianRepository from '../../repositories/GuardianRepository.js';
 import ScheduleService from './ScheduleService.js';
+import LessonPlan from '../../models/LessonPlanModel.js';
+import ScheduleException from '../../models/ScheduleExceptionModel.js';
 
 const toIdString = (value) => value?._id?.toString?.() || value?.toString?.() || null;
 
@@ -117,6 +119,12 @@ class CalendarService {
         if (!assignment) {
             throw new AppError('El docente no tiene asignación para este grupo y materia', 400);
         }
+        if (assignment.status === 'inactive') {
+            throw new AppError('La asignación docente está inactiva', 409);
+        }
+        if (group.campus_id && (!aula.campus_id || toIdString(group.campus_id) !== toIdString(aula.campus_id))) {
+            throw new AppError('El aula no pertenece a la sede del grupo', 409);
+        }
 
         const startAt = new Date(data.start_at);
         const endAt = new Date(data.end_at);
@@ -184,7 +192,7 @@ class CalendarService {
         }
     }
 
-    serializeSession(session, pendingActivities = []) {
+    serializeSession(session, pendingActivities = [], lessonPlan = null, role = 'admin') {
         const group = session.group_id;
         const schoolYear = session.school_year_id || group?.school_year_id;
 
@@ -195,6 +203,7 @@ class CalendarService {
             end_at: session.end_at,
             status: session.status,
             schedule_id: toIdString(session.schedule_id),
+            schedule_entry_id: toIdString(session.schedule_entry_id),
             schedule_slot_id: session.schedule_slot_id || null,
             schedule_window_id: session.schedule_window_id || null,
             occurrence_date: session.occurrence_date || null,
@@ -207,6 +216,21 @@ class CalendarService {
             teacher: teacherEntity(session.teacher_id),
             aula: entity(session.aula_id, 'Aula'),
             topic: session.topic,
+            lesson_plan: lessonPlan ? {
+                id: toIdString(lessonPlan),
+                status: lessonPlan.status,
+                topic: lessonPlan.topic || '',
+                learning_objective: lessonPlan.learning_objective || '',
+                description: lessonPlan.description || '',
+                teacher_notes: lessonPlan.teacher_notes || '',
+                homework: lessonPlan.homework || '',
+            } : null,
+            planning_status: lessonPlan?.status || 'pending',
+            permissions: {
+                can_edit_schedule: String(role).toLowerCase() === 'admin',
+                can_edit_lesson_plan: String(role).toLowerCase() === 'teacher',
+                schedule_edit_reason: String(role).toLowerCase() === 'admin' ? null : 'El horario es administrado por la institución.',
+            },
             pending_activities: pendingActivities,
         };
     }
@@ -260,12 +284,16 @@ class CalendarService {
 
     async serializeSessions(sessions, role, userId) {
         const activitiesByPair = await this.getPendingActivities(sessions, role, userId);
+        const plans = await LessonPlan.find({ session_id: { $in: sessions.map((session) => session._id) } });
+        const planBySession = new Map(plans.map((plan) => [toIdString(plan.session_id), plan]));
         const allActivities = new Map();
         const serialized = sessions.map((session) => {
             const key = [toIdString(session.group_id), toIdString(session.area_id), toIdString(session.school_year_id)].join(':');
             const activities = activitiesByPair.get(key) || [];
             activities.forEach((activity) => allActivities.set(toIdString(activity), activity));
-            return this.serializeSession(session, activities);
+            const plan = planBySession.get(toIdString(session));
+            const visiblePlan = ['student', 'parent'].includes(String(role).toLowerCase()) && plan?.status !== 'completed' ? null : plan;
+            return this.serializeSession(session, activities, visiblePlan, role);
         });
 
         return {
@@ -322,7 +350,7 @@ class CalendarService {
 
         if (normalizedRole === 'teacher') {
             const teacher = await resolveTeacherByUserId(userId);
-            const assignments = await GroupTeacher.find({ teacher_id: teacher._id }).select('group_id area_id');
+            const assignments = await GroupTeacher.find({ teacher_id: teacher._id, status: { $ne: 'inactive' } }).select('group_id area_id');
             if (!assignments.length) return null;
             filter.teacher_id = teacher._id;
             const groupIds = assignments.map((item) => item.group_id);
@@ -350,7 +378,7 @@ class CalendarService {
     async create(userId, role, institutionId, data, requestContext) {
         const normalizedRole = String(role).toLowerCase();
         if (normalizedRole === 'teacher') {
-            await this.assertTeacherCanManage(userId, data);
+            throw new AppError('Las sesiones son generadas por el horario institucional. Usa tu calendario para preparar la clase.', 403);
         }
         const references = await this.validateReferences(data);
         const availability = await ScheduleService.assertSessionWithinAvailability(institutionId, data, references);
@@ -392,9 +420,66 @@ class CalendarService {
 
     async createException(userId, role, institutionId, data, requestContext) {
         if (String(role).toLowerCase() !== 'admin') throw new AppError('Solo un administrador puede crear excepciones', 403);
+        const exceptionType = data.type || 'additional';
+        if (exceptionType === 'cancelled') {
+            const target = data.session_id
+                ? await this.loadSession(data.session_id)
+                : await ClassSession.findOne({ schedule_entry_id: data.schedule_entry_id, occurrence_date: data.occurrence_date });
+            if (!target) throw new AppError('Sesión objetivo de la excepción no encontrada', 404);
+            if (target.status === 'cancelled') throw new AppError('La sesión ya está cancelada', 409);
+            const occurrenceDate = target.occurrence_date || new Date(new Date(target.start_at).toISOString().slice(0, 10));
+            const exception = await ScheduleException.create({ school_year_id: target.school_year_id, schedule_entry_id: target.schedule_entry_id || null, occurrence_date: occurrenceDate, type: 'cancel', group_id: target.group_id, area_id: target.area_id, teacher_id: target.teacher_id, aula_id: target.aula_id, reason: data.reason.trim(), created_by: userId, updated_by: userId });
+            target.status = 'cancelled';
+            target.cancelled_at = new Date();
+            target.cancelled_by = userId;
+            target.exception_reason = data.reason.trim();
+            target.updated_by = userId;
+            await target.save();
+            await AuditLogService.record({ actorUserId: userId, actorRole: role, action: 'calendar.exception.cancelled', entityType: 'ScheduleException', entityId: exception._id, before: { session_id: target._id, status: 'scheduled' }, after: exception, institutionId, ...requestContext });
+            return this.serializeSession(await this.loadSession(target._id), [], null, role);
+        }
+        if (exceptionType === 'override') {
+            const target = data.session_id
+                ? await this.loadSession(data.session_id)
+                : await ClassSession.findOne({ schedule_entry_id: data.schedule_entry_id, occurrence_date: data.occurrence_date });
+            if (!target) throw new AppError('Sesión objetivo de la excepción no encontrada', 404);
+            const next = {
+                school_year_id: data.school_year_id || toIdString(target.school_year_id),
+                group_id: data.group_id || toIdString(target.group_id),
+                area_id: data.area_id || toIdString(target.area_id),
+                teacher_id: data.teacher_id || toIdString(target.teacher_id),
+                aula_id: data.aula_id || toIdString(target.aula_id),
+                start_at: data.start_at || target.start_at,
+                end_at: data.end_at || target.end_at,
+                topic: data.topic || target.topic || 'Sesión modificada',
+            };
+            const references = await this.validateReferences(next);
+            const sessionDate = await ScheduleService.assertSessionDate(institutionId, next, references);
+            await this.assertNoConflict(references, target._id);
+            const exception = await ScheduleException.create({ school_year_id: references.schoolYear._id, schedule_entry_id: target.schedule_entry_id || data.schedule_entry_id || null, occurrence_date: sessionDate.occurrenceDate, type: 'override', start_at: references.startAt, end_at: references.endAt, aula_id: references.aula._id, group_id: references.group._id, area_id: references.area._id, teacher_id: references.teacher._id, reason: data.reason.trim(), created_by: userId, updated_by: userId });
+            Object.assign(target, { ...next, start_at: references.startAt, end_at: references.endAt, group_id: references.group._id, area_id: references.area._id, teacher_id: references.teacher._id, aula_id: references.aula._id, source: 'exception', is_manual_override: true, exception_reason: data.reason.trim(), updated_by: userId });
+            await target.save();
+            await AuditLogService.record({ actorUserId: userId, actorRole: role, action: 'calendar.exception.overridden', entityType: 'ScheduleException', entityId: exception._id, before: { session_id: target._id }, after: exception, institutionId, ...requestContext });
+            return this.serializeSession(await this.loadSession(target._id), [], null, role);
+        }
         const references = await this.validateReferences(data);
-        await ScheduleService.assertSessionDate(institutionId, data, references);
+        const sessionDate = await ScheduleService.assertSessionDate(institutionId, data, references);
         await this.assertNoConflict(references);
+        const exception = await ScheduleException.create({
+            school_year_id: references.schoolYear._id,
+            occurrence_date: sessionDate.occurrenceDate,
+            type: exceptionType === 'override' ? 'override' : 'additional',
+            schedule_entry_id: data.schedule_entry_id || null,
+            start_at: references.startAt,
+            end_at: references.endAt,
+            aula_id: references.aula._id,
+            group_id: references.group._id,
+            area_id: references.area._id,
+            teacher_id: references.teacher._id,
+            reason: data.reason.trim(),
+            created_by: userId,
+            updated_by: userId,
+        });
         const session = await ClassSession.create({
             school_year_id: references.schoolYear._id,
             group_id: references.group._id,
@@ -427,6 +512,9 @@ class CalendarService {
     }
 
     async update(userId, role, institutionId, id, data, requestContext) {
+        if (String(role).toLowerCase() === 'teacher') {
+            throw new AppError('El horario es administrado por la institución. Edita la planeación de la sesión.', 403);
+        }
         const current = await this.loadSession(id);
         if (!current) throw new AppError('Sesión no encontrada', 404);
         await this.assertCanManageExisting(userId, role, current);
@@ -496,7 +584,29 @@ class CalendarService {
             ...requestContext,
         });
 
-        return this.serializeSession(updated);
+        return this.serializeSession(updated, [], await LessonPlan.findOne({ session_id: updated._id }), role);
+    }
+
+    async getSession(id, role, userId) {
+        const session = await this.loadSession(id);
+        if (!session) throw new AppError('Sesión no encontrada', 404);
+        const normalizedRole = String(role).toLowerCase();
+        if (normalizedRole === 'teacher') {
+            const teacher = await resolveTeacherByUserId(userId);
+            if (toIdString(session.teacher_id) !== toIdString(teacher)) throw new AppError('No tienes permiso para ver esta sesión', 403);
+        } else if (normalizedRole === 'student') {
+            const student = await resolveStudentByUserId(userId);
+            const enrollment = await Enrollment.findOne({ student_id: student._id, school_year_id: session.school_year_id, group_id: session.group_id, status: 'active' });
+            if (!enrollment) throw new AppError('No tienes permiso para ver esta sesión', 403);
+        } else if (normalizedRole === 'parent') {
+            const links = await GuardianRepository.findAuthorizedStudentsByGuardianId(userId);
+            const studentIds = links.map((link) => link.student_id?._id || link.student_id).filter(Boolean);
+            const enrollment = await Enrollment.findOne({ student_id: { $in: studentIds }, school_year_id: session.school_year_id, group_id: session.group_id, status: 'active' });
+            if (!enrollment) throw new AppError('No tienes permiso para ver esta sesión', 403);
+        }
+        const plan = await LessonPlan.findOne({ session_id: session._id });
+        const visiblePlan = ['student', 'parent'].includes(normalizedRole) && plan?.status !== 'completed' ? null : plan;
+        return this.serializeSession(session, [], visiblePlan, role);
     }
 
     async catalog(role, userId, schoolYearId) {

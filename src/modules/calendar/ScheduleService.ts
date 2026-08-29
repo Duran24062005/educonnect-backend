@@ -12,6 +12,7 @@ import GroupTeacher from '../../models/GroupTeacherModel.js';
 import AppError from '../../utils/AppError.js';
 import AuditLogService from '../audit/AuditLogService.js';
 import { resolveTeacherByUserId } from '../../shared/accessScope.service.js';
+import ScheduleEntryService from './ScheduleEntryService.js';
 
 const schedulePopulate = [
     { path: 'school_year_id' },
@@ -101,7 +102,7 @@ class ScheduleService {
         const teacher = await resolveTeacherByUserId(userId);
         const filter = { status: 'published' };
         if (schoolYearId) filter.school_year_id = schoolYearId;
-        const assignments = await GroupTeacher.find({ teacher_id: teacher._id }).select('group_id');
+        const assignments = await GroupTeacher.find({ teacher_id: teacher._id, status: { $ne: 'inactive' } }).select('group_id');
         const assignedGroupIds = new Set(assignments.map((assignment) => id(assignment.group_id)));
         const schedules = await WeeklySchedule.find(filter).populate(schedulePopulate).sort({ school_year_id: 1, version: -1 });
 
@@ -255,6 +256,9 @@ class ScheduleService {
             if (!(await GroupTeacher.exists({ teacher_id: teacher._id, group_id: group._id, area_id: area._id }))) {
                 errors.push(`El docente no está asignado a ${group.name} y ${area.name}`);
             }
+            if (group.campus_id && (!aula.campus_id || id(group.campus_id) !== id(aula.campus_id))) {
+                errors.push(`El aula del bloque ${slot.slot_id} no pertenece a la sede del grupo ${group.name}`);
+            }
             if (!group.shift_id || group.shift_id.status !== 'active') {
                 errors.push(`El grupo ${group.name} debe tener una jornada activa configurada`);
             } else if (minutes(slot.start_time) < minutes(group.shift_id.start_time) || minutes(slot.end_time) > minutes(group.shift_id.end_time)) {
@@ -282,7 +286,9 @@ class ScheduleService {
         const schedule = await WeeklySchedule.findById(idValue);
         if (!schedule) throw new AppError('Horario no encontrado', 404);
         if (schedule.status !== 'draft') throw new AppError('Solo se puede publicar un borrador', 409);
+        await ScheduleEntryService.ensureLegacyEntries(schedule);
         const errors = await this.validateDraft(schedule);
+        errors.push(...(await ScheduleEntryService.validateScheduleEntries(schedule)).map((item) => `${item.entry_id}: ${item.message}`));
         const institution = await this.getInstitution(institutionId);
         if (institution.school_days && schedule.school_days.some((day) => !institution.school_days.includes(Number(day)))) {
             errors.push('El horario no puede usar días que la institución no tiene configurados como lectivos');
@@ -297,6 +303,7 @@ class ScheduleService {
         schedule.updated_by = userId;
         await schedule.save();
         await AuditLogService.record({ actorUserId: userId, actorRole: 'admin', action: 'schedule.published', entityType: 'WeeklySchedule', entityId: schedule._id, before: previous, after: schedule, institutionId, ...requestContext });
+        await ScheduleEntryService.materialize(schedule, previous);
         return this.serializeSchedule(await WeeklySchedule.findById(schedule._id).populate(schedulePopulate));
     }
 

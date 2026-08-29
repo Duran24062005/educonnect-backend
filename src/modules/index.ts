@@ -15,6 +15,8 @@ import platform from './platform/index.js';
 import materials from './materials/index.js';
 import students from './students/index.js';
 import users from './users/index.js';
+import teachingAssignments from './teachingAssignments/index.js';
+import lessonPlans from './lessonPlans/index.js';
 
 /**
  * API composition root for the modular monolith.
@@ -40,4 +42,6 @@ export const apiModules = [
     calendar,
     attendance,
     imports,
+    teachingAssignments,
+    lessonPlans,
 ];

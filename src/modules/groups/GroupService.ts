@@ -434,7 +434,7 @@ class GroupService {
             throw new AppError('Este profesor ya está asignado a este grupo en esta área', 400);
         }
 
-        const assignment = await groupTeacherRepository.create({ teacher_id, group_id, area_id });
+        const assignment = await groupTeacherRepository.create({ teacher_id, group_id, area_id, school_year_id: group.school_year_id?._id || group.school_year_id });
 
         await AuditLogService.record({
             actorUserId: auditContext.actorUserId,
