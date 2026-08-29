@@ -1,12 +1,15 @@
 # Plan de implementación: horario semanal y notificaciones
 
+> Este documento describe el corte de compatibilidad inicial. El diseño canónico vigente está documentado en [scheduling-domain-redesign.md](./scheduling-domain-redesign.md): `TeachingAssignment → ScheduleEntry → ClassSession → LessonPlan`.
+
 ## Problema y objetivo
 
 El contrato de horarios actualmente expone ventanas generales por grupo. Se necesita persistir clases concretas por día y hora para que cada curso pueda tener una configuración semanal distinta. El portal también moverá los formularios de anuncios a modales, sin cambiar el contrato de notificaciones.
 
 ## Alcance del backend
 
-- ampliar `WeeklySchedule` con el uso operativo de `slots` ya presente en el modelo;
+- conservar `WeeklySchedule.slots` únicamente como formato legacy mientras se migran a `ScheduleEntry`;
+- materializar `ClassSession` al publicar un horario, sin creación manual por parte de docentes;
 - aceptar y serializar slots en `PATCH /api/calendar/schedules/:id`;
 - validar referencias, pertenencia al año, asignación grupo-materia-docente, aula, días lectivos, jornada y conflictos;
 - hacer que la autorización de sesiones use el slot exacto cuando el horario publicado los tenga;
@@ -58,4 +61,3 @@ Los horarios publicados antes de este cambio solo contienen ventanas y continúa
 - pruebas de rechazo por solapamiento, fuera de jornada y asignación inválida;
 - regresión del flujo existente de ventanas y sesiones calendarizadas;
 - compilación y suite de calidad del portal.
-
