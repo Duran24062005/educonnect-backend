@@ -15,6 +15,7 @@ import {
     createScheduleSchema,
     scheduleIdSchema,
     scheduleQuerySchema,
+    teacherScheduleQuerySchema,
     updateScheduleSchema,
 } from './schedule.validators.js';
 
@@ -36,6 +37,7 @@ router.patch(
 );
 
 router.get('/schedules', authorize('admin'), validateRequest(scheduleQuerySchema), ScheduleController.list);
+router.get('/schedules/me', authorize('teacher'), validateRequest(teacherScheduleQuerySchema), CalendarController.getTeacherSchedules);
 router.post('/schedules/drafts', authorize('admin'), validateRequest(createScheduleSchema), ScheduleController.createDraft);
 router.patch('/schedules/:id', authorize('admin'), validateRequest(updateScheduleSchema), ScheduleController.update);
 router.post('/schedules/:id/publish', authorize('admin'), validateRequest(scheduleIdSchema), ScheduleController.publish);

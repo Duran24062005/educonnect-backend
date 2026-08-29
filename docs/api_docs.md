@@ -54,6 +54,7 @@ Las jornadas institucionales incluyen `shift_type` (`morning`, `afternoon` o `hy
 - `POST /api/calendar/exceptions` (Admin; requiere motivo y representa una excepción fuera de la disponibilidad)
 - `PATCH /api/calendar/sessions/:id` (Admin o docente autorizado; editar, cancelar o reactivar)
 - `GET /api/calendar/schedules` (Admin; horarios por año y estado)
+- `GET /api/calendar/schedules/me` (Docente; bloques publicados asignados al docente)
 - `POST /api/calendar/schedules/drafts` (Admin)
 - `PATCH /api/calendar/schedules/:id` (Admin; días, ventanas compatibles y slots exactos por grupo/materia/día/hora)
 - `POST /api/calendar/schedules/:id/publish` (Admin)

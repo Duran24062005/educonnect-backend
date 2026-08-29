@@ -22,6 +22,10 @@ La primera versión de este flujo usa disponibilidad por grupo, no bloques fijos
 
 ## Contrato y reglas
 
+### Consulta para docentes
+
+`GET /api/calendar/schedules/me?school_year_id=<id>` devuelve únicamente el horario publicado y los grupos/bloques asignados al docente autenticado. El portal usa esta consulta para que el docente seleccione un bloque válido antes de registrar una sesión.
+
 ### Horario
 
 `WeeklySchedule` conserva `school_days` y agrega `availability_windows`:

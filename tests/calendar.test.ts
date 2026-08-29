@@ -266,6 +266,20 @@ describe('Calendar API', () => {
     });
 
     test('enforces published availability for teachers and isolates their calendar', async () => {
+        const teacherAvailability = await request(app)
+            .get('/api/calendar/schedules/me')
+            .query({ school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${teacher.token}`);
+        expect(teacherAvailability.statusCode).toBe(200);
+        expect(teacherAvailability.body.data.schedules).toHaveLength(1);
+        expect(teacherAvailability.body.data.schedules[0].availability_windows[0].group._id.toString()).toBe(group._id.toString());
+
+        const adminAvailability = await request(app)
+            .get('/api/calendar/schedules/me')
+            .query({ school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${admin.token}`);
+        expect(adminAvailability.statusCode).toBe(403);
+
         const teacherSession = await request(app)
             .post('/api/calendar/sessions')
             .set('Authorization', `Bearer ${teacher.token}`)
@@ -399,6 +413,14 @@ describe('Calendar API', () => {
             .set('Authorization', `Bearer ${admin.token}`);
         expect(published.statusCode).toBe(200);
         expect(published.body.data.slots[0].slot_id).toBe('martes-matematicas-0615');
+
+        const teacherSlots = await request(app)
+            .get('/api/calendar/schedules/me')
+            .query({ school_year_id: schoolYear._id.toString() })
+            .set('Authorization', `Bearer ${teacher.token}`);
+        expect(teacherSlots.statusCode).toBe(200);
+        expect(teacherSlots.body.data.schedules[0].slots).toHaveLength(1);
+        expect(teacherSlots.body.data.schedules[0].slots[0].teacher._id.toString()).toBe(teacherProfile._id.toString());
 
         const allowed = await request(app)
             .post('/api/calendar/sessions')

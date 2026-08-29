@@ -609,6 +609,15 @@ const options = {
                     responses: { 200: { description: 'Horarios versionados' } },
                 },
             },
+            '/api/calendar/schedules/me': {
+                get: {
+                    tags: ['Calendar'],
+                    summary: 'Consultar los bloques publicados del docente autenticado',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'school_year_id', in: 'query', schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Bloques y ventanas disponibles para el docente' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
             '/api/calendar/schedules/drafts': {
                 post: {
                     tags: ['Calendar'],

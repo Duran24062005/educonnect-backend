@@ -26,6 +26,10 @@ export const scheduleQuerySchema = {
     query: z.object({ school_year_id: objectIdSchema.optional(), status: z.enum(['draft', 'published', 'archived']).optional() }).passthrough(),
 };
 
+export const teacherScheduleQuerySchema = {
+    query: z.object({ school_year_id: objectIdSchema.optional() }).passthrough(),
+};
+
 export const scheduleIdSchema = { params: z.object({ id: objectIdSchema }) };
 
 export const createScheduleSchema = {

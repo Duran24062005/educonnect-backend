@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { asyncHandler } from '../../utils/error.js';
 import CalendarService from './CalendarService.js';
+import ScheduleService from './ScheduleService.js';
 
 const requestContext = (req: Request) => ({
     ipAddress: req.ip,
@@ -20,6 +21,11 @@ class CalendarController {
 
     getCatalog = asyncHandler(async (req, res) => {
         const result = await CalendarService.catalog(req.userRole, req.userId, req.query.school_year_id);
+        res.status(200).json({ status: 'success', data: result });
+    });
+
+    getTeacherSchedules = asyncHandler(async (req, res) => {
+        const result = await ScheduleService.listForTeacher(req.userId, req.query.school_year_id);
         res.status(200).json({ status: 'success', data: result });
     });
 

@@ -11,6 +11,7 @@ import GradeArea from '../../models/GradeAreaModel.js';
 import GroupTeacher from '../../models/GroupTeacherModel.js';
 import AppError from '../../utils/AppError.js';
 import AuditLogService from '../audit/AuditLogService.js';
+import { resolveTeacherByUserId } from '../../shared/accessScope.service.js';
 
 const schedulePopulate = [
     { path: 'school_year_id' },
@@ -94,6 +95,26 @@ class ScheduleService {
         if (query.status) filter.status = query.status;
         const schedules = await WeeklySchedule.find(filter).populate(schedulePopulate).sort({ school_year_id: 1, version: -1 });
         return { schedules: schedules.map((schedule) => this.serializeSchedule(schedule)) };
+    }
+
+    async listForTeacher(userId, schoolYearId) {
+        const teacher = await resolveTeacherByUserId(userId);
+        const filter = { status: 'published' };
+        if (schoolYearId) filter.school_year_id = schoolYearId;
+        const assignments = await GroupTeacher.find({ teacher_id: teacher._id }).select('group_id');
+        const assignedGroupIds = new Set(assignments.map((assignment) => id(assignment.group_id)));
+        const schedules = await WeeklySchedule.find(filter).populate(schedulePopulate).sort({ school_year_id: 1, version: -1 });
+
+        return {
+            schedules: schedules.map((schedule) => {
+                const serialized = this.serializeSchedule(schedule);
+                return {
+                    ...serialized,
+                    availability_windows: serialized.availability_windows.filter((window) => assignedGroupIds.has(window.group._id)),
+                    slots: serialized.slots.filter((slot) => id(slot.teacher) === id(teacher._id)),
+                };
+            }).filter((schedule) => schedule.availability_windows.length > 0 || schedule.slots.length > 0),
+        };
     }
 
     async initialWindows(schoolYearId, published) {
