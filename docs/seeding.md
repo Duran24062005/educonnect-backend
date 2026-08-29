@@ -18,6 +18,8 @@ SEED_RESET_CONFIRM=EDUCONNECT-RESET \
 yarn seed:reset
 ```
 
+`seed:reset` usa `scripts/seed-reset.ts` y exige la confirmación explícita antes de ejecutar `dropDatabase()`. El seed incremental de `scripts/seed-demo.ts` no borra datos. Ambos comandos muestran su ayuda con `--help`.
+
 Este modo ejecuta `dropDatabase()` sobre la base indicada por `DATABASE_URL`, por lo que elimina tambien colecciones que no tengan un modelo importado por el seed. No lo ejecutes contra una base con datos que quieras conservar.
 
 Variables opcionales:
@@ -40,7 +42,7 @@ El script rechaza `NODE_ENV=production` salvo que exista la confirmacion explici
 
 ## Bootstrap del SuperAdmin de plataforma
 
-La cuenta global inicial no se crea por HTTP ni mediante el seed demo. Se crea con el comando controlado:
+La cuenta global inicial no se crea por HTTP ni mediante el seed demo o seed reset. Se crea con el comando controlado:
 
 ```bash
 SUPERADMIN_EMAIL='operaciones@educonnect.co' \
