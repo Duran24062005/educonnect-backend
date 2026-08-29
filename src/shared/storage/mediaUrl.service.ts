@@ -1,6 +1,7 @@
 // @ts-nocheck
 import PersonRepository from '../../repositories/PersonRepository.js';
 import { activitySubmissionRepository } from '../../repositories/ActivityRepository.js';
+import materialRepository from '../../repositories/MaterialRepository.js';
 import { getStorageService } from './index.js';
 
 class MediaUrlService {
@@ -74,6 +75,32 @@ class MediaUrlService {
     async refreshSubmissions(submissions = []) {
         await Promise.all((submissions || []).map((submission) => this.refreshSubmission(submission)));
         return submissions;
+    }
+
+    async refreshMaterial(material) {
+        if (!material?.storage_bucket || !material?.storage_key) return material;
+
+        const storage = getStorageService();
+        if (!storage.isSignedUrlStale(material.storage_signed_url_expires_at) && material.storage_signed_url) {
+            material.file_url = material.storage_signed_url;
+            return material;
+        }
+
+        const signed = await storage.buildSignedUrl({ bucket: material.storage_bucket, key: material.storage_key });
+        await materialRepository.update(material._id, {
+            storage_signed_url: signed.url,
+            storage_signed_url_expires_at: signed.expiresAt,
+            file_url: signed.url,
+        });
+        material.storage_signed_url = signed.url;
+        material.storage_signed_url_expires_at = signed.expiresAt;
+        material.file_url = signed.url;
+        return material;
+    }
+
+    async refreshMaterials(materials = []) {
+        await Promise.all((materials || []).map((material) => this.refreshMaterial(material)));
+        return materials;
     }
 }
 

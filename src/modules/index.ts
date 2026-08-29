@@ -11,6 +11,7 @@ import guardians from './guardians/index.js';
 import imports from './imports/index.js';
 import institutions from './institutions/index.js';
 import notifications from './notifications/index.js';
+import materials from './materials/index.js';
 import students from './students/index.js';
 import users from './users/index.js';
 
@@ -30,6 +31,7 @@ export const apiModules = [
     evaluations,
     analytics,
     activities,
+    materials,
     notifications,
     institutions,
     audit,

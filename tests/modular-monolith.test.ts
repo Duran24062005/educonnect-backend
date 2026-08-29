@@ -15,6 +15,7 @@ describe('modular monolith composition', () => {
             'evaluations',
             'analytics',
             'activities',
+            'materials',
             'notifications',
             'institutions',
             'audit',

@@ -13,6 +13,10 @@ export interface ActivitySubmissionUploadInput extends StorageUploadInput {
     studentId: string;
 }
 
+export interface MaterialUploadInput extends StorageUploadInput {
+    sessionId: string;
+}
+
 export interface SignedUrlResult {
     url: string;
     expiresAt: Date;
@@ -39,6 +43,7 @@ export interface BuildSignedUrlInput {
 export interface StorageService {
     uploadProfilePhoto(input: ProfilePhotoUploadInput): Promise<StoredFileMetadata>;
     uploadActivitySubmission(input: ActivitySubmissionUploadInput): Promise<StoredFileMetadata>;
+    uploadMaterial(input: MaterialUploadInput): Promise<StoredFileMetadata>;
     deleteObject(input: DeleteObjectInput): Promise<void>;
     buildSignedUrl(input: BuildSignedUrlInput): Promise<SignedUrlResult>;
     isSignedUrlStale(expiresAt?: Date | string | null): boolean;

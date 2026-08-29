@@ -66,6 +66,9 @@ beforeAll(async () => {
             this.uploads.push(result);
             return result;
         },
+        async uploadMaterial() {
+            throw new Error('Not implemented in activities.test');
+        },
         async deleteObject(input) {
             this.deletions.push(input);
         },

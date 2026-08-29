@@ -59,6 +59,18 @@ Las jornadas institucionales incluyen `shift_type` (`morning`, `afternoon` o `hy
 - `PATCH /api/calendar/schedules/:id` (Admin; días, ventanas compatibles y slots exactos por grupo/materia/día/hora)
 - `POST /api/calendar/schedules/:id/publish` (Admin)
 
+### Materiales educativos
+
+- `GET /api/materials/teacher/me` (Teacher; filtros por grupo, materia y sesión)
+- `GET /api/materials/teacher/me/sessions` (Teacher)
+- `POST /api/materials/teacher/me` (Teacher; `multipart/form-data`, archivo en `material_file` o `link_url`)
+- `PUT /api/materials/teacher/me/:material_id` (Teacher; metadatos, sesión, tema y recurso)
+- `DELETE /api/materials/teacher/me/:material_id` (Teacher)
+- `GET /api/materials/student/me` (Student; alcance por matrícula activa)
+- `GET /api/materials/student/me/:material_id` (Student)
+
+Los archivos aceptan cualquier MIME type hasta el límite definido por `MATERIAL_FILE_SIZE_LIMIT_MB` (50 MB por defecto) y se sirven desde storage privado mediante URLs firmadas. Los materiales se mantienen visibles aunque la sesión esté cancelada.
+
 Los horarios aceptan `slots` con `slot_id`, `group_id`, `area_id`, `teacher_id`, `aula_id`, `weekday`, `start_time` y `end_time`. Cuando un horario publicado contiene slots, una sesión calendarizada debe coincidir con el grupo, materia, docente, día y rango de uno de ellos. Los horarios históricos que solo tienen `availability_windows` conservan su comportamiento anterior.
 
 ### Usuarios

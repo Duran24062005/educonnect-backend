@@ -30,6 +30,7 @@ interface StorageSection {
     secretAccessKey: string;
     signedUrlTtlSeconds: number;
     signedUrlRefreshMarginSeconds: number;
+    materialFileSizeLimitBytes: number;
 }
 
 interface TenantSection {
@@ -87,6 +88,7 @@ class AppConfig {
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
             signedUrlTtlSeconds: Number(process.env.AWS_SIGNED_URL_TTL_SECONDS || 900),
             signedUrlRefreshMarginSeconds: 60,
+            materialFileSizeLimitBytes: Math.max(1, Number(process.env.MATERIAL_FILE_SIZE_LIMIT_MB || 50)) * 1024 * 1024,
         };
 
         this.tenant = {

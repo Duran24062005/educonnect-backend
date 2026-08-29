@@ -20,6 +20,7 @@ const options = {
             { name: 'Institutions', description: 'Bootstrap institucional y contexto del piloto' },
             { name: 'Audit', description: 'Trazabilidad de operaciones sensibles del piloto' },
             { name: 'Calendar', description: 'Sesiones de clase, catálogo y agenda por rol' },
+            { name: 'Materials', description: 'Materiales educativos asociados a sesiones' },
             { name: 'Attendance', description: 'Sesiones, registros y resúmenes de asistencia' },
             { name: 'Students', description: 'Operaciones específicas de estudiantes' },
             { name: 'Academic', description: 'Años escolares, periodos, grados, áreas y aulas' },
@@ -657,6 +658,55 @@ const options = {
                         403: { $ref: '#/components/responses/Forbidden' },
                         409: { description: 'Conflicto de horario' },
                     },
+                },
+            },
+            '/api/materials/teacher/me': {
+                get: {
+                    tags: ['Materials'], summary: 'Listar materiales del docente', security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'group_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'area_id', in: 'query', schema: { type: 'string' } },
+                        { name: 'session_id', in: 'query', schema: { type: 'string' } },
+                    ],
+                    responses: { 200: { description: 'Materiales del docente' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+                post: {
+                    tags: ['Materials'], summary: 'Publicar material', security: [{ bearerAuth: [] }],
+                    requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['title', 'session_id'], properties: { title: { type: 'string' }, description: { type: 'string' }, session_id: { type: 'string' }, topic: { type: 'string' }, link_url: { type: 'string', format: 'uri' }, material_file: { type: 'string', format: 'binary' } } } } } },
+                    responses: { 201: { description: 'Material publicado' }, 400: { $ref: '#/components/responses/ValidationError' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/materials/teacher/me/sessions': {
+                get: {
+                    tags: ['Materials'], summary: 'Listar sesiones del docente para asociar materiales', security: [{ bearerAuth: [] }],
+                    responses: { 200: { description: 'Sesiones del docente' } },
+                },
+            },
+            '/api/materials/teacher/me/{material_id}': {
+                put: {
+                    tags: ['Materials'], summary: 'Editar material', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'material_id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' }, session_id: { type: 'string' }, topic: { type: 'string' }, link_url: { type: 'string', format: 'uri' }, material_file: { type: 'string', format: 'binary' } } } } } },
+                    responses: { 200: { description: 'Material actualizado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+                delete: {
+                    tags: ['Materials'], summary: 'Eliminar material', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'material_id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Material eliminado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/materials/student/me': {
+                get: {
+                    tags: ['Materials'], summary: 'Listar materiales del estudiante', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'area_id', in: 'query', schema: { type: 'string' } }, { name: 'session_id', in: 'query', schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Materiales accesibles por matrícula' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+            },
+            '/api/materials/student/me/{material_id}': {
+                get: {
+                    tags: ['Materials'], summary: 'Consultar un material del estudiante', security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'material_id', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { 200: { description: 'Material autorizado' }, 404: { description: 'Material no encontrado' } },
                 },
             },
             '/api/notifications/me': {

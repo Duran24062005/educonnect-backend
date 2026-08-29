@@ -99,6 +99,7 @@ beforeAll(async () => {
     mockStorageService = {
         async uploadProfilePhoto() { throw new Error('Not implemented in security-scope test'); },
         async uploadActivitySubmission() { throw new Error('Not implemented in security-scope test'); },
+        async uploadMaterial() { throw new Error('Not implemented in security-scope test'); },
         async deleteObject() {},
         async buildSignedUrl() {
             return { url: 'https://signed.example/refresh', expiresAt: new Date(Date.now() + 15 * 60 * 1000) };

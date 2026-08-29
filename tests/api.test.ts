@@ -91,6 +91,9 @@ beforeAll(async () => {
             this.sentEmails.push(result);
             return result;
         },
+        async uploadMaterial() {
+            throw new Error('Not implemented in api.test');
+        },
     };
     globalThis.__EDUCONNECT_EMAIL_SERVICE__ = mockEmailService;
 

@@ -49,6 +49,7 @@ Los estados describen la realidad del repositorio, no solo la existencia del arc
 | 034 | [Analitica de diferenciacion](./034-differentiation-analytics.md) | Planificado | Dashboards base existentes; riesgo y benchmarking pendientes. |
 | 035 | [Monolito modular del backend](./035-modular-monolith-backend.md) | Base existente | Módulos de dominio y composición HTTP modular implementados sin cambiar contratos. |
 | 037 | [Disponibilidad semanal por grupo](./037-weekly-group-availability.md) | En ejecucion | Ventanas publicadas por grupo, sesiones validadas y excepciones administrativas. |
+| 038 | [Materiales educativos por sesión](./038-session-materials.md) | En ejecución | CRUD de recursos por sesión, storage privado, permisos por docente/matrícula y acceso contextual desde calendario. |
 
 ## Regla de mantenimiento
 

@@ -10,6 +10,7 @@ import type {
     SignedUrlResult,
     StorageService,
     StoredFileMetadata,
+    MaterialUploadInput,
 } from './StorageService.js';
 
 const STORAGE_PROVIDER = 'aws-s3';
@@ -50,7 +51,7 @@ class S3StorageService implements StorageService {
         }
     }
 
-    private async putObject(key: string, input: ProfilePhotoUploadInput | ActivitySubmissionUploadInput) {
+    private async putObject(key: string, input: ProfilePhotoUploadInput | ActivitySubmissionUploadInput | MaterialUploadInput) {
         this.ensureConfigured();
         await this.client.send(
             new PutObjectCommand({
@@ -92,6 +93,11 @@ class S3StorageService implements StorageService {
             ],
             input.originalName
         );
+        return await this.putObject(key, input);
+    }
+
+    async uploadMaterial(input: MaterialUploadInput): Promise<StoredFileMetadata> {
+        const key = buildObjectKey(['session-materials', sanitizePathPart(input.sessionId, 'session')], input.originalName);
         return await this.putObject(key, input);
     }
 

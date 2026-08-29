@@ -90,6 +90,7 @@ La copia local del roadmap no debe editarse como fuente de estado. Cuando exista
 - Portal de acudientes ampliado con asistencia, boletines, calendario y comunicaciones; documentos y solicitudes siguen pendientes.
 - Importacion CSV controlada para estudiantes, acudientes, docentes, grados, areas, grupos y matriculas; XLSX, jobs y exportaciones siguen pendientes.
 - Reportes institucionales adicionales y comunicaciones con operación repetible completa.
+- Materiales educativos por sesión: CRUD docente, consulta estudiantil por matrícula activa, archivos privados con URLs firmadas y acceso contextual desde calendario.
 
 ## Gate P0
 
