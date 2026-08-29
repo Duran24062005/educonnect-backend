@@ -53,6 +53,7 @@ Si algo cruza ambos repositorios:
 - `attendance`: sesiones, registros y reportes de asistencia
 - `calendar`: agenda y sesiones de clase
 - `institutions`: institución, sedes y jornadas
+- `platform`: onboarding global de instituciones para SuperAdmin
 - `audit`: trazabilidad de operaciones
 - `imports`: carga masiva y trabajos de importación
 

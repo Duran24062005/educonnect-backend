@@ -41,6 +41,20 @@ La recuperación responde de forma genérica para no revelar si un correo existe
 Las jornadas institucionales incluyen `shift_type` (`morning`, `afternoon` o `hybrid`) además de nombre, código y rango horario. Los registros anteriores sin este campo se leen como `morning`.
 - `PATCH /api/institutions/current/users/:user_id` (Admin)
 
+### Operación global de plataforma
+
+Estas rutas son exclusivas de `SuperAdmin`, no requieren contexto de institución y no sustituyen las rutas institucionales de `Admin`:
+
+- `GET /api/platform/institutions` (listado paginado y filtros)
+- `GET /api/platform/institutions/:id` (ficha institucional)
+- `POST /api/platform/institutions` (crea institución sandbox y primer Admin)
+- `POST /api/platform/institutions/:id/primary-admin` (asigna el primer Admin a una institución sin administrador)
+- `PATCH /api/platform/institutions/:id` (nombre, código, límite y zona horaria)
+- `PATCH /api/platform/institutions/:id/status` (activar o suspender)
+- `POST /api/platform/institutions/:id/primary-admin/invitation` (reenviar invitación)
+
+La creación genera la invitación mediante el flujo existente de recuperación por código. Las respuestas nunca incluyen contraseña ni código de recuperación.
+
 ### Auditoría
 
 - `GET /api/audit-logs` (Admin con institución asignada)

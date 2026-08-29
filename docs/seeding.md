@@ -38,6 +38,22 @@ Si tu `.env` local tiene `NODE_ENV=production`, antepone `NODE_ENV=development` 
 
 El script rechaza `NODE_ENV=production` salvo que exista la confirmacion explicita `SEED_CONFIRM=EDUCONNECT-DEMO`. El modo destructivo siempre esta bloqueado en produccion. No se recomienda ejecutar seeds en produccion.
 
+## Bootstrap del SuperAdmin de plataforma
+
+La cuenta global inicial no se crea por HTTP ni mediante el seed demo. Se crea con el comando controlado:
+
+```bash
+SUPERADMIN_EMAIL='operaciones@educonnect.co' \
+SUPERADMIN_PASSWORD='UnaClaveInicialSegura!' \
+SUPERADMIN_FIRST_NAME='Equipo' \
+SUPERADMIN_LAST_NAME='EduConnect' \
+SUPERADMIN_DOCUMENT_TYPE='CC' \
+SUPERADMIN_DOCUMENT_NUMBER='900000001' \
+yarn bootstrap:superadmin
+```
+
+El comando es idempotente por correo: si ya existe un `SuperAdmin` activo, no duplica registros. Rechaza reutilizar un correo que pertenezca a otro rol o a una cuenta institucional. La contraseña debe tener al menos 12 caracteres y nunca se imprime ni se expone por una ruta HTTP. Ejecutarlo únicamente contra la base de datos objetivo y conservar las variables fuera del repositorio.
+
 ## Dataset generado
 
 El dataset crea una institucion activa con cuentas de administrador, docente y acudiente. El acudiente tiene dos estudiantes vinculados, cada uno con matricula y grupo propio, para validar el alcance multiestudiante del portal familiar.

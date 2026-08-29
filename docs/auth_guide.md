@@ -26,6 +26,7 @@ Claims relevantes del token:
 ## Roles soportados
 
 - `Admin`
+- `SuperAdmin`
 - `Teacher`
 - `Student`
 - `Parent`
@@ -51,6 +52,14 @@ El flujo público usa un código de 6 dígitos enviado por email:
 4. `POST /api/auth/reset-password` cambia la contraseña, consume el desafío y revoca las sesiones existentes.
 
 Las cuentas no activas pueden actualizar su contraseña, pero el login continúa aplicando su estado de cuenta.
+
+## SuperAdmin y bootstrap institucional
+
+`SuperAdmin` es un rol global sin `institution_id`. No se puede solicitar desde el registro público y solo accede a las rutas `/api/platform/*`.
+
+La cuenta inicial se crea con `yarn bootstrap:superadmin`, usando `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `SUPERADMIN_FIRST_NAME`, `SUPERADMIN_LAST_NAME`, `SUPERADMIN_DOCUMENT_TYPE` y `SUPERADMIN_DOCUMENT_NUMBER`. El comando es idempotente por correo y exige una contraseña de al menos 12 caracteres.
+
+El alta de una institución crea un `Admin` activo y le envía un código para definir su contraseña. El código no se devuelve por API y el reto anterior queda invalidado al reenviar una invitación.
 
 ## Buenas prácticas productivas
 

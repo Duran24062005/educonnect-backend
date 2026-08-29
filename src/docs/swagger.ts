@@ -18,6 +18,7 @@ const options = {
             { name: 'Auth', description: 'Autenticación y perfil' },
             { name: 'Users', description: 'Gestión de usuarios' },
             { name: 'Institutions', description: 'Bootstrap institucional y contexto del piloto' },
+            { name: 'Platform', description: 'Onboarding global de instituciones para SuperAdmin' },
             { name: 'Audit', description: 'Trazabilidad de operaciones sensibles del piloto' },
             { name: 'Calendar', description: 'Sesiones de clase, catálogo y agenda por rol' },
             { name: 'Materials', description: 'Materiales educativos asociados a sesiones' },
@@ -360,6 +361,73 @@ const options = {
                         409: { description: 'El administrador ya tiene institución' },
                     },
                 },
+            },
+            '/api/platform/institutions': {
+                get: {
+                    tags: ['Platform'],
+                    summary: 'Listar instituciones de la plataforma',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { name: 'search', in: 'query', schema: { type: 'string' } },
+                        { name: 'type', in: 'query', schema: { type: 'string', enum: ['private', 'public'] } },
+                        { name: 'status', in: 'query', schema: { type: 'string', enum: ['sandbox', 'active', 'suspended', 'archived'] } },
+                        { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100 } },
+                    ],
+                    responses: { 200: { description: 'Listado paginado' }, 403: { $ref: '#/components/responses/Forbidden' } },
+                },
+                post: {
+                    tags: ['Platform'],
+                    summary: 'Crear una institución con su primer administrador',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['institution', 'primary_admin'],
+                            properties: {
+                                institution: { type: 'object', required: ['name', 'code', 'type'], properties: { name: { type: 'string' }, code: { type: 'string' }, type: { type: 'string', enum: ['private', 'public'] }, max_students: { type: 'integer' }, timezone: { type: 'string' } } },
+                                primary_admin: { type: 'object', required: ['first_name', 'last_name', 'email', 'document_type', 'document_number'], properties: { first_name: { type: 'string' }, last_name: { type: 'string' }, email: { type: 'string', format: 'email' }, document_type: { type: 'string', enum: ['CC', 'RC', 'CE'] }, document_number: { type: 'string' }, phone: { type: 'string' } } },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Institución creada' }, 409: { description: 'Código, correo o documento duplicado' } },
+                },
+            },
+            '/api/platform/institutions/{id}': {
+                get: { tags: ['Platform'], summary: 'Obtener una institución global', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Institución' }, 404: { description: 'No encontrada' } } },
+                patch: { tags: ['Platform'], summary: 'Editar datos de una institución', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Institución actualizada' }, 400: { $ref: '#/components/responses/ValidationError' } } },
+            },
+            '/api/platform/institutions/{id}/primary-admin': {
+                post: {
+                    tags: ['Platform'],
+                    summary: 'Asignar administrador principal',
+                    description: 'Crea un Admin institucional para una institución que aún no tiene administrador principal y envía su invitación.',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+                    requestBody: {
+                        required: true,
+                        content: jsonContent({
+                            type: 'object',
+                            required: ['first_name', 'last_name', 'email', 'document_type', 'document_number'],
+                            properties: {
+                                first_name: { type: 'string' },
+                                last_name: { type: 'string' },
+                                email: { type: 'string', format: 'email' },
+                                document_type: { type: 'string', enum: ['CC', 'RC', 'CE'] },
+                                document_number: { type: 'string' },
+                                phone: { type: 'string' },
+                            },
+                        }),
+                    },
+                    responses: { 201: { description: 'Administrador asignado' }, 403: { description: 'Requiere SuperAdmin' }, 409: { description: 'La institución ya tiene administrador o hay duplicidad' } },
+                },
+            },
+            '/api/platform/institutions/{id}/status': {
+                patch: { tags: ['Platform'], summary: 'Activar o suspender una institución', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], requestBody: { required: true, content: jsonContent({ type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['active', 'suspended'] } } }) }, responses: { 200: { description: 'Estado actualizado' }, 409: { description: 'Transición no permitida' } } },
+            },
+            '/api/platform/institutions/{id}/primary-admin/invitation': {
+                post: { tags: ['Platform'], summary: 'Reenviar invitación al administrador principal', security: [{ bearerAuth: [] }], parameters: [{ $ref: '#/components/parameters/ObjectIdParam' }], responses: { 200: { description: 'Invitación procesada' }, 409: { description: 'Administrador principal no configurado' } } },
             },
             '/api/institutions/current': {
                 get: {
