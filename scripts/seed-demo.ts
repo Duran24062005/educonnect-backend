@@ -84,6 +84,21 @@ const SEED_CONFIRMATION = 'EDUCONNECT-DEMO';
 const RESET_CONFIRMATION = 'EDUCONNECT-RESET';
 const ANCHOR_DATE = process.env.SEED_ANCHOR_DATE || '2026-08-24T00:00:00.000Z';
 
+const printUsage = (): void => {
+    console.log(`Uso:
+  yarn seed:demo
+  yarn seed:demo -- --help
+
+Variables principales:
+  SEED_NAMESPACE             Namespace del dataset (por defecto: demo)
+  SEED_INSTITUTION_CODE      Codigo de institucion (por defecto: EDU-<namespace>)
+  SEED_PASSWORD              Password de las cuentas demo (solo desarrollo)
+  SEED_ANCHOR_DATE           Fecha base ISO para datos temporales
+  SEED_CONFIRM               Confirmacion adicional si NODE_ENV=production
+
+El seed es incremental e idempotente. Para limpiar la base usa yarn seed:reset.`);
+};
+
 const GRADE_SPECS: GradeSeedSpec[] = [
     { level: '6', name: 'Sexto', description: 'Educacion basica secundaria' },
     { level: '7', name: 'Septimo', description: 'Educacion basica secundaria' },
@@ -898,8 +913,12 @@ export const runSeed = async (options: SeedOptions = {}): Promise<{ institutionI
 };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-    runSeed().catch((error) => {
-        console.error('Error ejecutando seed demo:', error);
-        process.exitCode = 1;
-    });
+    if (process.argv.includes('--help') || process.argv.includes('-h')) {
+        printUsage();
+    } else {
+        runSeed().catch((error) => {
+            console.error('Error ejecutando seed demo:', error);
+            process.exitCode = 1;
+        });
+    }
 }
